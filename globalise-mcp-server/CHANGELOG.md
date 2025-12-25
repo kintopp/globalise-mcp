@@ -12,6 +12,10 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
   - Respects `Retry-After` header when present on 429 responses
   - Supports both seconds and HTTP-date formats for Retry-After
 
+### Documentation
+- **GETTING_STARTED.md**: New beginner-friendly setup guide with step-by-step instructions for Claude Desktop, Claude.ai, OpenAI ChatGPT, MSTY, Jan.ai, and Claude Code CLI
+- **TODO.md**: Added Railway deployment workflow as future improvement
+
 ### Changed
 - `apiGet()` and `apiPost()` now include automatic retry behavior
 - Added `retryAfterMs` field to `ApiError` interface for rate limit responses
@@ -392,7 +396,7 @@ Claude Desktop was receiving all 7 tools correctly but choosing specialized tool
 
 ## Version History
 
-- **1.5.2** - Automatic retry with exponential backoff for transient failures
+- **1.5.2** - Automatic retry with exponential backoff, GETTING_STARTED.md guide
 - **1.5.1** - Increased result limit to 500, removed outputSchema, debug logging
 - **1.5.0** - Streamable HTTP transport, SDK 1.25.1, Express 5.x
 - **1.4.0** - Request timeouts, enhanced errors, response caching, HTTP/SSE transport
