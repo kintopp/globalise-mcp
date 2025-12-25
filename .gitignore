@@ -1,6 +1,10 @@
 # Excluded directories
 outdated/
 
+# Local development notes
+CLAUDE.md
+JAN_AI_HTTP_BUG_REPORT.md
+
 # Dependencies
 node_modules/
 
