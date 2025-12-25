@@ -78,44 +78,6 @@ No rate limiting exists on the client side. Rapid concurrent requests (e.g., LLM
 
 ---
 
-### Set Up Railway Deployment with GitHub Actions
-
-**Priority:** Medium
-**Status:** Not implemented
-
-**Background:**
-Currently, the MCP server must be run locally or manually deployed. Setting up automated deployment to Railway via GitHub Actions would enable:
-- Remote access without ngrok tunnels
-- Stable public URL for Claude.ai and ChatGPT integration
-- Automatic deploys on push to main branch
-
-**Proposed Implementation:**
-
-1. **Railway project setup:**
-   - Create Railway project linked to GitHub repo
-   - Configure environment variables (`TRANSPORT=http`, `PORT` from Railway)
-   - Set start command: `node dist/index.js`
-
-2. **GitHub Actions workflow** (`.github/workflows/deploy.yml`):
-   - Trigger on push to `main` (paths: `globalise-mcp-server/**`)
-   - Build TypeScript
-   - Deploy to Railway via Railway CLI or GitHub integration
-
-3. **Configuration options:**
-   - Option A: Use Railway's native GitHub integration (simplest)
-   - Option B: Use GitHub Actions with Railway CLI for more control
-
-**Considerations:**
-- Railway free tier: 500 hours/month, may need paid plan for always-on
-- Need to configure health check endpoint
-- Consider adding `railway.json` or `Procfile` for deployment config
-
-**Benefits:**
-- Persistent public URL for web-based MCP clients
-- No local server or tunnel required
-- Automatic deployment on code changes
-
----
 
 ## Ideas for Future Consideration
 
@@ -127,5 +89,6 @@ Currently, the MCP server must be run locally or manually deployed. Setting up a
 
 *Move items here once implemented, with version number and date.*
 
+- **v1.5.3** - Railway deployment: Public instance at `https://globalise-mcp-production.up.railway.app/mcp`. Auto-deploys on push to main via GitHub integration. Added `railway.json` configuration.
 - **v1.5.2** - Added retry logic with exponential backoff (1s → 2s → 4s, 3 attempts max) for transient failures (network errors, timeouts, 5xx, 429). Respects `Retry-After` header.
 - **v1.5.0** - Removed `outputSchema` from tools for broad client compatibility (MSTY, Jan.ai)

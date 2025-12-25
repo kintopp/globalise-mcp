@@ -108,6 +108,20 @@ This pattern minimizes result payload while providing full aggregation data. Wor
 
 ## Quick Start
 
+### Hosted Instance (Easiest)
+
+A public instance is available at:
+
+```
+https://globalise-mcp-production.up.railway.app/mcp
+```
+
+Use this URL directly in any MCP client that supports HTTP transport (ChatGPT, MSTY, Claude.ai web).
+
+**Health check:** https://globalise-mcp-production.up.railway.app/health
+
+### Local Installation
+
 **New to MCP servers?** See **[GETTING_STARTED.md](GETTING_STARTED.md)** for a beginner-friendly guide with step-by-step instructions for:
 - 🖥️ Claude Desktop
 - 🌐 Claude.ai (web interface)
