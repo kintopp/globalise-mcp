@@ -2,6 +2,32 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.5.3] - 2025-12-25
+
+### Added
+- **Railway Deployment**: Public hosted instance at `https://globalise-mcp-production.up.railway.app/mcp`
+  - Auto-deploys on push to main via GitHub integration
+  - Health check endpoint: `/health`
+  - Added `railway.json` configuration file
+- **Auto-Session Recovery**: Seamlessly handles stale sessions after server restarts
+  - When client sends a stale session ID, server creates a new session reusing the same ID
+  - Clients don't need to reinitialize or detect session loss
+  - Works for both POST /mcp requests and GET /mcp SSE streams
+  - Logs `[MCP] Auto-recovering stale session: <id>` for debugging
+
+### Technical Details
+**Session Recovery Logic:**
+```typescript
+// If client sends stale session ID, reuse it for the new session
+const newSessionId = sessionId || randomUUID();
+// Client continues seamlessly without knowing session was recreated
+```
+
+**Benefits:**
+- Zero-downtime experience for clients during Railway deploys
+- No "Resource not found" errors after server restarts
+- Backwards compatible - existing clients work without changes
+
 ## [1.5.2] - 2025-12-25
 
 ### Added

@@ -10,7 +10,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 
-const VERSION = '1.5.1';
+const VERSION = '1.5.3';
 
 export interface HttpServerOptions {
   port?: number;
@@ -75,6 +75,9 @@ export function createHttpServer(
   /**
    * POST /mcp - Handle MCP requests
    * Creates new session or uses existing one via mcp-session-id header
+   *
+   * Auto-recovery: If client sends a stale session ID (e.g., after server restart),
+   * we create a new session reusing the same ID so the client can continue seamlessly.
    */
   app.post('/mcp', async (req: Request, res: Response) => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -87,12 +90,19 @@ export function createHttpServer(
       console.error(`[MCP] Reusing session: ${sessionId}`);
     } else {
       // Create new session
-      const newSessionId = randomUUID();
+      // If client sent a stale session ID, reuse it for seamless recovery
+      // This handles server restarts gracefully - clients don't need to reinitialize
+      const newSessionId = sessionId || randomUUID();
+
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => newSessionId,
       });
 
-      console.error(`[MCP] New Streamable HTTP session: ${newSessionId}`);
+      if (sessionId) {
+        console.error(`[MCP] Auto-recovering stale session: ${sessionId}`);
+      } else {
+        console.error(`[MCP] New Streamable HTTP session: ${newSessionId}`);
+      }
 
       // Connect to MCP server
       await mcpServer.connect(transport);
@@ -114,6 +124,8 @@ export function createHttpServer(
   /**
    * GET /mcp - SSE stream for server-initiated messages (notifications)
    * Requires mcp-session-id header
+   *
+   * Auto-recovery: If session doesn't exist, creates a new one with the same ID.
    */
   app.get('/mcp', async (req: Request, res: Response) => {
     const sessionId = req.headers['mcp-session-id'] as string;
@@ -126,15 +138,23 @@ export function createHttpServer(
       return;
     }
 
-    const transport = streamableSessions.get(sessionId);
+    let transport = streamableSessions.get(sessionId);
 
+    // Auto-recover stale session for SSE stream
     if (!transport) {
-      res.status(404).json({
-        error: 'Session not found',
-        sessionId,
-        suggestion: 'Session may have expired. Create a new session with POST /mcp'
+      console.error(`[MCP] Auto-recovering stale session for SSE: ${sessionId}`);
+
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => sessionId,
       });
-      return;
+
+      await mcpServer.connect(transport);
+      streamableSessions.set(sessionId, transport);
+
+      transport.onclose = () => {
+        console.error(`[MCP] Session closed: ${sessionId}`);
+        streamableSessions.delete(sessionId);
+      };
     }
 
     console.error(`[MCP] SSE stream requested for session: ${sessionId}`);
