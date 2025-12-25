@@ -1,0 +1,585 @@
+openapi: 3.1.0
+info:
+  title: GLOBALISE Transcriptions API
+  description: |
+    REST API for searching and retrieving ~4.8 million Dutch East India Company (VOC)
+    historical transcriptions from the 17th-18th centuries.
+
+    ## Key Features
+    - Full-text search with boolean operators, wildcards, and fuzzy matching
+    - W3C Web Annotations with rich metadata
+    - IIIF image references
+    - Language classification
+    - No authentication required
+
+    ## License
+    All transcriptions are available under CC0 (Creative Commons Zero) license.
+  version: "2024.03.18"
+  contact:
+    name: GLOBALISE Project
+    url: https://globalise.huygens.knaw.nl
+  license:
+    name: CC0 1.0
+    url: https://creativecommons.org/publicdomain/zero/1.0/
+
+servers:
+  - url: https://gloccoli.tt.di.huc.knaw.nl
+    description: Production API server
+
+tags:
+  - name: Search
+    description: Full-text search operations
+  - name: Documents
+    description: Document retrieval operations
+  - name: Configuration
+    description: System configuration endpoints
+
+paths:
+  /projects/globalise/search:
+    post:
+      operationId: searchTranscriptions
+      summary: Search transcriptions
+      description: |
+        Full-text search across ~4.8 million VOC transcriptions.
+
+        Supports:
+        - Boolean operators: AND, OR, NOT
+        - Wildcards: * (multi-char), ? (single-char)
+        - Fuzzy matching: term~N
+        - Exact phrases: "phrase"
+        - Term filters for faceted search
+        - Aggregations for facet counts
+      tags:
+        - Search
+      parameters:
+        - name: indexName
+          in: query
+          required: true
+          description: Search index name
+          schema:
+            type: string
+            example: globalise-2024.03.18-test
+        - name: fragmentSize
+          in: query
+          required: false
+          description: Size of text fragments in results
+          schema:
+            type: integer
+            default: 100
+        - name: from
+          in: query
+          required: false
+          description: Offset for pagination (0-indexed)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          required: false
+          description: Number of results to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+        - name: sortBy
+          in: query
+          required: false
+          description: Field to sort by
+          schema:
+            type: string
+            default: _score
+        - name: sortOrder
+          in: query
+          required: false
+          description: Sort direction
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+            examples:
+              simpleSearch:
+                summary: Simple word search
+                value:
+                  text: schip
+                  terms: {}
+                  aggs:
+                    invNr: { order: countDesc, size: 10 }
+                    langIso: { order: countDesc, size: 10 }
+              booleanSearch:
+                summary: Boolean operators
+                value:
+                  text: peper AND koffie
+                  terms: {}
+                  aggs: {}
+              filteredSearch:
+                summary: With inventory filter
+                value:
+                  text: koffie
+                  terms:
+                    invNr: ["9966"]
+                  aggs:
+                    langLabel: { order: countDesc, size: 10 }
+              statisticsOnly:
+                summary: Get aggregations only
+                value:
+                  text: "*"
+                  terms:
+                    invNr: ["4293"]
+                  aggs:
+                    langIso: { order: countDesc, size: 100 }
+      responses:
+        "200":
+          description: Successful search
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+              example:
+                total:
+                  value: 755310
+                  relation: eq
+                results:
+                  - _id: "urn:globalise:NL-HaNA_1.04.02_2174_0057"
+                    _hits:
+                      text:
+                        - "<em>schip</em> meerlust - - - - - - - - - - 4: —. na bengalen het <em>schip</em> strijkebolle"
+                    textTokenCount: 351
+                    invNr: "2174"
+                    document: NL-HaNA_1.04.02_2174_0057
+                    langIso: [nld]
+                    langLabel: [Dutch]
+                aggs:
+                  invNr:
+                    "1119": 902
+                    "1139": 657
+                  langIso:
+                    nld: 754174
+                    unknown: 1078
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "504":
+          description: Request timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /projects/globalise/{documentUrn}:
+    get:
+      operationId: getDocument
+      summary: Get document details
+      description: |
+        Retrieve detailed information for a specific document including:
+        - Transcribed text lines
+        - W3C Web Annotations with metadata
+        - IIIF image and canvas references
+        - Navigation links (prev/next page)
+        - Language classification
+        - Processing metadata (OCR software, timestamps)
+      tags:
+        - Documents
+      parameters:
+        - name: documentUrn
+          in: path
+          required: true
+          description: |
+            Full document URN in format: urn:globalise:NL-HaNA_{archive}_{inventory}_{scan}
+          schema:
+            type: string
+            pattern: "^urn:globalise:NL-HaNA_[\\d.]+_\\d+_\\d+$"
+          example: "urn:globalise:NL-HaNA_1.04.02_9966_0106"
+        - name: overlapTypes
+          in: query
+          required: false
+          description: Type filter for overlaps
+          schema:
+            type: string
+            example: px:Page
+        - name: includeResults
+          in: query
+          required: false
+          description: Comma-separated list of data to include
+          schema:
+            type: string
+            example: anno,text
+        - name: views
+          in: query
+          required: false
+          description: View type
+          schema:
+            type: string
+            example: self
+        - name: relativeTo
+          in: query
+          required: false
+          description: Reference point
+          schema:
+            type: string
+            example: Origin
+      responses:
+        "200":
+          description: Document found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResponse"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    SearchRequest:
+      type: object
+      required:
+        - text
+        - terms
+        - aggs
+      properties:
+        text:
+          type: string
+          description: |
+            Search query text. Supports:
+            - Boolean operators: AND, OR, NOT (uppercase)
+            - Wildcards: * (multi-char), ? (single-char)
+            - Fuzzy matching: term~N
+            - Exact phrases: "phrase"
+            - Match all: *
+          examples:
+            - schip
+            - peper AND koffie
+            - "schip*"
+            - voorschreven~1
+        terms:
+          type: object
+          description: Term filters for faceted search
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            invNr: ["9966"]
+            langIso: ["nld"]
+        aggs:
+          type: object
+          description: Aggregation definitions for facet counts
+          additionalProperties:
+            $ref: "#/components/schemas/Aggregation"
+          example:
+            invNr:
+              order: countDesc
+              size: 10
+            langIso:
+              order: countDesc
+              size: 10
+
+    Aggregation:
+      type: object
+      properties:
+        order:
+          type: string
+          enum:
+            - countDesc
+            - countAsc
+            - keyDesc
+            - keyAsc
+          description: Sort order for aggregation buckets
+        size:
+          type: integer
+          minimum: 1
+          description: Maximum number of buckets to return
+
+    SearchResponse:
+      type: object
+      required:
+        - total
+        - results
+        - aggs
+      properties:
+        total:
+          type: object
+          required:
+            - value
+            - relation
+          properties:
+            value:
+              type: integer
+              description: Total matching documents
+            relation:
+              type: string
+              enum: [eq, gte]
+              description: Count relation (eq=exact, gte=at least)
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        aggs:
+          type: object
+          description: "Aggregation results: field -> value -> count"
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: integer
+
+    SearchResult:
+      type: object
+      required:
+        - _id
+      properties:
+        _id:
+          type: string
+          description: Document URN
+          example: "urn:globalise:NL-HaNA_1.04.02_2174_0057"
+        _hits:
+          type: object
+          properties:
+            text:
+              type: array
+              items:
+                type: string
+              description: Text fragments with <em> tags marking matches
+        textTokenCount:
+          type: integer
+          description: Token count in document
+        invNr:
+          type: string
+          description: Inventory number
+        document:
+          type: string
+          description: Document identifier
+        langIso:
+          type: array
+          items:
+            type: string
+          description: ISO 639-3 language codes
+        langLabel:
+          type: array
+          items:
+            type: string
+          description: Human-readable language names
+
+    DocumentResponse:
+      type: object
+      properties:
+        profile:
+          type: object
+          description: Performance profiling information
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: number
+        request:
+          type: object
+          description: Echo of request parameters
+          properties:
+            projectId:
+              type: string
+            bodyId:
+              type: string
+            views:
+              type: array
+              items:
+                type: string
+            include:
+              type: array
+              items:
+                type: string
+            overlapTypes:
+              type: array
+              items:
+                type: string
+            relativeTo:
+              type: string
+        anno:
+          type: array
+          items:
+            $ref: "#/components/schemas/W3CAnnotation"
+        views:
+          type: object
+          properties:
+            self:
+              type: object
+              properties:
+                lines:
+                  type: array
+                  items:
+                    type: string
+                  description: Transcribed text as array of lines
+
+    W3CAnnotation:
+      type: object
+      description: W3C Web Annotation format
+      properties:
+        "@context":
+          type: string
+          const: "http://www.w3.org/ns/anno.jsonld"
+        id:
+          type: string
+          format: uri
+        type:
+          type: string
+          const: Annotation
+        motivation:
+          type: string
+        generated:
+          type: string
+          format: date-time
+        generator:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uri
+            type:
+              type: string
+            name:
+              type: string
+              description: OCR software name (e.g., Loghi)
+        body:
+          $ref: "#/components/schemas/AnnotationBody"
+        target:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnnotationTarget"
+
+    AnnotationBody:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Document URN
+        type:
+          type: string
+          description: Usually px:Page
+        metadata:
+          $ref: "#/components/schemas/PageMetadata"
+
+    PageMetadata:
+      type: object
+      properties:
+        type:
+          type: string
+          const: PageMetadata
+        document:
+          type: string
+          description: Document identifier
+        file:
+          type: string
+          description: Source XML filename
+        inventoryNumber:
+          type: string
+        n:
+          type: string
+          description: Page/scan number
+        eDepotId:
+          type: string
+          format: uuid
+        creator:
+          type: string
+          description: Layout analysis software (e.g., Laypa)
+        created:
+          type: string
+          format: date-time
+        lastChange:
+          type: string
+          format: date-time
+        comment:
+          type: string
+        naUrl:
+          type: string
+          format: uri
+          description: National Archives URL
+        trUrl:
+          type: string
+          format: uri
+          description: TextRepo URL
+        prevPageId:
+          type: string
+          description: Previous page URN (for navigation)
+        nextPageId:
+          type: string
+          description: Next page URN (for navigation)
+        lang:
+          type: array
+          items:
+            type: object
+            properties:
+              iso:
+                type: string
+                description: ISO 639-3 language code
+              label:
+                type: string
+                description: Human-readable language name
+        langCorrected:
+          type: boolean
+
+    AnnotationTarget:
+      type: object
+      properties:
+        source:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum:
+            - Image
+            - Canvas
+            - Text
+        selector:
+          type: object
+          properties:
+            type:
+              type: string
+              const: TextAnchorSelector
+            start:
+              type: integer
+            end:
+              type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type or code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: string
+          description: Additional error details
+        documentId:
+          type: string
+          description: Document ID (for 404 errors)
+        retryAfter:
+          type: integer
+          description: Seconds to wait before retry (for 429)
+        suggestion:
+          type: string
+          description: Suggested action to resolve the error

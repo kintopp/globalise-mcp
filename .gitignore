@@ -1,0 +1,40 @@
+# Excluded directories
+outdated/
+
+# Dependencies
+node_modules/
+
+# Build output (can be regenerated with npm run build)
+dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings
+.claude/
+
+# ck semantic search index (local cache)
+.ck/
+
+# Testing
+coverage/
+.nyc_output/
