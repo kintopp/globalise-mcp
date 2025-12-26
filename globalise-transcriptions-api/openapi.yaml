@@ -215,10 +215,14 @@ paths:
         - name: includeResults
           in: query
           required: false
-          description: Comma-separated list of data to include
+          description: |
+            Comma-separated list of data to include:
+            - anno: W3C Web Annotations with metadata
+            - text: Transcribed text lines
+            - iiif: IIIF manifest and canvas URLs (top-level object)
           schema:
             type: string
-            example: anno,text
+            example: anno,iiif,text
         - name: views
           in: query
           required: false
@@ -431,6 +435,20 @@ components:
                   items:
                     type: string
                   description: Transcribed text as array of lines
+        iiif:
+          type: object
+          description: IIIF references (when includeResults=iiif)
+          properties:
+            manifest:
+              type: string
+              format: uri
+              description: IIIF Presentation API manifest URL
+            canvasIds:
+              type: array
+              items:
+                type: string
+                format: uri
+              description: IIIF Canvas URLs for this document
 
     W3CAnnotation:
       type: object

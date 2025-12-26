@@ -280,6 +280,22 @@ Response from `GET /projects/globalise/{documentUrn}`
           }
         }
       }
+    },
+    "iiif": {
+      "type": "object",
+      "description": "IIIF references (when includeResults=iiif)",
+      "properties": {
+        "manifest": {
+          "type": "string",
+          "format": "uri",
+          "description": "IIIF Presentation API manifest URL"
+        },
+        "canvasIds": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "description": "IIIF Canvas URLs for this document"
+        }
+      }
     }
   },
   "$defs": {
@@ -602,6 +618,12 @@ interface DocumentViews {
   };
 }
 
+/** IIIF references (when includeResults=iiif) */
+interface IIIFReferences {
+  manifest?: string;
+  canvasIds?: string[];
+}
+
 /** Document response */
 interface DocumentResponse {
   profile?: Record<string, Record<string, number>>;
@@ -615,6 +637,7 @@ interface DocumentResponse {
   };
   anno: W3CAnnotation[];
   views: DocumentViews;
+  iiif?: IIIFReferences;
 }
 
 // ============================================
