@@ -9,7 +9,8 @@ The GLOBALISE API uses an Elasticsearch-like query syntax for full-text search. 
 - [Wildcards](#wildcards)
 - [Fuzzy Matching](#fuzzy-matching)
 - [Phrase Search](#phrase-search)
-- [Special Characters](#special-characters)
+- [Phrase Proximity](#phrase-proximity)
+- [Punctuation and Special Characters](#punctuation-and-special-characters)
 - [Query Examples](#query-examples)
 - [Troubleshooting](#troubleshooting)
 
@@ -210,17 +211,97 @@ const query = {
 
 ---
 
-## Special Characters
+## Phrase Proximity
 
-### Escaping Special Characters
+### Proximity Search (~N after phrase)
 
-These characters have special meaning and may need escaping:
+Find words that appear within N positions of each other, in any order:
+
+```json
+{ "text": "\"peper koffie\"~5" }
+```
+
+Returns documents where "peper" and "koffie" appear within 5 word positions of each other.
+
+**Comparison:**
+
+| Query | Meaning | Results |
+|-------|---------|---------|
+| `"peper koffie"` | Exact phrase (adjacent, in order) | Fewer matches |
+| `"peper koffie"~5` | Within 5 positions (any order) | More matches |
+| `"peper koffie"~10` | Within 10 positions (any order) | Even more matches |
+
+### Use Cases
+
+Proximity search is useful when:
+- Words commonly appear together but not always adjacent
+- Word order may vary in historical texts
+- You want related concepts without requiring exact phrasing
+
+**Example - Finding ship cargo discussions:**
+
+```json
+{ "text": "\"schip lading\"~10" }
+```
+
+Finds discussions of ships and cargo even when other words appear between them.
+
+---
+
+## Punctuation and Special Characters
+
+### Punctuation Handling (Important Limitation)
+
+The GLOBALISE corpus is **tokenized** during indexing, which means:
+
+- **Punctuation is stripped** - Apostrophes, periods, hyphens are removed
+- **Numbers are preserved** - Year searches like `1609` work correctly
+- **Archive numbers don't work** - Searching `1.04.02` returns no results because periods are stripped
+
+**What works:**
+
+| Query | Result |
+|-------|--------|
+| `1609` | Finds year references |
+| `Batavia` | Normal word search |
+| `VOC` | Acronyms work |
+
+**What doesn't work:**
+
+| Query | Why It Fails |
+|-------|--------------|
+| `d'` | Apostrophe stripped, matches just `d` |
+| `1.04.02` | Periods stripped, no match |
+| `'s-Gravenhage` | Apostrophe/hyphen stripped |
+
+### Workarounds
+
+For words with apostrophes, search for the main word:
+
+```json
+{ "text": "Gravenhage" }
+```
+
+Instead of `'s-Gravenhage` which won't match as expected.
+
+For archive numbers, use the `invNr` filter instead of text search:
+
+```json
+{
+  "text": "*",
+  "terms": { "invNr": ["9966"] }
+}
+```
+
+### Escaping Query Operators
+
+These characters have special meaning in queries and need escaping:
 
 | Character | Meaning | To search literally |
 |-----------|---------|---------------------|
 | `*` | Multi-char wildcard | `\*` |
 | `?` | Single-char wildcard | `\?` |
-| `~` | Fuzzy matching | `\~` |
+| `~` | Fuzzy/proximity | `\~` |
 | `"` | Phrase delimiter | `\"` |
 | `(` `)` | Grouping | `\(` `\)` |
 
@@ -403,6 +484,7 @@ Machine-generated transcriptions may contain errors:
 | `term1 OR term2` | Either matches | `peper OR koffie` |
 | `term1 NOT term2` | Exclude term2 | `peper NOT koffie` |
 | `"phrase"` | Exact phrase | `"de koffie"` |
+| `"phrase"~N` | Proximity (N positions) | `"peper koffie"~5` |
 | `term*` | Multi-char wildcard | `schip*` |
 | `ter?` | Single-char wildcard | `cop?e` |
 | `term~N` | Fuzzy (N edits) | `amsterdam~1` |

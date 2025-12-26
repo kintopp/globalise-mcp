@@ -24,7 +24,7 @@ export const searchInputSchema = z.object({
 export const searchSimpleInputSchema = z.object({
   query: z.string()
     .min(1, "Search query cannot be empty")
-    .describe('Search query. Supports Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes'),
+    .describe('Search query. Supports Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes, proximity ("phrase"~N)'),
   from: z.number()
     .min(0, "Pagination offset must be 0 or greater")
     .optional()
@@ -36,12 +36,20 @@ export const searchSimpleInputSchema = z.object({
     .optional()
     .default(10)
     .describe('Results per page (1-500, default: 10). For large-scale analysis, up to 500 results can be requested.'),
+  sortBy: z.string()
+    .optional()
+    .default('_score')
+    .describe('Sort by: "_score" (relevance), "document" (doc ID), "invNr" (inventory). Default: "_score"'),
+  sortOrder: z.enum(['asc', 'desc'])
+    .optional()
+    .default('desc')
+    .describe('Sort order: "asc" or "desc" (default: "desc")'),
   languages: z.array(z.string())
     .optional()
     .describe('Filter by language codes: ["nld"], ["fas"], ["ben"], etc.'),
-  inventoryNumber: z.string()
+  inventoryNumber: z.union([z.string(), z.array(z.string())])
     .optional()
-    .describe('Filter by specific inventory number (e.g., "9966")'),
+    .describe('Filter by inventory number(s). Single: "9966" or multiple: ["9966", "4293"]'),
 });
 
 export const searchOutputSchema = z.object({
@@ -205,16 +213,19 @@ export async function searchSimple(input: SearchSimpleInput): Promise<SearchOutp
     from: input.from,
     size: input.size,
     fragmentSize: 100, // Fixed default
-    sortBy: '_score', // Fixed default
-    sortOrder: 'desc', // Fixed default
+    sortBy: input.sortBy,
+    sortOrder: input.sortOrder,
     includeAggregations: true, // Fixed default
     languages: input.languages,
   };
 
-  // Add inventory filter if provided
+  // Add inventory filter if provided (supports single string or array)
   if (input.inventoryNumber) {
+    const invNrArray = Array.isArray(input.inventoryNumber)
+      ? input.inventoryNumber
+      : [input.inventoryNumber];
     searchInput.filters = {
-      invNr: [input.inventoryNumber],
+      invNr: invNrArray,
     };
   }
 

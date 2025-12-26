@@ -42,71 +42,11 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
-### Add Client-Side Request Throttling
-
-**Priority:** Low
-**Status:** Not implemented
-
-**Background:**
-No rate limiting exists on the client side. Rapid concurrent requests (e.g., LLM making multiple tool calls in parallel) could overwhelm the GLOBALISE API.
-
-**Current State:**
-- The GLOBALISE API has no documented rate limits
-- No client-side throttling or concurrent request limits
-- Caching reduces repeat requests but doesn't limit new ones
-
-**Proposed Options:**
-
-1. **Simple delay between requests:**
-   - Add configurable delay (e.g., 100ms) between API calls
-   - Minimal complexity, prevents burst traffic
-
-2. **Concurrent request limit:**
-   - Cap simultaneous requests (e.g., max 3 concurrent)
-   - Use a semaphore or request queue
-
-3. **Token bucket / leaky bucket:**
-   - More sophisticated rate limiting
-   - Probably overkill for this use case
-
-**Recommendation:** Start with option 1 (simple delay) or option 2 (concurrent limit). Only add complexity if issues arise.
-
-**Benefits:**
-- Prevents accidental API abuse
-- Good citizenship toward shared public infrastructure
-- Reduces risk of IP blocking
-
----
-
 
 ## Ideas for Future Consideration
 
 *Add new improvement ideas below as they arise.*
 
-### Update CLAUDE.md Release Checklist
-
-**Priority:** High
-**Status:** Not started
-
-**Task:**
-Update the "Version Management" section in `CLAUDE.md` to include:
-
-1. **Add README.md to the version bump checklist:**
-   - `globalise-mcp-server/README.md` should be updated to reflect any changes to the MCP server in a new release
-   - This includes new features, changed tool signatures, updated examples, deployment instructions, etc.
-
-2. **Add instruction to verify all examples use real, executable values:**
-   - All code examples in documentation must use real inventory numbers, document URNs, and query parameters
-   - Examples should be tested against the live API before publishing
-   - Invalid examples erode user trust and cause confusion
-
-**Files to Update:**
-- `CLAUDE.md` - Add these instructions to the existing "Version Management" section
-
-**Why:**
-The current version management checklist doesn't mention README.md, which is user-facing documentation. Additionally, examples using placeholder or invalid data cannot be tested by users.
-
----
 
 ### Review API Documentation Examples
 
@@ -139,78 +79,6 @@ Check ChatGPT conversation logs from MCP server testing sessions for any discrep
 
 **Why:**
 The help page describes the web UI's search capabilities, which may differ from or exceed what we've documented for the API. There may be undocumented features or limitations.
-
----
-
-### Verify Feature Limitations Discovered in ChatGPT Testing
-
-**Priority:** Medium
-**Status:** Not started
-
-**Task:**
-Testing in ChatGPT Desktop with GPT 5.2 surfaced several potential feature limitations. These claims need to be verified against the actual API and MCP server implementation.
-
-**Claimed Limitations (Unverified):**
-
-1. **Multi-inventory filtering not supported in one request**
-   - Cannot filter by multiple inventory numbers simultaneously (e.g., `invNr: ["9966", "4293"]`)
-   - Need to check: Is this documented but not implemented, or not supported by the API at all?
-
-2. **Phrase proximity operators not supported**
-   - No "N words apart" syntax (e.g., `"peper koffie"~5`)
-   - Need to verify against Elasticsearch/Broccoli query syntax
-
-3. **Punctuation-literal matching not supported**
-   - Due to tokenization limitations in the index
-   - Punctuation is stripped/normalized during indexing
-   - Need to test with actual queries
-
-4. **Server-side sorting inconsistency:**
-   - `globalise_search_transcriptions` - reportedly cannot be server-sorted via MCP
-   - `globalise_search_by_inventory` - reportedly CAN be server-sorted via MCP
-   - Client-side sorting always possible after retrieval
-   - Need to check: Are `sortBy`/`sortOrder` params exposed in both tools?
-
-**Verification Steps:**
-1. Check MCP tool schemas in `src/index.ts` for sorting parameters
-2. Test multi-inventory filter: `terms: { invNr: ["9966", "4293"] }`
-3. Test proximity query: `"peper koffie"~5` against raw API
-4. Test punctuation query: search for `"d'"` or `"1.04.02"`
-5. Compare with QUERY_SYNTAX.md documentation
-
-**Source:** ChatGPT Desktop testing session with GPT 5.2
-
----
-
-### Investigate IIIF and National Archives URL Issues
-
-**Priority:** High
-**Status:** Not started
-
-**Task:**
-Investigate inconsistent/incorrect URLs being returned or displayed for IIIF and National Archives links.
-
-**Observed Issues:**
-
-1. **National Archives URL spelling varies by LLM client** (both using Claude Sonnet 4.5):
-   - MSTY: `https://www.nationaalarchiv.nl/onderzoeken/archief/1.04.02/invnr/10435/file/NL-HaNA_1.04.02_10435_0237` ❌ (missing "ef")
-   - Claude Desktop: `https://www.nationaalarchief.nl/onderzoeken/archief/1.04.02/invnr/10435/file/NL-HaNA_1.04.02_10435_0237` ✅ (correct)
-
-2. **IIIF Canvas URL returns 404:**
-   - URL: `https://data.globalise.huygens.knaw.nl/manifests/inventories/10435.json/canvas/p237`
-   - This URL pattern is what the API returns, but it 404s
-
-**Questions to Investigate:**
-- Is the MCP server returning correct URLs, and clients are corrupting them?
-- Is the IIIF canvas URL pattern wrong in our code or in the upstream API?
-- Are canvas URLs meant to be accessed directly, or only via manifest?
-- Should we validate URLs before returning them?
-
-**Test Steps:**
-1. Call `globalise_retrieve_document` directly and inspect raw response
-2. Check if the manifest exists: `https://data.globalise.huygens.knaw.nl/manifests/inventories/10435.json`
-3. Verify the canvas ID format expected by IIIF viewers
-4. Compare URL construction in `src/tools/document.ts`
 
 ---
 
@@ -279,6 +147,9 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **2025-12-26** - Updated CLAUDE.md release checklist: added README.md to version bump files, added instruction to verify examples use real API values before publishing.
+- **v1.7.0** - Verified and fixed ChatGPT-reported feature limitations: (1) Multi-inventory filtering now supported via array syntax `["9966", "4293"]` - API tested to OR results correctly; (2) Phrase proximity `"phrase"~N` documented in QUERY_SYNTAX.md - works for finding words within N positions; (3) Punctuation handling documented as API limitation (stripped during tokenization); (4) Added sortBy/sortOrder to `globalise_search_transcriptions` for consistency with `search_by_inventory`.
+- **v1.6.1** - Simplified document URL output: removed IIIF URLs (canvas/manifest are for IIIF viewers, not direct access), removed high-res image URL, annoRepo, and textRepo. Now returns only National Archives link for viewing page scans. National Archives URL spelling issue could not be reproduced - likely one-off LLM hallucination. Added client-side request throttling (100ms delay between API calls) for good API citizenship. More elaborate options preserved for future if needed: concurrent request limits (semaphore/queue), token bucket/leaky bucket algorithms.
 - **v1.5.3** - Railway deployment: Public instance at `https://globalise-mcp-production.up.railway.app/mcp`. Auto-deploys on push to main via GitHub integration. Added `railway.json` configuration.
 - **v1.5.2** - Added retry logic with exponential backoff (1s → 2s → 4s, 3 attempts max) for transient failures (network errors, timeouts, 5xx, 429). Respects `Retry-After` header.
 - **v1.5.0** - Removed `outputSchema` from tools for broad client compatibility (MSTY, Jan.ai)

@@ -89,7 +89,7 @@ const TOOLS: Tool[] = [
       'Examples: "get document NL-HaNA_1.04.02_9966_0106", "show me the full text of urn:globalise:...", "retrieve metadata for document X". ' +
       '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN "urn:globalise:...". ' +
       '\n\n**RETURNS:** (1) Full transcribed text line-by-line and concatenated, (2) Metadata including languages, dates, creator, license, ' +
-      '(3) IIIF image URLs for viewing scans, (4) Navigation links to previous/next page IDs, (5) National Archives and TextRepo URLs. ' +
+      '(3) Navigation links to previous/next page IDs, (4) National Archives URL for viewing page scan (always present as clickable link). ' +
       '\n\n**DO NOT USE FOR:** (1) Searching by keywords → use globalise_search_transcriptions instead. ' +
       '(2) Navigating to next/previous page → use globalise_navigate instead (it handles retrieval automatically).',
     inputSchema: zodToJsonSchema(getDocumentSimpleInputSchema) as Tool['inputSchema'],
@@ -172,7 +172,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.6.0',
+    version: '1.7.0',
   },
   {
     capabilities: {

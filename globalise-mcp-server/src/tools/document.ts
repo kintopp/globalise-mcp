@@ -10,7 +10,6 @@ export const getDocumentInputSchema = z.object({
   documentId: z.string().describe('Document ID or URN. Can be either "urn:globalise:NL-HaNA_1.04.02_9966_0106" or just "NL-HaNA_1.04.02_9966_0106"'),
   includeAnnotations: z.boolean().optional().default(true).describe('Include W3C annotations with metadata (default: true)'),
   includeText: z.boolean().optional().default(true).describe('Include full transcribed text (default: true)'),
-  includeIIIF: z.boolean().optional().default(true).describe('Include IIIF image and manifest URLs (default: true)'),
 });
 
 export const getDocumentOutputSchema = z.object({
@@ -40,12 +39,7 @@ export const getDocumentOutputSchema = z.object({
     nextPageId: z.string().optional(),
   }).optional(),
   urls: z.object({
-    nationalArchives: z.string().optional(),
-    annoRepo: z.string().optional(),
-    highResolutionImage: z.string().optional(),
-    textRepo: z.string().optional(),
-    iiifCanvas: z.string().optional(),
-    iiifManifest: z.string().optional(),
+    nationalArchives: z.string().optional().describe('Direct link to view page scan at National Archives (present as clickable link)'),
   }).optional(),
 });
 
@@ -106,7 +100,6 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
   const include: string[] = [];
   if (input.includeAnnotations) include.push('anno');
   if (input.includeText) include.push('text');
-  if (input.includeIIIF) include.push('iiif');
 
   // Build URL with query parameters
   const url = buildUrl(
@@ -165,41 +158,11 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
       nextPageId: metadata.nextPageId,
     };
 
-    // Extract URLs from annotation targets and IIIF data
-    if (input.includeIIIF || input.includeAnnotations) {
-      const targets = response.anno[0].target;
+    // Include National Archives link for viewing page scan
+    if (metadata.naUrl) {
       output.urls = {
         nationalArchives: metadata.naUrl,
-        annoRepo: annotation?.id,
-        textRepo: metadata.trUrl,
       };
-
-      // Use top-level IIIF data if available (cleaner structure)
-      if (response.iiif) {
-        output.urls.iiifManifest = response.iiif.manifest;
-        output.urls.iiifCanvas = response.iiif.canvasIds?.[0];
-      }
-
-      // Also extract image URL from annotation targets
-      if (targets) {
-        const imageTarget = targets.find(t => t.type === 'Image');
-        if (imageTarget) {
-          output.urls.highResolutionImage = imageTarget.source;
-        }
-
-        // Fallback to annotation targets for IIIF if top-level data not available
-        if (!response.iiif) {
-          const canvasTarget = targets.find(t => t.type === 'Canvas');
-          if (canvasTarget) {
-            output.urls.iiifCanvas = canvasTarget.source;
-            // Extract manifest URL from canvas URL
-            const match = canvasTarget.source.match(/(.*\/manifests\/.*\.json)/);
-            if (match) {
-              output.urls.iiifManifest = match[1];
-            }
-          }
-        }
-      }
     }
   }
 
@@ -216,6 +179,5 @@ export async function getDocumentSimple(input: GetDocumentSimpleInput): Promise<
     documentId: input.documentId,
     includeAnnotations: true,
     includeText: true,
-    includeIIIF: true,
   });
 }

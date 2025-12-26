@@ -11,7 +11,29 @@ export const API_CONFIG = {
   TIMEOUT_MS: 30000, // 30 seconds default timeout
   RETRY_MAX_ATTEMPTS: 3,
   RETRY_BASE_DELAY_MS: 1000, // 1 second base delay (1s, 2s, 4s)
+  REQUEST_DELAY_MS: 100, // Minimum delay between API requests (throttling)
 };
+
+/**
+ * Throttle state - tracks when the last API request was made
+ */
+let lastRequestTime = 0;
+
+/**
+ * Ensure minimum delay between API requests to avoid overwhelming the server.
+ * This is a simple throttle mechanism for good API citizenship.
+ */
+async function throttle(): Promise<void> {
+  const now = Date.now();
+  const elapsed = now - lastRequestTime;
+  const delay = API_CONFIG.REQUEST_DELAY_MS - elapsed;
+
+  if (delay > 0) {
+    await sleep(delay);
+  }
+
+  lastRequestTime = Date.now();
+}
 
 /**
  * Error types for better error classification
@@ -240,6 +262,9 @@ async function withRetry<T>(
  * Execute a single GET request without retry
  */
 async function apiGetOnce<T>(url: string, timeoutMs: number): Promise<T> {
+  // Throttle requests to avoid overwhelming the API
+  await throttle();
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -287,6 +312,9 @@ export async function apiGet<T>(url: string, timeoutMs = API_CONFIG.TIMEOUT_MS):
  * Execute a single POST request without retry
  */
 async function apiPostOnce<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
+  // Throttle requests to avoid overwhelming the API
+  await throttle();
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

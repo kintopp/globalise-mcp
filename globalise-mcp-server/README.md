@@ -2,7 +2,7 @@
 
 Model Context Protocol (MCP) server for searching and retrieving Dutch East India Company (VOC) historical transcriptions provided by the GLOBALISE project.
 
-**Version:** 1.5.2
+**Version:** 1.7.0
 **MCP Specification:** 2025-11-25
 
 All tools include:
@@ -26,8 +26,10 @@ Features:
 - Wildcards (* and ?)
 - Fuzzy matching (~N for edit distance)
 - Exact phrases in quotes
+- Phrase proximity (`"word1 word2"~5` for words within N positions)
 - Language filtering (23 languages supported)
-- Inventory number filtering
+- Inventory number filtering (single or multiple: `["9966", "4293"]`)
+- Sorting by relevance, document ID, or inventory number
 - Pagination support
 
 #### 2. globalise_retrieve_document
@@ -43,12 +45,7 @@ Returns:
   - Annotation generation timestamp
   - Languages with ISO codes
   - License (CC0)
-- Access URLs:
-  - High-resolution IIIF images
-  - AnnoRepo annotation URLs (W3C Web Annotations)
-  - National Archives page links
-  - TextRepo URLs
-  - IIIF Canvas and Manifest URLs
+- National Archives URL for viewing page scan (always presented as clickable link)
 - Navigation links (previous/next page IDs)
 
 #### 3. globalise_navigate
@@ -286,11 +283,28 @@ Restart Claude Desktop to load the server.
 }
 ```
 
-**Inventory filtering:**
+**Inventory filtering (single):**
 ```typescript
 {
   "query": "koffie",
   "inventoryNumber": "9966"
+}
+```
+
+**Inventory filtering (multiple):**
+```typescript
+{
+  "query": "koffie",
+  "inventoryNumber": ["9966", "4293"]
+}
+```
+
+**Sorting:**
+```typescript
+{
+  "query": "peper",
+  "sortBy": "document",
+  "sortOrder": "asc"
 }
 ```
 
@@ -407,7 +421,10 @@ Restart Claude Desktop to load the server.
 - **Wildcards**: `schip*` (multi-char), `cop?e` (single-char)
 - **Fuzzy**: `voorschreven~1` (edit distance of 1)
 - **Phrases**: `"exact phrase in quotes"`
+- **Proximity**: `"peper koffie"~5` (words within 5 positions of each other)
 - **Combine**: `(peper OR koffie) AND schip*`
+
+**Note on punctuation:** Apostrophes, periods, and hyphens are stripped during indexing. Search for `Gravenhage` rather than `'s-Gravenhage`. Years like `1609` work correctly. See [QUERY_SYNTAX.md](../globalise-transcriptions-api/QUERY_SYNTAX.md) for full details.
 
 ## Language Support
 
@@ -439,6 +456,8 @@ urn:globalise:NL-HaNA_{archive}_{inventory}_{scan}
 **Authentication**: None required (public API)
 
 **License**: CC0 1.0
+
+**Request Throttling**: The server enforces a 100ms minimum delay between API requests to avoid overwhelming the upstream GLOBALISE API. This is configurable via `API_CONFIG.REQUEST_DELAY_MS` in `src/utils/api-client.ts`.
 
 **Citation**: When using transcriptions, cite as:
 ```
@@ -581,7 +600,6 @@ See `RECOMMENDED_IMPROVEMENTS.md` for detailed recommendations:
 
 **High Priority:**
 - Add comprehensive test suite (Vitest)
-- Implement rate limiting and exponential backoff
 
 **Medium Priority:**
 - Add evaluation test suite for tool selection quality

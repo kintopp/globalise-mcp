@@ -486,6 +486,8 @@ For full document retrieval with IIIF image data, use these parameters:
 | `iiif.manifest` | IIIF Presentation API manifest URL (when `includeResults=iiif`) |
 | `iiif.canvasIds[]` | IIIF Canvas URLs for this document (when `includeResults=iiif`) |
 
+> **Note on IIIF URLs:** The `iiif.manifest` and `iiif.canvasIds` fields are available in the raw API but are **not exposed in the MCP server**. IIIF Canvas URLs are fragment identifiers meant for IIIF viewers (e.g., Mirador), not direct access. The IIIF manifest JSON contains no useful information beyond what's already provided: high-resolution images are accessible via the `nationalArchives` URL, and inventory titles are in the document metadata. For viewing page scans, use the National Archives link returned by the MCP server.
+
 **Error Responses:**
 
 | Status | Description |

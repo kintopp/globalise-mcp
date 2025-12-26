@@ -210,7 +210,6 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
     documentId: input.currentDocumentId,
     includeAnnotations: true,
     includeText: false,
-    includeIIIF: false,
   });
 
   // Parse current document ID
@@ -245,7 +244,6 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
     documentId: targetPageId,
     includeAnnotations: true,
     includeText: input.includeText,
-    includeIIIF: true,
   });
 
   // Parse target document ID

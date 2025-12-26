@@ -2,6 +2,53 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.7.0] - 2025-12-26
+
+### Added
+- **Sorting parameters for main search**: `globalise_search_transcriptions` now exposes `sortBy` and `sortOrder` parameters
+  - Sort by: `_score` (relevance), `document` (doc ID), `invNr` (inventory number)
+  - Previously only `globalise_search_by_inventory` had sorting; now both tools are consistent
+- **Multi-inventory filtering**: `inventoryNumber` parameter now accepts array of strings
+  - Single: `"9966"` or multiple: `["9966", "4293"]`
+  - API confirmed to OR multiple inventories (tested: 495 + 535 = 1030 results)
+
+### Documentation
+- **Phrase proximity search**: Documented `"phrase"~N` syntax in `QUERY_SYNTAX.md`
+  - Tested: `"peper koffie"~5` returns 15 results vs 5 for exact phrase
+  - Works for finding words within N positions of each other
+- **Punctuation handling**: Documented tokenization limitations
+  - Apostrophes, periods, hyphens are stripped during indexing
+  - Numbers (years like `1609`) work correctly
+  - Workarounds documented for common patterns
+
+### Verified (ChatGPT Testing Claims)
+- Multi-inventory: ✅ API supports array, now exposed in MCP
+- Phrase proximity: ✅ Works, was undocumented
+- Punctuation: ⚠️ Stripped during tokenization (API limitation, documented)
+- Sorting consistency: ✅ Fixed - both search tools now have sorting
+
+---
+
+## [1.6.1] - 2025-12-26
+
+### Removed
+- **IIIF URLs from MCP output**: Removed `iiifCanvas` and `iiifManifest` from document retrieval response
+  - IIIF Canvas URLs are fragment identifiers for IIIF viewers (e.g., Mirador), not directly browsable URLs
+  - The "404 error" when accessing canvas URLs directly was expected behavior, not a bug
+  - IIIF manifest JSON provides no useful data beyond what's already available via National Archives link
+  - High-resolution images remain accessible via the `nationalArchives` URL
+- Removed `includeIIIF` input parameter from document retrieval tool
+
+### Changed
+- Tool description updated: "IIIF image URLs" → "High-resolution image URL"
+- Simplified URL extraction logic in `src/tools/document.ts`
+
+### Documentation
+- Added note to `API_REFERENCE.md` explaining why IIIF URLs are in raw API but not MCP server
+- Updated `TODO.md`: Split IIIF/National Archives issue, moved IIIF resolution to Completed
+
+---
+
 ## [1.6.0] - 2025-12-26
 
 ### Added
