@@ -50,6 +50,26 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
+### Review and Edit README.md
+
+**Priority:** Medium
+**Status:** In progress
+
+**Task:**
+Continue reviewing and editing the MCP server's README.md. The current version only partially satisfies several, partly conflicting goals:
+
+1. **Quick start for users** - How to get running with Claude Desktop, ChatGPT, etc.
+2. **Technical reference** - Tool schemas, parameters, response formats
+3. **Project overview** - What the server does, what GLOBALISE is
+4. **Developer onboarding** - How to contribute, build, deploy
+
+**Considerations:**
+- Should some content be split into separate files (e.g., CONTRIBUTING.md, API.md)?
+- What's the right balance between brevity and completeness?
+- Which audience is primary: end users or developers?
+
+---
+
 ### Review and Edit MCP Server Tool Descriptions
 
 **Priority:** Medium
