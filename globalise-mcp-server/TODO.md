@@ -48,21 +48,6 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 *Add new improvement ideas below as they arise.*
 
 
-### Review API Documentation Examples
-
-**Priority:** Medium
-**Status:** Not started
-
-**Task:**
-Systematically review all code examples in `/globalise-transcriptions-api/` documentation files to verify they work correctly against the live API:
-- `README.md` - Quick start examples
-- `API_REFERENCE.md` - All cURL and JavaScript examples
-- `QUERY_SYNTAX.md` - Query pattern examples
-- `DATA_MODELS.md` - TypeScript usage examples
-
-**Why:**
-Examples can drift from reality as APIs evolve. Broken examples frustrate users and erode documentation trust.
-
 ---
 
 ### Cross-Reference Help Page vs Actual Capabilities
@@ -147,6 +132,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **2025-12-26** - Verified all API documentation examples work correctly against live API. Tested: README.md (search, doc retrieval), API_REFERENCE.md (filters, pagination, config, indices, IIIF), QUERY_SYNTAX.md (AND/OR, wildcards, fuzzy, phrases, proximity), DATA_MODELS.md (TypeScript patterns). All 15+ examples pass.
 - **2025-12-26** - Updated CLAUDE.md release checklist: added README.md to version bump files, added instruction to verify examples use real API values before publishing.
 - **v1.7.0** - Verified and fixed ChatGPT-reported feature limitations: (1) Multi-inventory filtering now supported via array syntax `["9966", "4293"]` - API tested to OR results correctly; (2) Phrase proximity `"phrase"~N` documented in QUERY_SYNTAX.md - works for finding words within N positions; (3) Punctuation handling documented as API limitation (stripped during tokenization); (4) Added sortBy/sortOrder to `globalise_search_transcriptions` for consistency with `search_by_inventory`.
 - **v1.6.1** - Simplified document URL output: removed IIIF URLs (canvas/manifest are for IIIF viewers, not direct access), removed high-res image URL, annoRepo, and textRepo. Now returns only National Archives link for viewing page scans. National Archives URL spelling issue could not be reproduced - likely one-off LLM hallucination. Added client-side request throttling (100ms delay between API calls) for good API citizenship. More elaborate options preserved for future if needed: concurrent request limits (semaphore/queue), token bucket/leaky bucket algorithms.
