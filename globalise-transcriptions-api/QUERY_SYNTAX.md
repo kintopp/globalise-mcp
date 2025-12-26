@@ -293,17 +293,28 @@ For archive numbers, use the `invNr` filter instead of text search:
 }
 ```
 
-### Escaping Query Operators
+### Escaping Query Operators (Limited Support)
 
-These characters have special meaning in queries and need escaping:
+The help page documents backslash escaping, but **testing shows it does not work reliably**:
 
-| Character | Meaning | To search literally |
-|-----------|---------|---------------------|
-| `*` | Multi-char wildcard | `\*` |
-| `?` | Single-char wildcard | `\?` |
-| `~` | Fuzzy/proximity | `\~` |
-| `"` | Phrase delimiter | `\"` |
-| `(` `)` | Grouping | `\(` `\)` |
+| Character | Meaning | Escape Syntax | Actual Behavior |
+|-----------|---------|---------------|-----------------|
+| `*` | Multi-char wildcard | `\*` | Backslash ignored; `term\*` = `term` |
+| `?` | Single-char wildcard | `\?` | Acts as word separator; `a\?b` = `a b` (OR) |
+| `~` | Fuzzy/proximity | `\~` | Untested |
+| `"` | Phrase delimiter | `\"` | Untested |
+| `(` `)` | Grouping | `\(` `\)` | Untested |
+
+**Test results (2025-12-26):**
+
+| Query | Expected | Actual Results |
+|-------|----------|----------------|
+| `schip*` | Wildcard match | 846,037 results |
+| `schip\*` | Literal "schip*" | 755,310 results (same as `schip`) |
+| `cop?e` | Single-char wildcard | 46,261 results |
+| `cop\?e` | Literal "cop?e" | 2,184,143 results (tokenized as `cop` OR `e`) |
+
+**Workaround:** There is currently no reliable way to search for literal `*` or `?` characters via the API. The corpus likely contains very few (if any) such characters anyway.
 
 ### Match All Documents
 

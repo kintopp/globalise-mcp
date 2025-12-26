@@ -50,23 +50,6 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
-### Cross-Reference Help Page vs Actual Capabilities
-
-**Priority:** Medium
-**Status:** Not started
-
-**Task:**
-Compare the official GLOBALISE Transcriptions Viewer help page at `https://transcriptions.globalise.huygens.knaw.nl/help` against:
-1. What the raw Broccoli/Gloccoli API actually supports
-2. What the MCP server tools expose
-
-Check ChatGPT conversation logs from MCP server testing sessions for any discrepancies observed during real usage.
-
-**Why:**
-The help page describes the web UI's search capabilities, which may differ from or exceed what we've documented for the API. There may be undocumented features or limitations.
-
----
-
 ### Review and Edit MCP Server Tool Descriptions
 
 **Priority:** Medium
@@ -132,6 +115,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **2025-12-26** - Cross-referenced help page vs API/MCP capabilities. See `globalise-transcriptions-api/research/Help_Page_Cross_Reference.md`. Key findings: (1) Escape characters (`\*`, `\?`) do NOT work as documented - backslash is ignored/acts as separator; (2) Inventory filter requires array syntax, not comma-separated strings; (3) 4 API features undocumented on help page (phrase proximity, language filter, sorting, aggregations).
 - **2025-12-26** - Verified all API documentation examples work correctly against live API. Tested: README.md (search, doc retrieval), API_REFERENCE.md (filters, pagination, config, indices, IIIF), QUERY_SYNTAX.md (AND/OR, wildcards, fuzzy, phrases, proximity), DATA_MODELS.md (TypeScript patterns). All 15+ examples pass.
 - **2025-12-26** - Updated CLAUDE.md release checklist: added README.md to version bump files, added instruction to verify examples use real API values before publishing.
 - **v1.7.0** - Verified and fixed ChatGPT-reported feature limitations: (1) Multi-inventory filtering now supported via array syntax `["9966", "4293"]` - API tested to OR results correctly; (2) Phrase proximity `"phrase"~N` documented in QUERY_SYNTAX.md - works for finding words within N positions; (3) Punctuation handling documented as API limitation (stripped during tokenization); (4) Added sortBy/sortOrder to `globalise_search_transcriptions` for consistency with `search_by_inventory`.
