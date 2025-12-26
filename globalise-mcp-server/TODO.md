@@ -83,6 +83,23 @@ No rate limiting exists on the client side. Rapid concurrent requests (e.g., LLM
 
 *Add new improvement ideas below as they arise.*
 
+### Documentation: AnythingLLM Configuration
+
+**Note:** AnythingLLM requires explicit `type` field in MCP configuration:
+```json
+{
+  "mcpServers": {
+    "globalise": {
+      "url": "https://globalise-mcp-production.up.railway.app/mcp",
+      "transport": "http",
+      "type": "streamable"
+    }
+  }
+}
+```
+
+Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default to SSE if `type` is omitted, causing connection failures when using the `/mcp` endpoint. Add this example to user-facing documentation and `offline/mcp-configurations.txt`.
+
 ---
 
 ## Completed Improvements
