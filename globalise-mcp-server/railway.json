@@ -1,12 +1,7 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "METAL",
-    "watchPatterns": [
-      "globalise-mcp-server/src/**",
-      "globalise-mcp-server/package.json",
-      "globalise-mcp-server/package-lock.json"
-    ]
+    "builder": "METAL"
   },
   "deploy": {
     "startCommand": "npm start",
