@@ -50,6 +50,10 @@ export interface DocumentResponse {
       lines: string[];
     };
   };
+  iiif?: {
+    manifest: string;
+    canvasIds: string[];
+  };
 }
 
 export interface Annotation {
@@ -100,6 +104,12 @@ export interface AnnotationTarget {
     type: string;
     start: number;
     end: number;
+  };
+}
+
+export interface IndicesResponse {
+  [indexName: string]: {
+    [fieldName: string]: 'keyword' | 'text' | 'date';
   };
 }
 

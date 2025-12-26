@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { apiPost, buildUrl, API_CONFIG } from '../utils/api-client.js';
+import { apiPost, buildUrl, API_CONFIG, validateSearchFields } from '../utils/api-client.js';
 import { SearchResponse } from '../utils/types.js';
 
 export const searchInputSchema = z.object({
@@ -116,6 +116,12 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     Object.entries(input.filters).forEach(([key, values]) => {
       terms[key] = values;
     });
+  }
+
+  // Validate that all filter fields are indexed and searchable
+  const filterFields = Object.keys(terms);
+  if (filterFields.length > 0) {
+    await validateSearchFields(filterFields, indexName);
   }
 
   // Build request body

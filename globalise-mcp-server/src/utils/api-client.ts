@@ -357,6 +357,7 @@ export function buildUrl(baseUrl: string, params: Record<string, string | number
  */
 export const documentCache = new LRUCache<unknown>(100, 300000);  // 100 docs, 5 min TTL
 export const configCache = new LRUCache<unknown>(10, 3600000);    // 10 items, 1 hour TTL
+export const indicesCache = new LRUCache<unknown>(10, 3600000);   // 10 items, 1 hour TTL
 
 /**
  * Make a cached GET request to the API
@@ -382,4 +383,52 @@ export async function getCachedApiGet<T>(
   cache.set(cacheKey, result);
 
   return result;
+}
+
+/**
+ * Fetch indexed fields for a given index
+ * Returns field names and their types (keyword, text, date)
+ */
+export async function getIndexedFields(indexName: string): Promise<string[]> {
+  const url = `${API_CONFIG.BROCCOLI_BASE_URL}/brinta/globalise/indices`;
+
+  const response = await getCachedApiGet<Record<string, Record<string, string>>>(
+    url,
+    'globalise-indices',
+    indicesCache
+  );
+
+  const fields = response[indexName];
+  if (!fields) {
+    throw {
+      type: ErrorType.UNKNOWN,
+      error: `Index ${indexName} not found`,
+      details: `Available indices: ${Object.keys(response).join(', ')}`,
+      suggestion: 'Use a valid index name or check the API configuration.'
+    } as ApiError;
+  }
+
+  return Object.keys(fields);
+}
+
+/**
+ * Validate that field names are indexed and searchable
+ * Throws an error if any field is invalid
+ */
+export async function validateSearchFields(
+  fields: string[],
+  indexName: string
+): Promise<void> {
+  const validFields = await getIndexedFields(indexName);
+  const invalidFields = fields.filter(f => !validFields.includes(f));
+
+  if (invalidFields.length > 0) {
+    throw {
+      type: ErrorType.HTTP_CLIENT,
+      error: `Invalid search field${invalidFields.length > 1 ? 's' : ''}: ${invalidFields.join(', ')}`,
+      details: `These fields are not indexed for search. They may exist in document metadata but cannot be used for filtering or aggregations.`,
+      suggestion: `Valid searchable fields: ${validFields.join(', ')}`,
+      status: 400
+    } as ApiError;
+  }
 }

@@ -315,9 +315,9 @@ const response = await fetch(
 **Get Statistics Only (No Results):**
 
 ```javascript
-// Use size=1 to minimize payload while getting aggregations
+// Use size=0 to get only aggregations without any result documents
 const response = await fetch(
-  "https://gloccoli.tt.di.huc.knaw.nl/projects/globalise/search?indexName=globalise-2024.03.18-test&size=1",
+  "https://gloccoli.tt.di.huc.knaw.nl/projects/globalise/search?indexName=globalise-2024.03.18-test&size=0",
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -334,6 +334,7 @@ const response = await fetch(
 const { total, aggs } = await response.json();
 console.log(`Inventory 4293 has ${total.value} documents`);
 console.log("Language distribution:", aggs.langIso);
+// Note: results array will be empty ([]) when size=0
 ```
 
 ---
@@ -367,11 +368,13 @@ Retrieve detailed information for a specific document including transcription, a
 
 **Recommended Parameters:**
 
-For full document retrieval, use these parameters:
+For full document retrieval with IIIF image data, use these parameters:
 
 ```
-?overlapTypes=px:Page&includeResults=anno,text&views=self&relativeTo=Origin
+?overlapTypes=px:Page&includeResults=anno,iiif,text&views=self&relativeTo=Origin
 ```
+
+**Note:** Including `iiif` in `includeResults` returns a top-level `iiif` object with manifest and canvas URLs, providing cleaner access to IIIF data than parsing annotation targets.
 
 ### Response
 
@@ -455,6 +458,12 @@ For full document retrieval, use these parameters:
         "de koffie:"
       ]
     }
+  },
+  "iiif": {
+    "manifest": "https://data.globalise.huygens.knaw.nl/manifests/inventories/9966.json",
+    "canvasIds": [
+      "https://data.globalise.huygens.knaw.nl/manifests/inventories/9966.json/canvas/p106"
+    ]
   }
 }
 ```
@@ -474,6 +483,8 @@ For full document retrieval, use these parameters:
 | `anno[].generator.name` | OCR software (e.g., "Loghi") |
 | `anno[].target[]` | IIIF image, canvas, and text references |
 | `views.self.lines` | Transcribed text as array of lines |
+| `iiif.manifest` | IIIF Presentation API manifest URL (when `includeResults=iiif`) |
+| `iiif.canvasIds[]` | IIIF Canvas URLs for this document (when `includeResults=iiif`) |
 
 **Error Responses:**
 
@@ -487,7 +498,7 @@ For full document retrieval, use these parameters:
 **Get Full Document:**
 
 ```bash
-curl "https://gloccoli.tt.di.huc.knaw.nl/projects/globalise/urn:globalise:NL-HaNA_1.04.02_9966_0106?overlapTypes=px:Page&includeResults=anno,text&views=self&relativeTo=Origin"
+curl "https://gloccoli.tt.di.huc.knaw.nl/projects/globalise/urn:globalise:NL-HaNA_1.04.02_9966_0106?overlapTypes=px:Page&includeResults=anno,iiif,text&views=self&relativeTo=Origin"
 ```
 
 ```javascript
@@ -495,7 +506,7 @@ curl "https://gloccoli.tt.di.huc.knaw.nl/projects/globalise/urn:globalise:NL-HaN
 async function getDocument(documentId) {
   const params = new URLSearchParams({
     overlapTypes: "px:Page",
-    includeResults: "anno,text",
+    includeResults: "anno,iiif,text",
     views: "self",
     relativeTo: "Origin"
   });
@@ -526,7 +537,11 @@ const metadata = doc.anno[0]?.body?.metadata;
 console.log("Previous:", metadata?.prevPageId);
 console.log("Next:", metadata?.nextPageId);
 
-// Get IIIF image URL
+// Get IIIF references (cleaner access via top-level iiif object)
+console.log("IIIF Manifest:", doc.iiif?.manifest);
+console.log("IIIF Canvas:", doc.iiif?.canvasIds?.[0]);
+
+// Get high-resolution image URL (from annotation targets)
 const imageTarget = doc.anno[0]?.target?.find(t => t.type === "Image");
 console.log("Image:", imageTarget?.source);
 ```
@@ -541,7 +556,7 @@ async function getDocument(documentId) {
     {
       params: {
         overlapTypes: "px:Page",
-        includeResults: "anno,text",
+        includeResults: "anno,iiif,text",
         views: "self",
         relativeTo: "Origin"
       },

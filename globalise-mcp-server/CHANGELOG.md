@@ -2,6 +2,52 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.6.0] - 2025-12-26
+
+### Added
+- **Field Validation**: Search filters now validated against indexed fields before API calls
+  - Uses `/brinta/globalise/indices` endpoint to fetch available fields
+  - Provides helpful error messages when invalid field names are used
+  - Suggests valid searchable fields: `invNr`, `document`, `langIso`, `langLabel`
+  - Results cached for 1 hour to minimize API overhead
+- **IIIF Support Enhancement**: Document retrieval now includes top-level IIIF object
+  - Added `includeResults=iiif` parameter to document requests
+  - Returns clean structure: `{ manifest: string, canvasIds: string[] }`
+  - Provides easier access to IIIF Presentation API data than parsing annotation targets
+  - Falls back to annotation targets if top-level IIIF data unavailable
+- **size=0 Pattern Documentation**: API docs now recommend using `size=0` for aggregations-only queries
+  - Reduces payload size by 54.7% when only statistics are needed
+  - Standard Elasticsearch pattern for efficient faceted search
+
+### Changed
+- Document tool now includes `iiif` in default `includeResults` parameter
+- Enhanced error messages for invalid search fields with actionable suggestions
+
+### Technical Details
+**New Functions in `src/utils/api-client.ts`:**
+- `getIndexedFields(indexName)` - Fetches indexed field names from API
+- `validateSearchFields(fields, indexName)` - Validates filter fields before search
+- `indicesCache` - LRU cache (1 hour TTL) for field metadata
+
+**IIIF Response Structure:**
+```json
+{
+  "iiif": {
+    "manifest": "https://data.globalise.huygens.knaw.nl/manifests/inventories/9966.json",
+    "canvasIds": ["https://...canvas/p106"]
+  }
+}
+```
+
+**Benefits:**
+- Prevents cryptic API errors from invalid field names
+- Faster access to IIIF manifest and canvas URLs
+- More efficient aggregation-only queries
+- Better developer experience with clear error messages
+
+**Research Credits:**
+These features were discovered by comparing API calls from the Suriano correspondence platform (https://edition.suriano.huygens.knaw.nl/), which shares the same Broccoli/Gloccoli architecture as GLOBALISE.
+
 ## [1.5.3] - 2025-12-25
 
 ### Added

@@ -165,7 +165,7 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
       nextPageId: metadata.nextPageId,
     };
 
-    // Extract URLs from annotation targets
+    // Extract URLs from annotation targets and IIIF data
     if (input.includeIIIF || input.includeAnnotations) {
       const targets = response.anno[0].target;
       output.urls = {
@@ -174,19 +174,29 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
         textRepo: metadata.trUrl,
       };
 
+      // Use top-level IIIF data if available (cleaner structure)
+      if (response.iiif) {
+        output.urls.iiifManifest = response.iiif.manifest;
+        output.urls.iiifCanvas = response.iiif.canvasIds?.[0];
+      }
+
+      // Also extract image URL from annotation targets
       if (targets) {
         const imageTarget = targets.find(t => t.type === 'Image');
-        const canvasTarget = targets.find(t => t.type === 'Canvas');
-
         if (imageTarget) {
           output.urls.highResolutionImage = imageTarget.source;
         }
-        if (canvasTarget) {
-          output.urls.iiifCanvas = canvasTarget.source;
-          // Extract manifest URL from canvas URL
-          const match = canvasTarget.source.match(/(.*\/manifests\/.*\.json)/);
-          if (match) {
-            output.urls.iiifManifest = match[1];
+
+        // Fallback to annotation targets for IIIF if top-level data not available
+        if (!response.iiif) {
+          const canvasTarget = targets.find(t => t.type === 'Canvas');
+          if (canvasTarget) {
+            output.urls.iiifCanvas = canvasTarget.source;
+            // Extract manifest URL from canvas URL
+            const match = canvasTarget.source.match(/(.*\/manifests\/.*\.json)/);
+            if (match) {
+              output.urls.iiifManifest = match[1];
+            }
           }
         }
       }
