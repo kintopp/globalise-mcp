@@ -233,7 +233,7 @@ language: ["eng", "nld"], matchAll: true   # Bilingual English-Dutch
 language: ["Portuguese", "Dutch"], matchAll: true  # Documents with BOTH
 \`\`\`
 
-**Tip:** Put the rarer language FIRST for best results (e.g., English before Dutch).
+**Tip:** Put the non-Dutch language FIRST. Dutch is 97% of the corpus, so any other language is always rarer.
 
 ## Examples
 \`\`\`

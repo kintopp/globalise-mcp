@@ -201,7 +201,8 @@ const TOOLS: Tool[] = [
       'Single: "Persian" or ["Persian"]. Multiple: ["Dutch", "English"] or ["nld", "eng"]. ' +
       '\n\n**MULTI-LANGUAGE:** Use matchAll=true to find documents containing ALL specified languages (bilingual/multilingual). ' +
       'Default (matchAll=false) finds documents with ANY of the specified languages. ' +
-      'IMPORTANT: Put the rarer language FIRST for best results. Example: language=["eng", "nld"], matchAll=true → finds English-Dutch bilingual docs (English is rarer, so it filters first). ' +
+      'IMPORTANT: Put the non-Dutch language FIRST (Dutch is 97% of the corpus, so any other language is always rarer). ' +
+      'Example: language=["eng", "nld"], matchAll=true → finds English-Dutch bilingual docs. ' +
       '\n\n**SUPPORTS:** Many languages including Western European (Dutch, French, English, Latin, Portuguese, Spanish, German, Danish, Italian), ' +
       'South Asian (Persian, Bengali, Tamil, Sinhala, Gujarati), East Asian (Classical Chinese, Japanese, Malay, Buginese), and others (Old Church Slavonic, Ancient Greek, Ancient Hebrew). ' +
       '\n\n**LANGUAGE CLASSIFICATION NOTES:** ' +
