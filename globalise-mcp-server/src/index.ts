@@ -120,6 +120,7 @@ const TOOLS: Tool[] = [
       'Note: Large result sets consume more context window. ' +
       '\n\n**GETTING STATISTICS:** To get language distribution or metadata for an inventory without retrieving full documents, use query="*" with size=1. ' +
       'Example: For inventory 4293 language breakdown, use query="*", inventoryNumber="4293", size=1. Returns aggregations with language counts while minimizing result payload. ' +
+      '\n\n**REFERENCE:** Query syntax guide available at globalise://help/query-syntax resource. ' +
       '\n\n**DO NOT USE FOR:** (1) Retrieving a known document by ID → use globalise_retrieve_document instead. ' +
       '(2) Sequential page browsing → use globalise_navigate instead.',
     inputSchema: zodToJsonSchema(searchSimpleInputSchema) as Tool['inputSchema'],
@@ -180,6 +181,7 @@ const TOOLS: Tool[] = [
       'Examples: "search inventory 9966 for coffee", "find documents in inventory 2174 about trade", "what languages are in inventory 4293?". ' +
       '\n\n**REQUIRES:** Inventory number (e.g., "9966", "4293"). Optional: search query, language filters. ' +
       '\n\n**RETURNS:** Paginated results showing only documents from the specified inventory, with highlighted text fragments and aggregations including language distribution. ' +
+      '\n\n**REFERENCE:** Corpus overview with top inventories available at globalise://corpus/stats resource. ' +
       '\n\n**FOR STATISTICS ONLY:** Use query="*" with size=1 to get language counts without retrieving full documents.',
     inputSchema: zodToJsonSchema(searchByInventoryInputSchema) as Tool['inputSchema'],
     // outputSchema removed for broad client compatibility
@@ -192,11 +194,14 @@ const TOOLS: Tool[] = [
   {
     name: 'globalise_search_by_language',
     description:
-      '**LANGUAGE-SPECIFIC SEARCH** - Find documents in a specific language across all inventories. ' +
-      '\n\n**USE WHEN:** User wants only documents in a particular language. ' +
-      'Examples: "find all Persian documents", "search for Dutch documents about pepper", "show me French transcriptions", "documents in Bengali". ' +
-      '\n\n**REQUIRES:** Language as ISO code (e.g., "fas" for Persian, "nld" for Dutch, "ben" for Bengali) OR human-readable name (e.g., "Persian", "Dutch", "Bengali"). ' +
-      'Optional: search query within that language. ' +
+      '**LANGUAGE-SPECIFIC SEARCH** - Find documents in one or more languages across all inventories. ' +
+      '\n\n**USE WHEN:** User wants only documents in a particular language, or bilingual/multilingual documents. ' +
+      'Examples: "find all Persian documents", "search for Dutch documents about pepper", "find bilingual Dutch-English documents", "documents in both Portuguese and Dutch". ' +
+      '\n\n**REQUIRES:** Language(s) as ISO code (e.g., "fas", "nld", "ben") OR human-readable name (e.g., "Persian", "Dutch", "Bengali"). ' +
+      'Single: "Persian" or ["Persian"]. Multiple: ["Dutch", "English"] or ["nld", "eng"]. ' +
+      '\n\n**MULTI-LANGUAGE:** Use matchAll=true to find documents containing ALL specified languages (bilingual/multilingual). ' +
+      'Default (matchAll=false) finds documents with ANY of the specified languages. ' +
+      'Example: language=["nld", "eng"], matchAll=true → finds Dutch-English bilingual documents. ' +
       '\n\n**SUPPORTS:** Many languages including Western European (Dutch, French, English, Latin, Portuguese, Spanish, German, Danish, Italian), ' +
       'South Asian (Persian, Bengali, Tamil, Sinhala, Gujarati), East Asian (Classical Chinese, Japanese, Malay, Buginese), and others (Old Church Slavonic, Ancient Greek, Ancient Hebrew). ' +
       '\n\n**LANGUAGE CLASSIFICATION NOTES:** ' +
@@ -206,7 +211,8 @@ const TOOLS: Tool[] = [
       'Transcriptions of languages with non-Roman scripts (Persian, Bengali, Tamil, Sinhala, Classical Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) will be unreliable/gibberish. ' +
       'For these languages, always offer the user the National Archives page scan link from the document metadata. ' +
       '\n\n**MALAY NOTE:** The code "msa" refers to a macrolanguage (multiple Malay varieties), and some pages may be in romanized Malay while others use non-Roman script. No script metadata is available, so always offer page scan links for Malay documents. ' +
-      '\n\n**RETURNS:** Documents in specified language with inventory distribution counts showing which inventories contain the most documents in that language.',
+      '\n\n**REFERENCE:** Complete language index with ISO codes and document counts available at globalise://languages resource. ' +
+      '\n\n**RETURNS:** Documents in specified language(s) with inventory distribution counts. When matchAll=true, includes only bilingual/multilingual documents.',
     inputSchema: zodToJsonSchema(searchByLanguageInputSchema) as Tool['inputSchema'],
     // outputSchema removed for broad client compatibility
     annotations: {
@@ -223,7 +229,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.9.0',
+    version: '1.10.0',
   },
   {
     capabilities: {

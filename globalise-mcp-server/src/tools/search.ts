@@ -63,7 +63,10 @@ export const searchOutputSchema = z.object({
     inventoryNumber: z.string(),
     highlightedFragments: z.array(z.string()),
     tokenCount: z.number(),
-    languages: z.array(z.string()),
+    languages: z.array(z.object({
+      code: z.string(),
+      label: z.string(),
+    })).describe('Languages detected on this page with ISO codes and labels'),
     viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   aggregations: z.object({
@@ -163,7 +166,11 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     inventoryNumber: result.invNr,
     highlightedFragments: result._hits?.text || [],
     tokenCount: result.textTokenCount,
-    languages: result.langLabel,
+    // Map langIso and langLabel arrays to {code, label}[] objects
+    languages: result.langIso.map((code, i) => ({
+      code,
+      label: result.langLabel[i] || code,
+    })),
     viewerUrl: `https://transcriptions.globalise.huygens.knaw.nl/detail/${result._id}`,
   }));
 

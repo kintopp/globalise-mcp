@@ -2,6 +2,34 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.10.0] - 2025-12-27
+
+### Added
+- **Multi-language filtering with AND logic**: `globalise_search_by_language` now supports finding bilingual/multilingual documents
+  - `language` parameter accepts arrays: `["nld", "eng"]` or `["Dutch", "English"]`
+  - New `matchAll` parameter: when `true`, returns only documents containing ALL specified languages
+  - Example: `language=["nld", "eng"], matchAll=true` finds Dutch-English bilingual documents
+  - Default `matchAll=false` uses OR logic (documents with ANY of the languages)
+- **Resource hints in tool descriptions**: Tool descriptions now reference relevant resources
+  - `globalise_search_transcriptions` → `globalise://help/query-syntax`
+  - `globalise_search_by_inventory` → `globalise://corpus/stats`
+  - `globalise_search_by_language` → `globalise://languages`
+
+### Changed
+- **BREAKING: Language format unified to objects**: All search tools now return `languages` as `{code, label}[]` instead of `string[]`
+  - Before: `languages: ["Dutch", "English"]`
+  - After: `languages: [{code: "nld", label: "Dutch"}, {code: "eng", label: "English"}]`
+  - This matches the format already used by `globalise_retrieve_document`
+  - Provides ISO codes alongside human-readable labels for programmatic use
+
+### Technical
+- `searchByLanguage` uses post-filtering for AND logic since the upstream API only supports OR
+- When `matchAll=true`, requests 5x more results to ensure adequate post-filter matches
+- Updated Zod schemas in `search.ts` and `convenience.ts` to reflect new language object format
+- Updated `globalise://help/query-syntax` resource to document multi-language and matchAll syntax
+
+---
+
 ## [1.9.0] - 2025-12-27
 
 ### Added

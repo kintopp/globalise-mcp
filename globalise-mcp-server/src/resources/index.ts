@@ -206,19 +206,40 @@ const QUERY_SYNTAX_CONTENT = `# GLOBALISE Query Syntax Reference
 - **Case insensitive**: \`Batavia\` = \`batavia\` = \`BATAVIA\`
 
 ## Language Filtering
-Use ISO 639-3 codes:
-- \`nld\` - Dutch
-- \`eng\` - English
-- \`fas\` - Persian
-- \`ben\` - Bengali
-- \`msa\` - Malay
+Use ISO 639-3 codes or human-readable names:
+- \`nld\` / \`Dutch\`
+- \`eng\` / \`English\`
+- \`fas\` / \`Persian\`
+- \`ben\` / \`Bengali\`
+- \`msa\` / \`Malay\`
 - \`unknown\` - Not yet classified
-- \`art\` - Cipher (encrypted Dutch)
+- \`art\` / \`Cipher\` - Encrypted Dutch
+
+### Single Language
+\`\`\`
+language: "nld"
+language: "Persian"
+\`\`\`
+
+### Multiple Languages (OR - any match)
+\`\`\`
+language: ["nld", "eng"]        # Documents in Dutch OR English
+language: ["Persian", "Dutch"]  # Same, using names
+\`\`\`
+
+### Multiple Languages (AND - all required)
+\`\`\`
+language: ["nld", "eng"], matchAll: true   # Bilingual Dutch-English only
+language: ["Dutch", "Portuguese"], matchAll: true  # Documents with BOTH
+\`\`\`
 
 ## Examples
 \`\`\`
 # Find pepper trade documents in Dutch
-query: "peper", languages: ["nld"]
+query: "peper", language: "nld"
+
+# Find bilingual Dutch-English documents
+language: ["nld", "eng"], matchAll: true
 
 # Find mentions of Batavia with spelling variations
 query: "batavia~1"
@@ -235,6 +256,7 @@ query: "\"Verenigde Oost-Indische Compagnie\""
 2. Use wildcards for partial matches
 3. Use fuzzy matching for OCR errors
 4. Check aggregations for language distribution before filtering
+5. Use \`matchAll: true\` to find multilingual/bilingual documents
 `;
 
 /**

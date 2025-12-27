@@ -43,9 +43,12 @@ export const searchByInventoryInputSchema = z.object({
 
 // Search by Language Tool
 export const searchByLanguageInputSchema = z.object({
-  language: z.string()
-    .min(1, "Language cannot be empty")
-    .describe('Language to search for. Can be ISO code (e.g., "fas" for Persian, "ben" for Bengali) or human-readable name (e.g., "Persian", "Bengali", "Dutch")'),
+  language: z.union([z.string(), z.array(z.string())])
+    .describe('Language(s) to search for. Single: "Persian" or "fas". Multiple: ["Dutch", "English"] or ["nld", "eng"]. Can use ISO codes or human-readable names.'),
+  matchAll: z.boolean()
+    .optional()
+    .default(false)
+    .describe('If true, documents must contain ALL specified languages (bilingual/multilingual). If false (default), documents with ANY of the languages match.'),
   query: z.string()
     .optional()
     .describe('Optional text search query within this language. If omitted, returns all documents in the language'),
@@ -78,7 +81,10 @@ export const searchByInventoryOutputSchema = z.object({
     scanNumber: z.string(),
     highlightedFragments: z.array(z.string()),
     tokenCount: z.number(),
-    languages: z.array(z.string()),
+    languages: z.array(z.object({
+      code: z.string(),
+      label: z.string(),
+    })).describe('Languages detected on this page with ISO codes and labels'),
     viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   pagination: z.object({
@@ -270,7 +276,8 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
 
 // Search by Language Tool
 export const searchByLanguageOutputSchema = z.object({
-  language: z.string(),
+  language: z.union([z.string(), z.array(z.string())]).describe('The language(s) searched for'),
+  matchAll: z.boolean().optional().describe('Whether AND logic was used (all languages required)'),
   total: z.object({
     value: z.number(),
     relation: z.enum(['eq', 'gte']),
@@ -282,7 +289,10 @@ export const searchByLanguageOutputSchema = z.object({
     scanNumber: z.string(),
     highlightedFragments: z.array(z.string()).optional(),
     tokenCount: z.number(),
-    languages: z.array(z.string()),
+    languages: z.array(z.object({
+      code: z.string(),
+      label: z.string(),
+    })).describe('Languages detected on this page with ISO codes and labels'),
     viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   inventoryCounts: z.array(z.object({
@@ -302,34 +312,46 @@ export type SearchByLanguageOutput = z.infer<typeof searchByLanguageOutputSchema
 /**
  * Search for all documents in a specific language across all inventories
  * Detects whether input is ISO code or human-readable name
+ * Supports multiple languages with AND (matchAll) or OR logic
  */
 export async function searchByLanguage(input: SearchByLanguageInput): Promise<SearchByLanguageOutput> {
-  // Detect if language is an ISO code (2-3 chars) or a human-readable name
-  const isISOCode = input.language.length <= 3;
+  // Normalize language to array
+  const languages = Array.isArray(input.language) ? input.language : [input.language];
+
+  // Detect if languages are ISO codes (2-3 chars) or human-readable names
+  // Assume all are same type based on first entry
+  const isISOCode = languages[0].length <= 3;
+
+  // For matchAll (AND logic), we need to fetch more results and post-filter
+  // Since the API only supports OR, we request extra results to ensure we
+  // have enough after filtering
+  const requestSize = input.matchAll && languages.length > 1
+    ? Math.min(input.size * 5, 500) // Request 5x more for post-filtering
+    : input.size;
 
   // Build search query with language filter
   const searchInput: SearchInput = {
     query: input.query || '*', // Match all if no query provided
-    from: input.from,
-    size: input.size,
+    from: input.matchAll && languages.length > 1 ? 0 : input.from, // Start from 0 for post-filtering
+    size: requestSize,
     fragmentSize: 100,
     sortBy: '_score',
     sortOrder: 'desc',
     includeAggregations: input.includeInventoryCounts,
   };
 
-  // Add appropriate language filter
+  // Add appropriate language filter (API uses OR logic)
   if (isISOCode) {
-    searchInput.languages = [input.language];
+    searchInput.languages = languages;
   } else {
-    searchInput.languageLabels = [input.language];
+    searchInput.languageLabels = languages;
   }
 
   // Perform the search
   const searchResult = await search(searchInput);
 
   // Extract scan numbers and inventory numbers from document IDs
-  const resultsWithDetails = searchResult.results.map(result => {
+  let resultsWithDetails = searchResult.results.map(result => {
     // Extract inventory and scan number from document ID (format: NL-HaNA_{archive}_{inventory}_{scan})
     const parts = result.document.split('_');
     const inventoryNumber = parts.length >= 3 ? parts[2] : 'unknown';
@@ -347,6 +369,33 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
     };
   });
 
+  // Apply AND logic post-filter if matchAll is true
+  let filteredTotal = searchResult.total;
+  if (input.matchAll && languages.length > 1) {
+    // Filter to only documents that have ALL specified languages
+    resultsWithDetails = resultsWithDetails.filter(result => {
+      const docLangCodes = result.languages.map(l => l.code.toLowerCase());
+      const docLangLabels = result.languages.map(l => l.label.toLowerCase());
+
+      return languages.every(lang => {
+        const langLower = lang.toLowerCase();
+        return docLangCodes.includes(langLower) || docLangLabels.includes(langLower);
+      });
+    });
+
+    // Update total to reflect filtered count
+    // Note: This is an approximation - the true total requires scanning all results
+    filteredTotal = {
+      value: resultsWithDetails.length,
+      relation: 'gte' as const, // Indicates there may be more
+    };
+
+    // Apply pagination after filtering
+    const startIdx = input.from;
+    const endIdx = input.from + input.size;
+    resultsWithDetails = resultsWithDetails.slice(startIdx, endIdx);
+  }
+
   // Extract inventory counts from aggregations if requested
   let inventoryCounts;
   if (input.includeInventoryCounts && searchResult.aggregations?.topInventoryNumbers) {
@@ -355,9 +404,16 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
 
   return {
     language: input.language,
-    total: searchResult.total,
+    matchAll: input.matchAll && languages.length > 1 ? true : undefined,
+    total: filteredTotal,
     results: resultsWithDetails,
     inventoryCounts,
-    pagination: searchResult.pagination,
+    pagination: {
+      from: input.from,
+      size: input.size,
+      hasMore: input.matchAll && languages.length > 1
+        ? resultsWithDetails.length === input.size // Approximate for AND logic
+        : filteredTotal.value > input.from + input.size,
+    },
   };
 }

@@ -49,6 +49,57 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
+### Explore Adding `globalise_help` Tool for Resource Discovery
+
+**Priority:** Low
+**Status:** Not started
+
+**Background:**
+MCP Resources (added in v1.9.0) are discoverable at the protocol level via `resources/list`, but most MCP clients (including Claude Desktop) don't expose them in their UI. Users have no way to know that curated domain knowledge exists in resources like `globalise://languages` or `globalise://help/query-syntax`.
+
+Currently, resources are hinted at in tool descriptions (e.g., `**REFERENCE:** Query syntax guide available at globalise://help/query-syntax resource.`), but this relies on the LLM reading and acting on these hints.
+
+**Proposed Tool:**
+A `globalise_help` tool that the model can invoke to get:
+1. List of available resources with URIs and descriptions
+2. Optionally, the content of a specific resource
+3. General usage guidance for the MCP server
+
+**Example Schema:**
+```typescript
+{
+  name: 'globalise_help',
+  description: 'Get help on using the GLOBALISE MCP server. Lists available resources and usage guidance.',
+  inputSchema: {
+    topic: z.enum(['resources', 'query-syntax', 'languages', 'overview']).optional()
+      .describe('Specific help topic. If omitted, returns general overview including resource list.')
+  }
+}
+```
+
+**Pros:**
+- Makes resources discoverable through model-controlled invocation
+- Consolidates help/reference material in one place
+- Could replace embedding long domain knowledge in tool descriptions
+
+**Cons:**
+- Adds a 6th tool (more tools = more context consumption)
+- Goes against "resist adding specialized tools" philosophy (see CLAUDE.md)
+- Resources are already accessible via protocol; this duplicates access path
+- Risk of Claude Desktop filtering if description seems too broad
+
+**Questions to Explore:**
+1. Do clients that support resources already provide discovery UI? (Check MSTY, Cursor, etc.)
+2. Would a help tool reduce or increase total description length across all tools?
+3. Is there evidence that LLMs fail to use the `**REFERENCE:**` hints in descriptions?
+4. Could this be a prompt/resource instead of a tool?
+
+**Related:**
+- `offline/Understanding_MCP_Resources.md` Part 4 discusses resource discovery gap
+- CHANGELOG v1.2.x documents tool filtering issues to avoid
+
+---
+
 ### Review and Edit README.md
 
 **Priority:** Medium
@@ -111,94 +162,6 @@ Should become something like:
 
 ---
 
-### Fix Language Format Inconsistency Between Tools
-
-**Priority:** Medium
-**Status:** Not started
-
-**Background:**
-The MCP server returns language information in different formats depending on which tool is used:
-
-| Tool | Format | Example |
-|------|--------|---------|
-| `globalise_search_transcriptions` | `languages: string[]` | `["English", "Dutch"]` |
-| `globalise_retrieve_document` | `languages: {code, label}[]` | `[{code: "eng", label: "English"}, ...]` |
-
-**Root cause:**
-- `search.ts:165` maps to `result.langLabel` (labels only)
-- `document.ts:148-151` maps the full `lang` array with both ISO codes and labels
-
-**Example document:** `NL-HaNA_1.04.02_3714_0343` (bilingual English/Dutch)
-
-**Options:**
-
-1. **Unify to objects** (recommended) - Both tools return `{code, label}[]`
-   - Pro: Consistent, includes ISO codes for programmatic use
-   - Con: Breaking change for search results
-
-2. **Unify to strings** - Both tools return `string[]` (labels only)
-   - Pro: Simpler output
-   - Con: Loses ISO code information
-
-3. **Add both fields** - Search returns both `languages` and `languageCodes`
-   - Pro: No breaking change, more information
-   - Con: Redundant data
-
-**Recommendation:** Option 1 with a note in CHANGELOG about the format change.
-
----
-
-### Add Multi-Language Filtering with AND Logic
-
-**Priority:** High
-**Status:** Not started
-
-**Background:**
-Some documents contain text in multiple languages (e.g., both Dutch and English). Currently:
-- `globalise_search_by_language` only accepts a single language string
-- `globalise_search_transcriptions` accepts an array but uses OR logic
-- There's no way to find documents tagged with ALL specified languages
-
-**Evidence from testing (2025-12-27):**
-```
-Dutch only:        4,344,249 docs
-English only:          3,600 docs
-["nld","eng"]:     4,345,394 docs (OR - union)
-Overlap (BOTH):       ~2,455 docs (calculated)
-```
-
-Example document with multiple languages:
-```json
-{
-  "doc": "NL-HaNA_1.04.02_1237_0535",
-  "languages": ["English", "Dutch"]
-}
-```
-
-**Proposed changes:**
-
-1. **Update `globalise_search_by_language`** to accept array:
-   ```typescript
-   language: z.union([z.string(), z.array(z.string())])
-   ```
-
-2. **Add `matchAll` parameter** to control OR vs AND logic:
-   ```typescript
-   matchAll: z.boolean().optional().default(false)
-     .describe('If true, documents must have ALL specified languages. If false (default), documents with ANY language match.')
-   ```
-
-3. **Implementation options:**
-   - If API supports AND logic natively → use it
-   - Otherwise → post-filter results client-side (less efficient but works)
-
-**Use cases:**
-- "Find bilingual Dutch-English documents"
-- "Find documents with both Portuguese and Dutch"
-- Research on multilingual correspondence
-
----
-
 ### Investigate MSTY SSE Stream Behavior
 
 **Priority:** Low
@@ -245,6 +208,9 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **v1.10.0** - **Language format unified**: All search tools now return `languages` as `{code, label}[]` instead of `string[]`. This is a breaking change but provides consistency with `globalise_retrieve_document` and includes ISO codes for programmatic use.
+- **v1.10.0** - **Multi-language filtering with AND logic**: `globalise_search_by_language` now accepts arrays and supports `matchAll` parameter. When `matchAll=true`, returns only documents containing ALL specified languages (bilingual/multilingual). Uses post-filtering since API only supports OR.
+- **v1.10.0** - **Resource hints in tool descriptions**: Added `**REFERENCE:**` sections pointing to relevant resources (query-syntax, corpus/stats, languages).
 - **2025-12-27** - Added Transcriptions Viewer URL to all tool outputs. Now returns `transcriptionsViewer` URL (e.g., `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:NL-HaNA_1.04.02_3714_0343`) for every document in search results, document retrieval, and navigation. This is the most useful link for users - shows scan + transcription side-by-side with highlighting.
 - **2025-12-27** - Documented tokenizer behavior across all documentation. Testing revealed GLOBALISE uses **standard Elasticsearch tokenizer** (not whitespace as reported in [textannoviz#134](https://github.com/knaw-huc/textannoviz/issues/134)). Punctuation is stripped automatically, special characters are word separators. Updated: `offline/Help_Revised.md`, `globalise-transcriptions-api/README.md`, `globalise-transcriptions-api/QUERY_SYNTAX.md`, `src/index.ts` tool description. Full analysis in `globalise-transcriptions-api/research/Tokenizer_Analysis.md`.
 - **2025-12-26** - Cross-referenced help page vs API/MCP capabilities. See `globalise-transcriptions-api/research/Help_Page_Cross_Reference.md`. Key findings: (1) Escape characters (`\*`, `\?`) do NOT work as documented - backslash is ignored/acts as separator; (2) Inventory filter requires array syntax, not comma-separated strings; (3) 4 API features undocumented on help page (phrase proximity, language filter, sorting, aggregations).
