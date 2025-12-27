@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server for searching and retrieving historical transcriptions from the Dutch East India Company (VOC) provided by the GLOBALISE project.
 
-**Version:** 1.7.0
+**Version:** 1.8.1
 **MCP Specification:** 2025-11-25
 
 ## Overview
@@ -16,7 +16,8 @@ This MCP server provides access to ~4.8 million transcribed pages from the so-ca
 All tools include:
 - **Input validation** with clear error messages
 - **Tool annotations** (readOnlyHint, destructiveHint, idempotentHint)
-- **Simplified schemas** for broad client compatibility 
+- **Simplified schemas** for broad client compatibility
+- **Clickable viewer links** - Every result includes a link to the GLOBALISE Transcriptions Viewer 
 
 #### 1. globalise_search_transcriptions
 **Primary search tool** - Full-text search across all 4.8M transcriptions
@@ -31,6 +32,7 @@ Features:
 - Inventory number filtering (single or multiple: `["9966", "4293"]`)
 - Sorting by relevance, document ID, or inventory number
 - Pagination support
+- Each result includes a clickable viewer URL
 
 #### 2. globalise_retrieve_document
 **Document retrieval** - Get complete document details by ID
@@ -45,7 +47,9 @@ Returns:
   - Annotation generation timestamp
   - Languages with ISO codes
   - License (CC0)
-- National Archives URL for viewing page scan (always presented as clickable link)
+- URLs (as clickable markdown links):
+  - **Transcriptions Viewer** - Opens document with scan + transcription side-by-side
+  - **National Archives** - Direct link to page scan
 - Navigation links (previous/next page IDs)
 
 #### 3. globalise_navigate
@@ -102,6 +106,36 @@ This pattern minimizes result payload while providing full aggregation data. Wor
 
 - **"Unknown"**: Refers to pages whose language has not yet been determined (it does not mean that the language itself is unidentifiable)
 - **"Cipher"** (ISO code "art"): Pages containing Dutch text encrypted with a cipher - classified by Globalise as an artificial language in the temporary absence of further metadata (per ISO standard such pages should still be classified as Dutch)
+
+### Transcriptions Viewer URLs
+
+All tools return clickable links to the GLOBALISE Transcriptions Viewer, which displays:
+- Page scan image alongside the transcription
+- Search term highlighting
+- Navigation between pages
+
+**URL format:**
+```
+https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:NL-HaNA_1.04.02_9966_0106
+```
+
+**How links appear in responses:**
+
+For document retrieval and navigation:
+```
+**View in Transcriptions Viewer:**
+[NL-HaNA_1.04.02_9966_0106](https://transcriptions.globalise.huygens.knaw.nl/detail/...)
+```
+
+For search results (numbered list, max 10):
+```
+**View in Transcriptions Viewer:**
+1. [NL-HaNA_1.04.02_9966_0106](https://...)
+2. [NL-HaNA_1.04.02_9697_0051](https://...)
+...
+```
+
+These markdown links render as clickable in MCP clients that support markdown (Claude Desktop, ChatGPT, MSTY).
 
 ## Quick Start
 
@@ -302,7 +336,7 @@ Restart Claude Desktop to load the server.
 
 **Pagination Limits:**
 - Default: 10 results
-- Maximum: 100 results per request
+- Maximum: 500 results per request
 - Use `from` parameter to paginate through larger result sets
 
 ### Document Retrieval
