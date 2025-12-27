@@ -229,9 +229,11 @@ language: ["Persian", "Dutch"]  # Same, using names
 
 ### Multiple Languages (AND - all required)
 \`\`\`
-language: ["nld", "eng"], matchAll: true   # Bilingual Dutch-English only
-language: ["Dutch", "Portuguese"], matchAll: true  # Documents with BOTH
+language: ["eng", "nld"], matchAll: true   # Bilingual English-Dutch
+language: ["Portuguese", "Dutch"], matchAll: true  # Documents with BOTH
 \`\`\`
+
+**Tip:** Put the rarer language FIRST for best results (e.g., English before Dutch).
 
 ## Examples
 \`\`\`

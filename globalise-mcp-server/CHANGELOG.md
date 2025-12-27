@@ -24,7 +24,9 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
 ### Technical
 - `searchByLanguage` uses post-filtering for AND logic since the upstream API only supports OR
-- When `matchAll=true`, requests 5x more results to ensure adequate post-filter matches
+- When `matchAll=true`, filters on the FIRST language only (assumed rarer), then post-filters for remaining languages
+- Requests 10x more results when `matchAll=true` to ensure adequate post-filter matches
+- IMPORTANT: Put the rarer language first in the array for best results (e.g., `["eng", "nld"]` not `["nld", "eng"]`)
 - Updated Zod schemas in `search.ts` and `convenience.ts` to reflect new language object format
 - Updated `globalise://help/query-syntax` resource to document multi-language and matchAll syntax
 

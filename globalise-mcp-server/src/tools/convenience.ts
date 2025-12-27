@@ -322,11 +322,15 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
   // Assume all are same type based on first entry
   const isISOCode = languages[0].length <= 3;
 
-  // For matchAll (AND logic), we need to fetch more results and post-filter
-  // Since the API only supports OR, we request extra results to ensure we
-  // have enough after filtering
+  // For matchAll (AND logic), we use a smarter strategy:
+  // 1. Filter on just ONE language at the API level (the one in the filter)
+  // 2. Post-filter results to require ALL languages
+  // This works better because filtering on multiple languages with OR
+  // returns results dominated by the most common language (e.g., Dutch)
+  // We filter on the first language in the array, which should be the rarer one
+  // for best results (e.g., ["eng", "nld"] filters for English, then checks for Dutch)
   const requestSize = input.matchAll && languages.length > 1
-    ? Math.min(input.size * 5, 500) // Request 5x more for post-filtering
+    ? Math.min(input.size * 10, 500) // Request 10x more for post-filtering
     : input.size;
 
   // Build search query with language filter
@@ -340,11 +344,17 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
     includeAggregations: input.includeInventoryCounts,
   };
 
-  // Add appropriate language filter (API uses OR logic)
+  // Add language filter
+  // When matchAll=true, filter on first language only (assumed to be rarer)
+  // Then post-filter for remaining languages
+  const filterLanguages = input.matchAll && languages.length > 1
+    ? [languages[0]] // Use first language only for API filter
+    : languages;     // Use all languages for OR logic
+
   if (isISOCode) {
-    searchInput.languages = languages;
+    searchInput.languages = filterLanguages;
   } else {
-    searchInput.languageLabels = languages;
+    searchInput.languageLabels = filterLanguages;
   }
 
   // Perform the search
