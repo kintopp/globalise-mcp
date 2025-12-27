@@ -39,7 +39,8 @@ export const getDocumentOutputSchema = z.object({
     nextPageId: z.string().optional(),
   }).optional(),
   urls: z.object({
-    nationalArchives: z.string().optional().describe('Direct link to view page scan at National Archives (present as clickable link)'),
+    transcriptionsViewer: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer (scan + transcription with highlighting)'),
+    nationalArchives: z.string().optional().describe('Direct link to view page scan at National Archives'),
   }).optional(),
 });
 
@@ -158,12 +159,11 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
       nextPageId: metadata.nextPageId,
     };
 
-    // Include National Archives link for viewing page scan
-    if (metadata.naUrl) {
-      output.urls = {
-        nationalArchives: metadata.naUrl,
-      };
-    }
+    // Include URLs for viewing the document
+    output.urls = {
+      transcriptionsViewer: `https://transcriptions.globalise.huygens.knaw.nl/detail/${documentUrn}`,
+      nationalArchives: metadata.naUrl,
+    };
   }
 
   return output;

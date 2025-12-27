@@ -64,6 +64,7 @@ export const searchOutputSchema = z.object({
     highlightedFragments: z.array(z.string()),
     tokenCount: z.number(),
     languages: z.array(z.string()),
+    viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   aggregations: z.object({
     topInventoryNumbers: z.array(z.object({
@@ -163,6 +164,7 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     highlightedFragments: result._hits?.text || [],
     tokenCount: result.textTokenCount,
     languages: result.langLabel,
+    viewerUrl: `https://transcriptions.globalise.huygens.knaw.nl/detail/${result._id}`,
   }));
 
   // Transform aggregations if present

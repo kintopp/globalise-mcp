@@ -49,48 +49,6 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
-### Add Transcriptions Viewer URL to Document Output
-
-**Priority:** High
-**Status:** Not started
-
-**Background:**
-Neither the API nor the MCP server currently returns a URL that opens the document in the Globalise Transcriptions Viewer web interface. This is the most useful link for users - it shows both the scan and transcription with search term highlighting.
-
-**Current state:**
-- API returns `naUrl` (National Archives - raw scan only) and `trUrl` (TextRepo - raw PageXML)
-- MCP server only exposes `nationalArchives` URL
-- No link to the Transcriptions Viewer
-
-**Missing URL pattern:**
-```
-https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:{document_id}
-```
-
-**Example:**
-```
-https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:NL-HaNA_1.04.02_3714_0343
-```
-
-**Implementation:**
-Add to `src/tools/document.ts` in the `urls` object:
-```typescript
-urls: {
-  transcriptionsViewer: `https://transcriptions.globalise.huygens.knaw.nl/detail/${documentUrn}`,
-  nationalArchives: metadata.naUrl,
-}
-```
-
-**Also update:**
-- `globalise_search_transcriptions` results to include viewer URL
-- `globalise_navigate` results to include viewer URL
-- Output schemas in all affected tools
-
-**Why high priority:**
-This is the most useful URL for end users. The Transcriptions Viewer shows the scan alongside the transcription with highlighting, while the National Archives link only shows the raw scan image.
-
----
-
 ### Review and Edit README.md
 
 **Priority:** Medium
@@ -264,6 +222,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **2025-12-27** - Added Transcriptions Viewer URL to all tool outputs. Now returns `transcriptionsViewer` URL (e.g., `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:NL-HaNA_1.04.02_3714_0343`) for every document in search results, document retrieval, and navigation. This is the most useful link for users - shows scan + transcription side-by-side with highlighting.
 - **2025-12-27** - Documented tokenizer behavior across all documentation. Testing revealed GLOBALISE uses **standard Elasticsearch tokenizer** (not whitespace as reported in [textannoviz#134](https://github.com/knaw-huc/textannoviz/issues/134)). Punctuation is stripped automatically, special characters are word separators. Updated: `offline/Help_Revised.md`, `globalise-transcriptions-api/README.md`, `globalise-transcriptions-api/QUERY_SYNTAX.md`, `src/index.ts` tool description. Full analysis in `globalise-transcriptions-api/research/Tokenizer_Analysis.md`.
 - **2025-12-26** - Cross-referenced help page vs API/MCP capabilities. See `globalise-transcriptions-api/research/Help_Page_Cross_Reference.md`. Key findings: (1) Escape characters (`\*`, `\?`) do NOT work as documented - backslash is ignored/acts as separator; (2) Inventory filter requires array syntax, not comma-separated strings; (3) 4 API features undocumented on help page (phrase proximity, language filter, sorting, aggregations).
 - **2025-12-26** - Verified all API documentation examples work correctly against live API. Tested: README.md (search, doc retrieval), API_REFERENCE.md (filters, pagination, config, indices, IIIF), QUERY_SYNTAX.md (AND/OR, wildcards, fuzzy, phrases, proximity), DATA_MODELS.md (TypeScript patterns). All 15+ examples pass.

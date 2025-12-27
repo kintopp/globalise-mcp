@@ -2,6 +2,24 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.8.0] - 2025-12-27
+
+### Added
+- **Transcriptions Viewer URL**: All tools now return a `transcriptionsViewer` URL for each document
+  - Example: `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:NL-HaNA_1.04.02_3714_0343`
+  - Opens document in the GLOBALISE web interface with scan + transcription side-by-side
+  - Includes search term highlighting when coming from a search
+  - This is the most user-friendly link - previously only `nationalArchives` (raw scan) was available
+
+### Changed
+- `globalise_retrieve_document`: `urls` object now includes `transcriptionsViewer` (always present) and `nationalArchives`
+- `globalise_search_transcriptions`: Each result now includes `viewerUrl` field
+- `globalise_search_by_inventory`: Each result now includes `viewerUrl` field
+- `globalise_search_by_language`: Each result now includes `viewerUrl` field
+- `globalise_navigate`: Target document `urls` object now includes `transcriptionsViewer`
+
+---
+
 ## [1.7.0] - 2025-12-26
 
 ### Added

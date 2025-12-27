@@ -79,6 +79,7 @@ export const searchByInventoryOutputSchema = z.object({
     highlightedFragments: z.array(z.string()),
     tokenCount: z.number(),
     languages: z.array(z.string()),
+    viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   pagination: z.object({
     from: z.number(),
@@ -136,6 +137,7 @@ export async function searchByInventory(input: SearchByInventoryInput): Promise<
       highlightedFragments: result.highlightedFragments,
       tokenCount: result.tokenCount,
       languages: result.languages,
+      viewerUrl: result.viewerUrl,
     };
   });
 
@@ -190,9 +192,8 @@ export const navigateOutputSchema = z.object({
       license: z.string(),
     }).optional(),
     urls: z.object({
+      transcriptionsViewer: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
       nationalArchives: z.string().optional(),
-      annoRepo: z.string().optional(),
-      highResolutionImage: z.string().optional(),
     }).optional(),
   }).optional(),
   message: z.string(),
@@ -282,6 +283,7 @@ export const searchByLanguageOutputSchema = z.object({
     highlightedFragments: z.array(z.string()).optional(),
     tokenCount: z.number(),
     languages: z.array(z.string()),
+    viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   inventoryCounts: z.array(z.object({
     inventoryNumber: z.string(),
@@ -341,6 +343,7 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
       highlightedFragments: input.query ? result.highlightedFragments : undefined,
       tokenCount: result.tokenCount,
       languages: result.languages,
+      viewerUrl: result.viewerUrl,
     };
   });
 
