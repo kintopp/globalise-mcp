@@ -49,6 +49,27 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
+### Review API Documentation for v1.9.0 Language Field Changes
+
+**Priority:** Low
+**Status:** Not started
+
+**Background:**
+v1.9.0 introduced better understanding of how the GLOBALISE API provides language information in aggregations. The API returns both `langIso` (ISO 639-3 codes like `nld`, `fra`, `msa`) and `langLabel` (human-readable labels like `Dutch`, `French`, `Malay`).
+
+**Task:**
+Review `globalise-transcriptions-api/` documentation to ensure it accurately describes:
+1. Both `langIso` and `langLabel` fields in aggregation responses
+2. How these fields appear in search result `aggs` objects
+3. The relationship between ISO codes and display labels
+
+**Files to check:**
+- `globalise-transcriptions-api/API_REFERENCE.md` - aggregation response format
+- `globalise-transcriptions-api/DATA_MODELS.md` - TypeScript type definitions
+- `globalise-transcriptions-api/README.md` - overview examples
+
+---
+
 ### Explore Adding `globalise_help` Tool for Resource Discovery
 
 **Priority:** Low
