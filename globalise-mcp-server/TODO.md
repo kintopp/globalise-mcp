@@ -160,6 +160,29 @@ Also check for any cross-references between tools that might cause Claude Deskto
 **Why:**
 Tool descriptions directly impact how well LLMs use the tools. Poor descriptions lead to incorrect tool selection, wrong parameters, and user frustration. Claude Desktop has been observed to filter tools with certain description patterns.
 
+**Specific item: Bilingual/multilingual search discovery (v1.10 regression)**
+
+Testing in Claude Desktop with v1.10 revealed that users asking for "documents in both English and Dutch" don't get the expected AND behavior. The LLM used `globalise_search_by_language` with multiple language codes, but didn't set `matchAll=true`, so the API returned documents with EITHER language (OR logic) instead of documents containing BOTH languages.
+
+The `matchAll` parameter exists and works, but:
+1. The tool description may not make the AND vs OR distinction clear enough
+2. The LLM may not recognize "documents in both X and Y" as requiring `matchAll=true`
+3. The default (`matchAll=false`) silently returns OR results, which can be confusing
+
+**Action needed:**
+- Review `globalise_search_by_language` description in `src/index.ts`
+- Make AND vs OR behavior explicit in description
+- Consider whether `matchAll` should default to `true` when multiple languages specified
+- Add example showing bilingual search pattern
+
+**Session excerpt (Claude Desktop, 2025-12-27):**
+> User: "can you find documents written in both english and dutch?"
+> LLM called `globalise_search_by_language` with `["eng", "nld"]`
+> Result: ~4.8M docs (basically entire corpus, since Dutch dominates)
+> LLM incorrectly concluded: "the API doesn't currently support a direct 'must have BOTH languages' query"
+
+---
+
 **Specific item: `globalise_retrieve_document` URL description**
 
 The current description says:
