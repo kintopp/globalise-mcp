@@ -66,6 +66,17 @@ console.log(doc.views.self.lines.join("\n")); // Print transcription
 | Annotations | `https://annorepo.globalise.huygens.knaw.nl` | W3C Web Annotations |
 | Images | `https://service.archief.nl/iip` | IIIF Image API |
 
+## Text Processing
+
+The API uses Elasticsearch's **standard tokenizer**:
+
+- **Punctuation stripped**: `peper` finds `peper,`, `peper.`, etc. automatically
+- **Special characters are word separators**: `oost-indie` = `oost indie`, `Comp=s` = `comp s`
+- **Case insensitive**: `Batavia` = `batavia`
+- **Page-level results**: Search returns pages, not individual word occurrences
+
+See [Query Syntax](./QUERY_SYNTAX.md#punctuation-and-special-characters) for details.
+
 ## Documentation
 
 | Document | Description |

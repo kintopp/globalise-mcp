@@ -47,6 +47,47 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 *Add new improvement ideas below as they arise.*
 
+---
+
+### Add Transcriptions Viewer URL to Document Output
+
+**Priority:** High
+**Status:** Not started
+
+**Background:**
+Neither the API nor the MCP server currently returns a URL that opens the document in the Globalise Transcriptions Viewer web interface. This is the most useful link for users - it shows both the scan and transcription with search term highlighting.
+
+**Current state:**
+- API returns `naUrl` (National Archives - raw scan only) and `trUrl` (TextRepo - raw PageXML)
+- MCP server only exposes `nationalArchives` URL
+- No link to the Transcriptions Viewer
+
+**Missing URL pattern:**
+```
+https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:{document_id}
+```
+
+**Example:**
+```
+https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:NL-HaNA_1.04.02_3714_0343
+```
+
+**Implementation:**
+Add to `src/tools/document.ts` in the `urls` object:
+```typescript
+urls: {
+  transcriptionsViewer: `https://transcriptions.globalise.huygens.knaw.nl/detail/${documentUrn}`,
+  nationalArchives: metadata.naUrl,
+}
+```
+
+**Also update:**
+- `globalise_search_transcriptions` results to include viewer URL
+- `globalise_navigate` results to include viewer URL
+- Output schemas in all affected tools
+
+**Why high priority:**
+This is the most useful URL for end users. The Transcriptions Viewer shows the scan alongside the transcription with highlighting, while the National Archives link only shows the raw scan image.
 
 ---
 
@@ -86,6 +127,94 @@ Also check for any cross-references between tools that might cause Claude Deskto
 
 **Why:**
 Tool descriptions directly impact how well LLMs use the tools. Poor descriptions lead to incorrect tool selection, wrong parameters, and user frustration. Claude Desktop has been observed to filter tools with certain description patterns.
+
+---
+
+### Fix Language Format Inconsistency Between Tools
+
+**Priority:** Low
+**Status:** Not started
+
+**Background:**
+The MCP server returns language information in different formats depending on which tool is used:
+
+| Tool | Format | Example |
+|------|--------|---------|
+| `globalise_search_transcriptions` | `languages: string[]` | `["English", "Dutch"]` |
+| `globalise_retrieve_document` | `languages: {code, label}[]` | `[{code: "eng", label: "English"}, ...]` |
+
+**Root cause:**
+- `search.ts:165` maps to `result.langLabel` (labels only)
+- `document.ts:148-151` maps the full `lang` array with both ISO codes and labels
+
+**Example document:** `NL-HaNA_1.04.02_3714_0343` (bilingual English/Dutch)
+
+**Options:**
+
+1. **Unify to objects** (recommended) - Both tools return `{code, label}[]`
+   - Pro: Consistent, includes ISO codes for programmatic use
+   - Con: Breaking change for search results
+
+2. **Unify to strings** - Both tools return `string[]` (labels only)
+   - Pro: Simpler output
+   - Con: Loses ISO code information
+
+3. **Add both fields** - Search returns both `languages` and `languageCodes`
+   - Pro: No breaking change, more information
+   - Con: Redundant data
+
+**Recommendation:** Option 1 with a note in CHANGELOG about the format change.
+
+---
+
+### Add Multi-Language Filtering with AND Logic
+
+**Priority:** Medium
+**Status:** Not started
+
+**Background:**
+Some documents contain text in multiple languages (e.g., both Dutch and English). Currently:
+- `globalise_search_by_language` only accepts a single language string
+- `globalise_search_transcriptions` accepts an array but uses OR logic
+- There's no way to find documents tagged with ALL specified languages
+
+**Evidence from testing (2025-12-27):**
+```
+Dutch only:        4,344,249 docs
+English only:          3,600 docs
+["nld","eng"]:     4,345,394 docs (OR - union)
+Overlap (BOTH):       ~2,455 docs (calculated)
+```
+
+Example document with multiple languages:
+```json
+{
+  "doc": "NL-HaNA_1.04.02_1237_0535",
+  "languages": ["English", "Dutch"]
+}
+```
+
+**Proposed changes:**
+
+1. **Update `globalise_search_by_language`** to accept array:
+   ```typescript
+   language: z.union([z.string(), z.array(z.string())])
+   ```
+
+2. **Add `matchAll` parameter** to control OR vs AND logic:
+   ```typescript
+   matchAll: z.boolean().optional().default(false)
+     .describe('If true, documents must have ALL specified languages. If false (default), documents with ANY language match.')
+   ```
+
+3. **Implementation options:**
+   - If API supports AND logic natively → use it
+   - Otherwise → post-filter results client-side (less efficient but works)
+
+**Use cases:**
+- "Find bilingual Dutch-English documents"
+- "Find documents with both Portuguese and Dutch"
+- Research on multilingual correspondence
 
 ---
 
@@ -135,6 +264,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **2025-12-27** - Documented tokenizer behavior across all documentation. Testing revealed GLOBALISE uses **standard Elasticsearch tokenizer** (not whitespace as reported in [textannoviz#134](https://github.com/knaw-huc/textannoviz/issues/134)). Punctuation is stripped automatically, special characters are word separators. Updated: `offline/Help_Revised.md`, `globalise-transcriptions-api/README.md`, `globalise-transcriptions-api/QUERY_SYNTAX.md`, `src/index.ts` tool description. Full analysis in `globalise-transcriptions-api/research/Tokenizer_Analysis.md`.
 - **2025-12-26** - Cross-referenced help page vs API/MCP capabilities. See `globalise-transcriptions-api/research/Help_Page_Cross_Reference.md`. Key findings: (1) Escape characters (`\*`, `\?`) do NOT work as documented - backslash is ignored/acts as separator; (2) Inventory filter requires array syntax, not comma-separated strings; (3) 4 API features undocumented on help page (phrase proximity, language filter, sorting, aggregations).
 - **2025-12-26** - Verified all API documentation examples work correctly against live API. Tested: README.md (search, doc retrieval), API_REFERENCE.md (filters, pagination, config, indices, IIIF), QUERY_SYNTAX.md (AND/OR, wildcards, fuzzy, phrases, proximity), DATA_MODELS.md (TypeScript patterns). All 15+ examples pass.
 - **2025-12-26** - Updated CLAUDE.md release checklist: added README.md to version bump files, added instruction to verify examples use real API values before publishing.

@@ -38,6 +38,7 @@ Thumbs.db
 
 # ck semantic search index (local cache)
 .ck/
+.ckignore
 
 # Testing
 coverage/

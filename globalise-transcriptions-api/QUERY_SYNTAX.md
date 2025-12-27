@@ -250,29 +250,57 @@ Finds discussions of ships and cargo even when other words appear between them.
 
 ## Punctuation and Special Characters
 
-### Punctuation Handling (Important Limitation)
+### Tokenizer Behavior (Standard Tokenizer)
 
-The GLOBALISE corpus is **tokenized** during indexing, which means:
+The GLOBALISE corpus uses Elasticsearch's **standard tokenizer**, which means:
 
-- **Punctuation is stripped** - Apostrophes, periods, hyphens are removed
+- **Punctuation is stripped** - Commas, periods, semicolons, etc. are removed during indexing
+- **Special characters act as word separators** - Hyphens, equals signs, colons split words
 - **Numbers are preserved** - Year searches like `1609` work correctly
-- **Archive numbers don't work** - Searching `1.04.02` returns no results because periods are stripped
+- **Case insensitive** - Searches are case-insensitive
 
-**What works:**
+| Query | Matches |
+|-------|---------|
+| `peper` | `peper`, `peper,`, `peper.`, `peper;` |
+| `bandar` | `Bandar`, `bandar,`, `bandar.` |
+| `reuk` | `reuk`, `Reuk,`, `reuk.` |
+
+Because punctuation is stripped at index time, searching for `peper` automatically finds all punctuation variants.
+
+### Special Characters as Word Separators
+
+These characters split words into separate tokens:
+
+| Character | Example | Indexed As |
+|-----------|---------|------------|
+| Hyphen `-` | `oost-indie` | `oost` + `indie` |
+| Equals `=` | `Comp=s` | `comp` + `s` |
+| Colon `:` | `Ed:s` | `ed` + `s` |
+| Line break `„` | `vaar„ tung` | `vaar` + `tung` |
+
+**What this means:**
+- `oost-indie` and `oost indie` return identical results (160,811 documents)
+- To find VOC abbreviations like `Comp=s`, search for `"comp s"` (phrase) or `comp*`
+- Hyphenated compounds are searchable as separate words
+
+### What Works
 
 | Query | Result |
 |-------|--------|
 | `1609` | Finds year references |
 | `Batavia` | Normal word search |
 | `VOC` | Acronyms work |
+| `peper` | Finds `peper,` and `peper.` automatically |
+| `oost-indie` | Same as `oost indie` |
 
-**What doesn't work:**
+### What Doesn't Work as Expected
 
-| Query | Why It Fails |
-|-------|--------------|
-| `d'` | Apostrophe stripped, matches just `d` |
-| `1.04.02` | Periods stripped, no match |
-| `'s-Gravenhage` | Apostrophe/hyphen stripped |
+| Query | Why It Fails | Workaround |
+|-------|--------------|------------|
+| `d'` | Apostrophe stripped, matches just `d` | Search for surrounding context |
+| `1.04.02` | Periods stripped, becomes `1 04 02` | Use `invNr` filter |
+| `'s-Gravenhage` | Apostrophe/hyphen stripped | Search `gravenhage` or `s gravenhage` |
+| `Comp=s` | Equals sign is separator | Use `"comp s"` phrase or `comp*` |
 
 ### Workarounds
 
@@ -282,8 +310,6 @@ For words with apostrophes, search for the main word:
 { "text": "Gravenhage" }
 ```
 
-Instead of `'s-Gravenhage` which won't match as expected.
-
 For archive numbers, use the `invNr` filter instead of text search:
 
 ```json
@@ -291,6 +317,12 @@ For archive numbers, use the `invNr` filter instead of text search:
   "text": "*",
   "terms": { "invNr": ["9966"] }
 }
+```
+
+For VOC abbreviations with special characters:
+
+```json
+{ "text": "\"comp s\"" }
 ```
 
 ### Escaping Query Operators (Limited Support)
@@ -314,7 +346,7 @@ The help page documents backslash escaping, but **testing shows it does not work
 | `cop?e` | Single-char wildcard | 46,261 results |
 | `cop\?e` | Literal "cop?e" | 2,184,143 results (tokenized as `cop` OR `e`) |
 
-**Workaround:** There is currently no reliable way to search for literal `*` or `?` characters via the API. The corpus likely contains very few (if any) such characters anyway.
+**Workaround:** There is currently no reliable way to search for literal `*` or `?` characters via the API. 
 
 ### Match All Documents
 

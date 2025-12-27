@@ -64,6 +64,7 @@ const TOOLS: Tool[] = [
       'Transcriptions of languages with non-Roman scripts (Persian, Bengali, Tamil, Sinhala, Classical Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) will be unreliable/gibberish. ' +
       'For these languages, always offer the user the National Archives page scan link from the document metadata. ' +
       '\n\n**MALAY NOTE:** The code "msa" refers to a macrolanguage (multiple Malay varieties), and some pages may be in romanized Malay while others use non-Roman script. No script metadata is available, so always offer page scan links for Malay documents. ' +
+      '\n\n**TOKENIZER:** Standard tokenizer - punctuation is stripped automatically (so "peper" finds "peper,"), and special characters like hyphens are word separators (so "oost-indie" = "oost indie"). ' +
       '\n\n**RETURNS:** Paginated results with highlighted text fragments PLUS aggregations showing language distribution, inventory counts, and document counts. ' +
       '\n\n**RESULT LIMITS:** Default: 10 results. For larger analysis, explicitly request up to 500 results (e.g., size=100, size=250, size=500). ' +
       'Note: Large result sets consume more context window. ' +

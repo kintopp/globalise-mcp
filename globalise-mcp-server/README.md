@@ -1,14 +1,9 @@
-# GLOBALISE MCP Server
+# Technical README
 
-Model Context Protocol (MCP) server for searching and retrieving Dutch East India Company (VOC) historical transcriptions provided by the GLOBALISE project.
+A Model Context Protocol (MCP) server for searching and retrieving historical transcriptions from the Dutch East India Company (VOC) provided by the GLOBALISE project.
 
 **Version:** 1.7.0
 **MCP Specification:** 2025-11-25
-
-All tools include:
-- ✅ **Input validation** with clear error messages
-- ✅ **Tool annotations** (readOnlyHint, destructiveHint, idempotentHint)
-- ✅ **Simplified schemas** for broad client compatibility (Claude Desktop, MSTY, ChatGPT)
 
 ## Overview
 
@@ -17,6 +12,11 @@ This MCP server provides access to ~4.8 million transcribed pages from the so-ca
 ## Features
 
 ### 5 Optimized Tools
+
+All tools include:
+- **Input validation** with clear error messages
+- **Tool annotations** (readOnlyHint, destructiveHint, idempotentHint)
+- **Simplified schemas** for broad client compatibility 
 
 #### 1. globalise_search_transcriptions
 **Primary search tool** - Full-text search across all 4.8M transcriptions
@@ -100,12 +100,12 @@ This pattern minimizes result payload while providing full aggregation data. Wor
 
 ### Language Classification Notes
 
-- **"Unknown"**: Refers to pages whose language has not yet been determined (not that the language itself is unidentifiable)
-- **"Cipher"** (ISO code "art"): Pages containing text encrypted with a cipher - classified as an artificial language per ISO standards
+- **"Unknown"**: Refers to pages whose language has not yet been determined (it does not mean that the language itself is unidentifiable)
+- **"Cipher"** (ISO code "art"): Pages containing Dutch text encrypted with a cipher - classified by Globalise as an artificial language in the temporary absence of further metadata (per ISO standard such pages should still be classified as Dutch)
 
 ## Quick Start
 
-### Hosted Instance (Easiest)
+### Hosted Instance
 
 A public instance is available at:
 
@@ -113,26 +113,9 @@ A public instance is available at:
 https://globalise-mcp-production.up.railway.app/mcp
 ```
 
-Use this URL directly in any MCP client that supports HTTP transport (ChatGPT, MSTY, Claude.ai web).
+Use this URL directly in any MCP client that supports HTTP transport. No authentication is required.
 
 **Health check:** https://globalise-mcp-production.up.railway.app/health
-
-### Local Installation
-
-**New to MCP servers?** See **[GETTING_STARTED.md](GETTING_STARTED.md)** for a beginner-friendly guide with step-by-step instructions for:
-- 🖥️ Claude Desktop
-- 🌐 Claude.ai (web interface)
-- 🔧 Third-party LLM clients
-- 💻 Claude Code CLI
-
-**For developers:** Continue reading below for technical details.
-
-## Installation
-
-```bash
-npm install
-npm run build
-```
 
 ## Transports
 
@@ -582,35 +565,6 @@ This server complies with the **MCP 2025-11-25 specification**:
 - Zod schema validation
 - Type inference throughout
 
-## Recent Improvements (v1.5.0)
-
-✅ **Streamable HTTP Transport** - New `/mcp` endpoint for OpenAI ChatGPT and modern MCP clients
-✅ **MCP SDK 1.25.1** - Latest stable SDK with full Streamable HTTP support
-✅ **Express 5.x** - Native async/await middleware support
-✅ **Dual Transport** - Streamable HTTP (recommended) + legacy SSE (backward compatible)
-
-**v1.4.0:**
-✅ Request Timeouts ✅ Enhanced Error Messages ✅ HTTP/SSE Transport ✅ Response Caching
-
-See `CHANGELOG.md` for complete version history.
-
-## Future Improvements
-
-See `RECOMMENDED_IMPROVEMENTS.md` for detailed recommendations:
-
-**High Priority:**
-- Add comprehensive test suite (Vitest)
-
-**Medium Priority:**
-- Add evaluation test suite for tool selection quality
-- Implement progress notifications for large searches
-
-**Low Priority:**
-- Add resources feature for API documentation
-- Add prompts feature for common search patterns
-- Implement cancellation support
-- CI/CD pipeline with GitHub Actions
-
 ## Resources
 
 - **GLOBALISE Project**: https://globalise.huygens.knaw.nl/
@@ -619,13 +573,6 @@ See `RECOMMENDED_IMPROVEMENTS.md` for detailed recommendations:
 - **National Archives**: https://www.nationaalarchief.nl/
 - **MCP Documentation**: https://modelcontextprotocol.io/
 - **MCP Specification**: https://modelcontextprotocol.io/specification/2025-11-25
-
-## Notes
-
-- Transcriptions are machine-generated and may contain errors
-- Not manually verified
-- Best effort transcription using Loghi HTR v2.0
-- Data version: March 2024
 
 ## License
 
