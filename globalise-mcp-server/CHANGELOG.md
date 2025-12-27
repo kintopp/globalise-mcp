@@ -2,6 +2,30 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.9.0] - 2025-12-27
+
+### Added
+- **MCP Resources support**: Implemented the Resources capability from MCP specification
+  - `globalise://corpus/stats` - Corpus overview with total documents, language distribution, top inventories
+  - `globalise://languages` - Complete language index with ISO codes, labels, counts, and usage notes
+  - `globalise://help/query-syntax` - Query syntax reference guide (Markdown format)
+- Resources provide application-controlled context that clients can read before making tool calls
+- Data is cached (10 min TTL) for performance while remaining fresh
+
+### Technical
+- Added `resources` capability declaration with `subscribe: false` and `listChanged: false`
+- Registered `ListResourcesRequestSchema` and `ReadResourceRequestSchema` handlers
+- Created new `src/resources/index.ts` module with resource definitions and fetch logic
+- Resources use existing API client infrastructure with LRU caching
+
+### Learning Notes
+This release implements MCP Resources as a learning exercise. Resources differ from Tools in that:
+- **Resources** are application-controlled (server decides what context to provide)
+- **Tools** are model-controlled (LLM decides when to invoke)
+- Resources are ideal for static/semi-static context data like corpus metadata
+
+---
+
 ## [1.8.1] - 2025-12-27
 
 ### Changed

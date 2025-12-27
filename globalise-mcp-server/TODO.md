@@ -52,7 +52,7 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 ### Review and Edit README.md
 
 **Priority:** Medium
-**Status:** In progress
+**Status:** Not Started
 
 **Task:**
 Continue reviewing and editing the MCP server's README.md. The current version only partially satisfies several, partly conflicting goals:
@@ -66,6 +66,8 @@ Continue reviewing and editing the MCP server's README.md. The current version o
 - Should some content be split into separate files (e.g., CONTRIBUTING.md, API.md)?
 - What's the right balance between brevity and completeness?
 - Which audience is primary: end users or developers?
+- **Add MCP security considerations** - Document security best practices, authentication (or lack thereof), data privacy, rate limiting, and what users should consider when using the public Railway instance vs running locally
+- **Review end-user focused templates** - Study how other MCP servers document setup/enablement for end users. Look at examples from other Anthropic-endorsed MCP servers to find best practices for clear, step-by-step integration instructions (Claude Desktop, ChatGPT, MSTY, etc.). Look, for example, at https://huggingface.co/settings/mcp 
 
 ---
 
@@ -86,11 +88,32 @@ Also check for any cross-references between tools that might cause Claude Deskto
 **Why:**
 Tool descriptions directly impact how well LLMs use the tools. Poor descriptions lead to incorrect tool selection, wrong parameters, and user frustration. Claude Desktop has been observed to filter tools with certain description patterns.
 
+**Specific item: `globalise_retrieve_document` URL description**
+
+The current description says:
+> "National Archives URL for viewing page scan (always present as clickable link)"
+
+This is outdated. Since v1.8.0, the Transcriptions Viewer URL is the primary/default link (shows scan + transcription side-by-side with highlighting). The description should:
+1. Lead with Transcriptions Viewer as the recommended/default link
+2. Mention National Archives as an alternative for raw page scans
+3. Reflect that both URLs are returned in the `urls` object
+
+Current in code (`src/index.ts` ~line 138):
+```
+(4) National Archives URL for viewing page scan (always present as clickable link).
+```
+
+Should become something like:
+```
+(4) Transcriptions Viewer URL (recommended) for viewing scan + transcription side-by-side,
+(5) National Archives URL for viewing raw page scan.
+```
+
 ---
 
 ### Fix Language Format Inconsistency Between Tools
 
-**Priority:** Low
+**Priority:** Medium
 **Status:** Not started
 
 **Background:**
@@ -127,7 +150,7 @@ The MCP server returns language information in different formats depending on wh
 
 ### Add Multi-Language Filtering with AND Logic
 
-**Priority:** Medium
+**Priority:** High
 **Status:** Not started
 
 **Background:**
