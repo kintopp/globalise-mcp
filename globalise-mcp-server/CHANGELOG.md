@@ -2,6 +2,16 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.8.1] - 2025-12-27
+
+### Changed
+- **Clickable viewer links**: Transcriptions Viewer URLs are now formatted as clickable markdown links
+  - Document retrieval shows: `[NL-HaNA_1.04.02_3714_0343](https://...)`
+  - Search results show numbered list of clickable links (max 10)
+  - Links appear in a separate "View in Transcriptions Viewer" section after JSON response
+
+---
+
 ## [1.8.0] - 2025-12-27
 
 ### Added

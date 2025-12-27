@@ -41,6 +41,51 @@ import {
 } from './tools/convenience.js';
 
 /**
+ * Extract viewer URLs from tool results and format as markdown links
+ */
+function extractViewerLinks(result: Record<string, unknown>, toolName: string): string[] {
+  const links: string[] = [];
+
+  if (toolName === 'globalise_retrieve_document') {
+    // Document retrieval: single document with urls.transcriptionsViewer
+    const urls = result.urls as { transcriptionsViewer?: string } | undefined;
+    const docId = result.document as string | undefined;
+    if (urls?.transcriptionsViewer) {
+      const label = docId || 'Document';
+      links.push(`[${label}](${urls.transcriptionsViewer})`);
+    }
+  } else if (toolName === 'globalise_navigate') {
+    // Navigation: target document with urls.transcriptionsViewer
+    const target = result.targetDocument as { document?: string; urls?: { transcriptionsViewer?: string } } | undefined;
+    if (target?.urls?.transcriptionsViewer) {
+      const label = target.document || 'Target page';
+      links.push(`[${label}](${target.urls.transcriptionsViewer})`);
+    }
+  } else if (toolName === 'globalise_search_transcriptions' ||
+             toolName === 'globalise_search_by_inventory' ||
+             toolName === 'globalise_search_by_language') {
+    // Search results: array of results with viewerUrl
+    const results = result.results as Array<{ document?: string; viewerUrl?: string }> | undefined;
+    if (results && results.length > 0) {
+      // Limit to first 10 results to avoid overwhelming output
+      const maxLinks = Math.min(results.length, 10);
+      for (let i = 0; i < maxLinks; i++) {
+        const r = results[i];
+        if (r.viewerUrl) {
+          const label = r.document || `Result ${i + 1}`;
+          links.push(`[${label}](${r.viewerUrl})`);
+        }
+      }
+      if (results.length > 10) {
+        links.push(`... and ${results.length - 10} more results`);
+      }
+    }
+  }
+
+  return links;
+}
+
+/**
  * Tool definitions for MCP
  *
  * Note: Claude Desktop can handle 100+ tools, but performance degrades with many tools
@@ -173,7 +218,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.8.0',
+    version: '1.8.1',
   },
   {
     capabilities: {
@@ -245,14 +290,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
     }
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText,
-        },
-      ],
-    };
+    // Extract viewer URLs and format as clickable markdown links
+    const viewerLinks = extractViewerLinks(result as Record<string, unknown>, name);
+
+    const content: Array<{ type: 'text'; text: string }> = [
+      {
+        type: 'text',
+        text: responseText,
+      },
+    ];
+
+    // Append clickable links section if URLs were found
+    if (viewerLinks.length > 0) {
+      const linksSection = viewerLinks.length === 1
+        ? `\n\n**View in Transcriptions Viewer:**\n${viewerLinks[0]}`
+        : `\n\n**View in Transcriptions Viewer:**\n${viewerLinks.map((link, i) => `${i + 1}. ${link}`).join('\n')}`;
+
+      content.push({
+        type: 'text',
+        text: linksSection,
+      });
+    }
+
+    return { content };
   } catch (error) {
     // Handle validation errors from Zod
     if (error instanceof Error) {
