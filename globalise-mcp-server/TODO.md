@@ -49,27 +49,6 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
-### Review API Documentation for v1.9.0 Language Field Changes
-
-**Priority:** Low
-**Status:** Not started
-
-**Background:**
-v1.9.0 introduced better understanding of how the GLOBALISE API provides language information in aggregations. The API returns both `langIso` (ISO 639-3 codes like `nld`, `fra`, `msa`) and `langLabel` (human-readable labels like `Dutch`, `French`, `Malay`).
-
-**Task:**
-Review `globalise-transcriptions-api/` documentation to ensure it accurately describes:
-1. Both `langIso` and `langLabel` fields in aggregation responses
-2. How these fields appear in search result `aggs` objects
-3. The relationship between ISO codes and display labels
-
-**Files to check:**
-- `globalise-transcriptions-api/API_REFERENCE.md` - aggregation response format
-- `globalise-transcriptions-api/DATA_MODELS.md` - TypeScript type definitions
-- `globalise-transcriptions-api/README.md` - overview examples
-
----
-
 ### Explore Adding `globalise_help` Tool for Resource Discovery
 
 **Priority:** Low
@@ -252,6 +231,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **2025-12-28** - **API docs reviewed for v1.9.0 language fields**: Confirmed `globalise-transcriptions-api/` documentation accurately describes `langIso` and `langLabel` in aggregations, search results, filtering, and TypeScript types. No changes needed—documentation was already complete.
 - **v1.10.0** - **Language format unified**: All search tools now return `languages` as `{code, label}[]` instead of `string[]`. This is a breaking change but provides consistency with `globalise_retrieve_document` and includes ISO codes for programmatic use.
 - **v1.10.0** - **Multi-language filtering with AND logic**: `globalise_search_by_language` now accepts arrays and supports `matchAll` parameter. When `matchAll=true`, returns only documents containing ALL specified languages (bilingual/multilingual). Uses post-filtering since API only supports OR.
 - **v1.10.0** - **Resource hints in tool descriptions**: Added `**REFERENCE:**` sections pointing to relevant resources (query-syntax, corpus/stats, languages).
