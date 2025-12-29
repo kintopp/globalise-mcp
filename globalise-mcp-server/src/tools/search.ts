@@ -6,6 +6,37 @@ import { z } from 'zod';
 import { apiPost, buildUrl, API_CONFIG, validateSearchFields } from '../utils/api-client.js';
 import { SearchResponse } from '../utils/types.js';
 
+/**
+ * ISO 639-3 code to human-readable label mapping for languages in the GLOBALISE corpus.
+ * Used for aggregation display. Falls back to the ISO code if not found.
+ */
+const ISO_TO_LABEL: Record<string, string> = {
+  nld: 'Dutch',
+  eng: 'English',
+  fra: 'French',
+  deu: 'German',
+  spa: 'Spanish',
+  por: 'Portuguese',
+  ita: 'Italian',
+  lat: 'Latin',
+  fas: 'Persian',
+  ben: 'Bengali',
+  tam: 'Tamil',
+  sin: 'Sinhala',
+  msa: 'Malay',
+  jav: 'Javanese',
+  zho: 'Chinese',
+  jpn: 'Japanese',
+  guj: 'Gujarati',
+  bug: 'Buginese',
+  chu: 'Old Church Slavonic',
+  grc: 'Ancient Greek',
+  hbo: 'Ancient Hebrew',
+  ara: 'Arabic',
+  art: 'Cipher',
+  unknown: 'Unknown',
+};
+
 export const searchInputSchema = z.object({
   query: z.string().describe('Search query text. Supports Boolean operators (AND, OR, NOT), wildcards (* and ?), fuzzy matching (~N for edit distance), and exact phrases in quotes. Example: "peper AND koffie", "schip*", "voorschreven~1"'),
   from: z.number().min(0).optional().default(0).describe('Pagination offset - starting result index (default: 0)'),
@@ -188,13 +219,12 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
             .map(([doc, count]) => ({ document: doc, count }))
             .slice(0, 10)
         : undefined,
-      languages: response.aggs.langIso && response.aggs.langLabel
-        ? Object.entries(response.aggs.langIso).map(([code, count]) => {
-            const label = Object.keys(response.aggs.langLabel || {}).find(
-              key => response.aggs.langLabel![key] === count
-            ) || code;
-            return { code, label, count };
-          })
+      languages: response.aggs.langIso
+        ? Object.entries(response.aggs.langIso).map(([code, count]) => ({
+            code,
+            label: ISO_TO_LABEL[code] || code,
+            count,
+          }))
         : undefined,
     };
   }

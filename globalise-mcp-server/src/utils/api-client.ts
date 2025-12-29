@@ -16,23 +16,31 @@ export const API_CONFIG = {
 
 /**
  * Throttle state - tracks when the last API request was made
+ * and serializes concurrent requests to prevent race conditions.
  */
 let lastRequestTime = 0;
+let throttleQueue: Promise<void> = Promise.resolve();
 
 /**
  * Ensure minimum delay between API requests to avoid overwhelming the server.
- * This is a simple throttle mechanism for good API citizenship.
+ * Uses a promise queue to serialize concurrent requests, preventing race conditions
+ * where multiple requests could bypass the delay by reading lastRequestTime simultaneously.
  */
 async function throttle(): Promise<void> {
-  const now = Date.now();
-  const elapsed = now - lastRequestTime;
-  const delay = API_CONFIG.REQUEST_DELAY_MS - elapsed;
+  // Chain this request onto the queue to serialize access
+  throttleQueue = throttleQueue.then(async () => {
+    const now = Date.now();
+    const elapsed = now - lastRequestTime;
+    const delay = API_CONFIG.REQUEST_DELAY_MS - elapsed;
 
-  if (delay > 0) {
-    await sleep(delay);
-  }
+    if (delay > 0) {
+      await sleep(delay);
+    }
 
-  lastRequestTime = Date.now();
+    lastRequestTime = Date.now();
+  });
+
+  return throttleQueue;
 }
 
 /**

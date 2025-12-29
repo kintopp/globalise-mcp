@@ -43,8 +43,10 @@ export const searchByInventoryInputSchema = z.object({
 
 // Search by Language Tool
 export const searchByLanguageInputSchema = z.object({
-  language: z.union([z.string(), z.array(z.string())])
-    .describe('Language(s) to search for. Single: "Persian" or "fas". Multiple: ["Dutch", "English"] or ["nld", "eng"]. Can use ISO codes or human-readable names.'),
+  language: z.union([
+    z.string().min(1, "Language cannot be empty"),
+    z.array(z.string().min(1)).min(1, "At least one language must be specified")
+  ]).describe('Language(s) to search for. Single: "Persian" or "fas". Multiple: ["Dutch", "English"] or ["nld", "eng"]. Can use ISO codes or human-readable names.'),
   matchAll: z.boolean()
     .optional()
     .default(false)
