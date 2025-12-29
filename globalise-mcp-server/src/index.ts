@@ -181,7 +181,6 @@ const TOOLS: Tool[] = [
       'Examples: "search inventory 9966 for coffee", "find documents in inventory 2174 about trade", "what languages are in inventory 4293?". ' +
       '\n\n**REQUIRES:** Inventory number (e.g., "9966", "4293"). Optional: search query, language filters. ' +
       '\n\n**RETURNS:** Paginated results showing only documents from the specified inventory, with highlighted text fragments and aggregations including language distribution. ' +
-      '\n\n**REFERENCE:** Corpus overview with top inventories available at globalise://corpus/stats resource. ' +
       '\n\n**FOR STATISTICS ONLY:** Use query="*" with size=1 to get language counts without retrieving full documents.',
     inputSchema: zodToJsonSchema(searchByInventoryInputSchema) as Tool['inputSchema'],
     // outputSchema removed for broad client compatibility
@@ -212,7 +211,6 @@ const TOOLS: Tool[] = [
       'Transcriptions of languages with non-Roman scripts (Persian, Bengali, Tamil, Sinhala, Classical Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) will be unreliable/gibberish. ' +
       'For these languages, always offer the user the National Archives page scan link from the document metadata. ' +
       '\n\n**MALAY NOTE:** The code "msa" refers to a macrolanguage (multiple Malay varieties), and some pages may be in romanized Malay while others use non-Roman script. No script metadata is available, so always offer page scan links for Malay documents. ' +
-      '\n\n**REFERENCE:** Complete language index with ISO codes and document counts available at globalise://languages resource. ' +
       '\n\n**RETURNS:** Documents in specified language(s) with inventory distribution counts. When matchAll=true, includes only bilingual/multilingual documents.',
     inputSchema: zodToJsonSchema(searchByLanguageInputSchema) as Tool['inputSchema'],
     // outputSchema removed for broad client compatibility
@@ -230,7 +228,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.10.0',
+    version: '1.11.0',
   },
   {
     capabilities: {
@@ -272,11 +270,17 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
 
+  // Log resource access
+  console.error(`[RESOURCE] Reading: ${uri}`);
+
   try {
     const contents = await readResource(uri);
+    const contentLength = contents[0]?.text?.length || 0;
+    console.error(`[RESOURCE] Success: ${uri} (${contentLength} chars, ${contents[0]?.mimeType})`);
     return { contents };
   } catch (error) {
     // Return error in MCP format
+    console.error(`[RESOURCE] Error: ${uri}`, error instanceof Error ? error.message : error);
     if (error instanceof Error) {
       throw new Error(`Resource not found: ${uri}. ${error.message}`);
     }

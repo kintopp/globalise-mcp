@@ -2,6 +2,26 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.11.0] - 2025-12-29
+
+### Removed
+- **Resources streamlined**: Removed redundant `globalise://corpus/stats` and `globalise://languages` resources
+  - Corpus statistics and language information are more efficiently retrieved via tool calls
+  - Use `query="*"` with `size=1` to get aggregations without full document results
+  - Retained `globalise://help/query-syntax` as the single resource for static reference documentation
+- **Tool description cleanup**: Removed references to deleted resources from `globalise_search_by_inventory` and `globalise_search_by_language`
+
+### Technical
+- Removed `fetchCorpusStats()` and `fetchLanguages()` helper functions from `resources/index.ts`
+- Removed unused imports (`apiPost`, `buildUrl`, `API_CONFIG`, `SearchResponse`, `LRUCache`)
+- Simplified `readResource()` function to handle only query syntax resource
+- Added debug logging for resource reads: `[RESOURCE] Reading: <uri>` and `[RESOURCE] Success: <uri>`
+
+### Rationale
+Resources in MCP are designed for clients to proactively inject context into LLM prompts. Current MCP clients (including Claude Desktop) do not implement this behavior, making dynamic data resources redundant when the same data can be retrieved via tool calls. Static reference documentation (query syntax) remains valuable as a resource.
+
+---
+
 ## [1.10.0] - 2025-12-27
 
 ### Added

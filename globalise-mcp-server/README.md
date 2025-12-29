@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server for searching and retrieving historical transcriptions from the Dutch East India Company (VOC) provided by the GLOBALISE project.
 
-**Version:** 1.10.0
+**Version:** 1.11.0
 **MCP Specification:** 2025-11-25
 
 ## Overview
@@ -79,25 +79,22 @@ Features:
 - Returns inventory distribution counts
 - For filtering by a document's language
 
-### 3 Resources (v1.9.0)
+### 1 Resource (v1.11.0)
 
 Resources provide application-controlled context that clients can read before making tool calls.
 
 | Resource URI | Description |
 |--------------|-------------|
-| `globalise://corpus/stats` | Corpus overview: total documents, language distribution, top inventories |
-| `globalise://languages` | Complete language index with ISO codes, counts, and usage notes |
 | `globalise://help/query-syntax` | Query syntax reference guide (Markdown) |
 
-**How Resources differ from Tools:**
-- **Resources** are application-controlled — the server decides what context to provide
-- **Tools** are model-controlled — the LLM decides when to invoke them
-- Resources are cached (10 min TTL) for performance
+**Note:** Corpus statistics and language information are available through tool calls rather than resources, as they can be efficiently retrieved using `query="*"` with `size=1` to get aggregations without full document results.
+
+**Status:** Resources are a work in progress. Additional resources for common reference data may be added in future versions based on client adoption and usage patterns.
 
 **Reading a resource:**
 ```bash
 # Via MCP protocol
-{"method": "resources/read", "params": {"uri": "globalise://corpus/stats"}}
+{"method": "resources/read", "params": {"uri": "globalise://help/query-syntax"}}
 ```
 
 ### Getting Statistics & Aggregations
@@ -608,7 +605,7 @@ This server complies with the **MCP 2025-11-25 specification**:
 - JSON-RPC 2.0 message format
 - Stdio transport for local usage
 - Tools capability with 5 optimized tools
-- Resources capability with 3 context resources (v1.9.0)
+- Resources capability with query syntax reference (v1.11.0)
 - Proper error handling with `isError: true`
 
 ✅ **Tool Best Practices:**

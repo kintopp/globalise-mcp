@@ -9,15 +9,6 @@
  */
 
 import { Resource, TextResourceContents } from '@modelcontextprotocol/sdk/types.js';
-import { apiPost, buildUrl, API_CONFIG, configCache, getCachedApiGet } from '../utils/api-client.js';
-import { SearchResponse } from '../utils/types.js';
-import { LRUCache } from '../utils/cache.js';
-
-/**
- * Cache for resource data (corpus stats, languages)
- * 10 minute TTL since this data changes infrequently
- */
-const resourceCache = new LRUCache<unknown>(10, 600000);
 
 /**
  * Resource definitions
@@ -30,22 +21,6 @@ const resourceCache = new LRUCache<unknown>(10, 600000);
  */
 export const RESOURCES: Resource[] = [
   {
-    uri: 'globalise://corpus/stats',
-    name: 'Corpus Statistics',
-    description:
-      'Overview of the GLOBALISE corpus including total document count, ' +
-      'language distribution, and top inventories. Updated from live API.',
-    mimeType: 'application/json',
-  },
-  {
-    uri: 'globalise://languages',
-    name: 'Language Index',
-    description:
-      'All languages in the corpus with ISO codes, labels, and document counts. ' +
-      'Use this to understand language distribution before filtering searches.',
-    mimeType: 'application/json',
-  },
-  {
     uri: 'globalise://help/query-syntax',
     name: 'Query Syntax Reference',
     description:
@@ -54,125 +29,6 @@ export const RESOURCES: Resource[] = [
     mimeType: 'text/markdown',
   },
 ];
-
-/**
- * Fetch corpus statistics using aggregation query
- *
- * Uses the pattern: query="*" with size=1 to get aggregations
- * without retrieving full document results.
- */
-async function fetchCorpusStats(): Promise<Record<string, unknown>> {
-  const cacheKey = 'corpus-stats';
-  const cached = resourceCache.get(cacheKey);
-  if (cached) {
-    return cached as Record<string, unknown>;
-  }
-
-  // Build aggregation request
-  const url = buildUrl(
-    `${API_CONFIG.BROCCOLI_BASE_URL}/projects/globalise/search`,
-    {
-      indexName: API_CONFIG.DEFAULT_INDEX,
-      from: 0,
-      size: 1, // Minimal results, we want aggregations
-    }
-  );
-
-  const response = await apiPost<SearchResponse>(url, {
-    text: '*', // Match all documents
-    terms: {},
-    aggs: {
-      invNr: { order: 'countDesc', size: 20 },
-      langIso: { order: 'countDesc', size: 50 },
-      langLabel: { order: 'countDesc', size: 50 },
-    },
-  });
-
-  // Transform to clean statistics format
-  const stats = {
-    totalDocuments: response.total.value,
-    totalRelation: response.total.relation, // 'eq' or 'gte'
-    index: API_CONFIG.DEFAULT_INDEX,
-    languages: response.aggs?.langIso
-      ? Object.entries(response.aggs.langIso).map(([code, count]) => {
-          // Find matching label
-          const labelEntry = response.aggs?.langLabel
-            ? Object.entries(response.aggs.langLabel).find(([, c]) => c === count)
-            : undefined;
-          return {
-            code,
-            label: labelEntry?.[0] || code,
-            count,
-          };
-        })
-      : [],
-    topInventories: response.aggs?.invNr
-      ? Object.entries(response.aggs.invNr)
-          .map(([invNr, count]) => ({ inventoryNumber: invNr, count }))
-          .slice(0, 10)
-      : [],
-    fetchedAt: new Date().toISOString(),
-  };
-
-  resourceCache.set(cacheKey, stats);
-  return stats;
-}
-
-/**
- * Fetch language index with detailed information
- */
-async function fetchLanguages(): Promise<Record<string, unknown>> {
-  const cacheKey = 'languages';
-  const cached = resourceCache.get(cacheKey);
-  if (cached) {
-    return cached as Record<string, unknown>;
-  }
-
-  // Get corpus stats first (reuses cache if available)
-  const stats = await fetchCorpusStats();
-  const languages = stats.languages as Array<{ code: string; label: string; count: number }>;
-
-  // Enrich with notes about specific languages
-  const enrichedLanguages = languages.map((lang) => {
-    const notes: string[] = [];
-
-    // Add notes for special cases
-    if (lang.code === 'unknown') {
-      notes.push('Language not yet classified (not unidentifiable)');
-    }
-    if (lang.code === 'art') {
-      notes.push('Cipher: Encrypted Dutch text using artificial/constructed language code');
-    }
-    if (['fas', 'ben', 'tam', 'sin', 'lzh', 'jpn', 'guj', 'bug', 'chu', 'grc', 'hbo'].includes(lang.code)) {
-      notes.push('Non-Roman script: Transcriptions may be unreliable. Use page scan links.');
-    }
-    if (lang.code === 'msa') {
-      notes.push('Malay macrolanguage: Some pages may use non-Roman script. Use page scan links.');
-    }
-
-    return {
-      ...lang,
-      notes: notes.length > 0 ? notes : undefined,
-    };
-  });
-
-  const result = {
-    totalLanguages: enrichedLanguages.length,
-    languages: enrichedLanguages,
-    notes: {
-      classification:
-        'Languages are automatically classified. "unknown" means not yet classified.',
-      nonRomanScripts:
-        'The corpus was transcribed using a Latin-character-only model. Non-Roman script transcriptions are unreliable.',
-      cipher:
-        'Code "art" (artificial language) is used for encrypted Dutch documents.',
-    },
-    fetchedAt: new Date().toISOString(),
-  };
-
-  resourceCache.set(cacheKey, result);
-  return result;
-}
 
 /**
  * Static query syntax reference content
@@ -264,34 +120,12 @@ query: "\"Verenigde Oost-Indische Compagnie\""
 /**
  * Read a resource by URI
  *
- * @param uri - The resource URI (e.g., "globalise://corpus/stats")
+ * @param uri - The resource URI (e.g., "globalise://help/query-syntax")
  * @returns Resource contents in the appropriate format
  * @throws Error if resource not found
  */
 export async function readResource(uri: string): Promise<TextResourceContents[]> {
   switch (uri) {
-    case 'globalise://corpus/stats': {
-      const stats = await fetchCorpusStats();
-      return [
-        {
-          uri,
-          mimeType: 'application/json',
-          text: JSON.stringify(stats, null, 2),
-        },
-      ];
-    }
-
-    case 'globalise://languages': {
-      const languages = await fetchLanguages();
-      return [
-        {
-          uri,
-          mimeType: 'application/json',
-          text: JSON.stringify(languages, null, 2),
-        },
-      ];
-    }
-
     case 'globalise://help/query-syntax': {
       return [
         {
