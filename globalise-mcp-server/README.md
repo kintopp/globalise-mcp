@@ -11,7 +11,7 @@ This MCP server provides access to ~4.8 million transcribed pages from the so-ca
 
 ## Features
 
-### 5 Tools + 3 Resources
+### 5 Tools + 1 Resource
 
 All tools include:
 - **Input validation** with clear error messages
@@ -79,17 +79,15 @@ Features:
 - Returns inventory distribution counts
 - For filtering by a document's language
 
-### 1 Resource (v1.11.0)
+### Resource
 
 Resources provide application-controlled context that clients can read before making tool calls.
 
 | Resource URI | Description |
 |--------------|-------------|
-| `globalise://help/query-syntax` | Query syntax reference guide (Markdown) |
+| `globalise://help/query-syntax` | Transcriptions Viewer query reference guide |
 
-**Note:** Corpus statistics and language information are available through tool calls rather than resources, as they can be efficiently retrieved using `query="*"` with `size=1` to get aggregations without full document results.
-
-**Status:** Resources are a work in progress. Additional resources for common reference data may be added in future versions based on client adoption and usage patterns.
+**Status:** Resources are a work in progress. Additional resources may be added in future versions.
 
 **Reading a resource:**
 ```bash
