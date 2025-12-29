@@ -228,7 +228,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.11.0',
+    version: '1.11.1',
   },
   {
     capabilities: {

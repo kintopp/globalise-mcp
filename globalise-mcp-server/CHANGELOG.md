@@ -2,6 +2,15 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.11.1] - 2025-12-29
+
+### Fixed
+- **Language aggregation mapping**: Fixed incorrect ISO-to-label mapping that compared counts instead of codes. Now uses static `ISO_TO_LABEL` lookup table.
+- **Throttle race condition**: Fixed race condition where concurrent requests could bypass 100ms minimum spacing. Now uses promise queue to serialize access.
+- **Empty language array crash**: Fixed crash when empty array passed to `searchByLanguage`. Now validates via Zod schema that at least one language is specified.
+
+---
+
 ## [1.11.0] - 2025-12-29
 
 ### Removed
