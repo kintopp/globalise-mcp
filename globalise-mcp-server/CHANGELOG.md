@@ -2,6 +2,24 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.12.0] - 2025-12-30
+
+### Added
+- **VOC Weights and Measures resource**: New static reference resource for historical measurement units
+  - URI: `globalise://reference/weights-measures`
+  - Contains ~213 units with ~385 spelling variants from the Memoriën van Munten, Maaten, en Gewigten (1764-1771)
+  - JSON format with `_meta`, `units`, and `lookup` sections
+  - Enables query expansion (e.g., searching "gantang" should also find "ganting", "ting")
+  - Provides definitions and regional variations for contextual understanding
+  - Source: GLOBALISE Project (CC-BY-SA-4.0), https://hdl.handle.net/10622/MDNVH5
+
+### Technical
+- Added `weights-measures.json` data file to `src/resources/`
+- Resource loaded at module initialization via `readFileSync`
+- Follows same pattern as existing query-syntax resource
+
+---
+
 ## [1.11.1] - 2025-12-29
 
 ### Fixed

@@ -9,6 +9,17 @@
  */
 
 import { Resource, TextResourceContents } from '@modelcontextprotocol/sdk/types.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Load weights-measures data at module initialization
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const WEIGHTS_MEASURES_DATA = readFileSync(
+  join(__dirname, 'weights-measures.json'),
+  'utf-8'
+);
 
 /**
  * Resource definitions
@@ -27,6 +38,19 @@ export const RESOURCES: Resource[] = [
       'Complete guide to GLOBALISE search query syntax including Boolean operators, ' +
       'wildcards, fuzzy matching, phrase search, and proximity operators.',
     mimeType: 'text/markdown',
+  },
+  {
+    uri: 'globalise://reference/weights-measures',
+    name: 'VOC Weights and Measures Glossary',
+    description:
+      'Historical units of weight, volume, length, and quantity used in Dutch East India Company (VOC) ' +
+      'trade records (1764-1771). Includes ~213 units with ~385 spelling variants from the Memoriën van ' +
+      'Munten, Maaten, en Gewigten. Use this to: (1) expand search queries with alternative spellings ' +
+      '(e.g., "gantang" also appears as "ganting", "ting"), (2) understand regional variations in ' +
+      'measurement systems, (3) interpret historical quantities. Note: Values varied by location, ' +
+      'commodity, and time period. Source: GLOBALISE Project (CC-BY-SA-4.0). ' +
+      'Full dataset: https://hdl.handle.net/10622/MDNVH5',
+    mimeType: 'application/json',
   },
 ];
 
@@ -132,6 +156,16 @@ export async function readResource(uri: string): Promise<TextResourceContents[]>
           uri,
           mimeType: 'text/markdown',
           text: QUERY_SYNTAX_CONTENT,
+        },
+      ];
+    }
+
+    case 'globalise://reference/weights-measures': {
+      return [
+        {
+          uri,
+          mimeType: 'application/json',
+          text: WEIGHTS_MEASURES_DATA,
         },
       ];
     }
