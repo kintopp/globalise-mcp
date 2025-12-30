@@ -144,8 +144,11 @@ query: "\"Verenigde Oost-Indische Compagnie\""
  * @throws Error if resource not found
  */
 export async function readResource(uri: string): Promise<TextResourceContents[]> {
+  const timestamp = new Date().toISOString();
+
   switch (uri) {
     case 'globalise://help/query-syntax': {
+      console.error(`[${timestamp}] 📖 Resource READ: query-syntax`);
       return [
         {
           uri,
@@ -156,6 +159,7 @@ export async function readResource(uri: string): Promise<TextResourceContents[]>
     }
 
     case 'globalise://reference/weights-measures': {
+      console.error(`[${timestamp}] ⚖️  Resource READ: weights-measures (${WEIGHTS_MEASURES_DATA.length} bytes)`);
       return [
         {
           uri,
@@ -166,6 +170,7 @@ export async function readResource(uri: string): Promise<TextResourceContents[]>
     }
 
     default:
+      console.error(`[${timestamp}] ❌ Resource NOT FOUND: ${uri}`);
       throw new Error(`Resource not found: ${uri}`);
   }
 }
