@@ -100,6 +100,67 @@ A `globalise_help` tool that the model can invoke to get:
 
 ---
 
+### MCP Resources: Discovery and Usage Gap (Testing Results)
+
+**Priority:** Low
+**Status:** Documented (2025-12-30)
+
+**Background:**
+MCP resources were added in v1.9.0 with resource read logging added in v1.13.0. Testing on 2025-12-30 revealed that resources are **never accessed** by Claude Desktop, even when the user explicitly asks questions that the resources could answer.
+
+**Testing Performed:**
+1. Started GLOBALISE MCP server locally and via Claude Desktop (stdio transport)
+2. User asked questions that resources could answer:
+   - "What wildcard operators does GLOBALISE support?" → `globalise://help/query-syntax`
+   - "What alternative spellings exist for 'gantang'?" → `globalise://reference/weights-measures`
+3. User explicitly requested resource read: "Read the globalise://reference/weights-measures resource..."
+
+**Results:**
+- ✅ Server started correctly, resources listed in `resources/list` response
+- ✅ Tools were called successfully (`globalise_search_transcriptions`)
+- ❌ **Zero `resources/read` requests** in logs (checked both server stderr and Claude Desktop logs)
+- ❌ When user explicitly mentioned resource URI, Claude Desktop interpreted it as a **file path** and tried to `cat` it
+
+**Key Finding:**
+Claude Desktop AI misunderstands resource URIs (`globalise://...`) as file paths, attempting bash commands like:
+```bash
+cat globalise://reference/weights-measures 2>/dev/null || echo "Resource not found"
+find /mnt -name "*weights*" -o -name "*measures*" -o -name "*globalise*"
+```
+
+Instead of calling the MCP protocol method `resources/read`, Claude treated the URI as a filesystem path.
+
+**Why Resources Aren't Used:**
+1. **AI autonomy gap**: Resources are passive - the AI must decide to read them, but has no clear heuristic for when to do so
+2. **No discovery mechanism**: Even when tool descriptions reference resources (e.g., `**REFERENCE:** Query syntax guide available at globalise://help/query-syntax`), Claude doesn't read them
+3. **No user affordance**: Users cannot directly trigger resource reads in Claude Desktop - no UI, no command
+4. **URI confusion**: Custom URI schemes aren't recognized as MCP protocol calls
+
+**Verification:**
+- ✅ Resource read logging implementation is **correct** (would work if called)
+- ✅ Resources are **properly advertised** via `resources/list`
+- ✅ Resource handler code is **functional** (`src/resources/index.ts:146-176`, `src/index.ts:270-289`)
+- ❌ Protocol method `resources/read` is **never invoked** by Claude Desktop
+
+**Implications:**
+1. Resources may not be useful in current MCP implementations (at least with Claude Desktop)
+2. Domain knowledge is better embedded in tool descriptions (as we currently do)
+3. The "help tool" idea (see section above) may be necessary if resource content needs to be accessible
+4. Resource logging is working but will likely never fire unless protocol changes or UI is added
+
+**Log Evidence:**
+See `/Users/bosse0000/Library/Logs/Claude/mcp-server-Globalise STDIO.log` - contains `tools/list`, `resources/list`, and multiple `tools/call` requests, but zero `resources/read` requests across multiple test sessions.
+
+**Related:**
+- Existing TODO item: "Explore Adding `globalise_help` Tool for Resource Discovery" (section above)
+- `offline/Understanding_MCP_Resources.md` Part 4 discusses resource discovery gap (written before this testing)
+- CHANGELOG v1.13.0: "Add resource read logging for tracking usage" (the logging that revealed this gap)
+
+**Decision:**
+Keep resources as-is for now (protocol compliance), but don't expect them to be used. If resource content needs to be accessible, consider converting to a tool or embedding in tool descriptions.
+
+---
+
 ### Review and Edit README.md
 
 **Priority:** Medium
