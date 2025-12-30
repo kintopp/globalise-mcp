@@ -1,1080 +1,1245 @@
 {
   "_meta": {
     "name": "VOC Weights & Measures Reference",
-    "version": "1.0",
+    "version": "2.0",
     "description": "Historical units of weight, volume, length, and quantity used in Dutch East India Company (VOC) trade records. Based on the Memoriën van Munten, Maaten, en Gewigten (1764-1771), administrative reports documenting local measurement systems across VOC settlements in Asia.",
     "source": "GLOBALISE Project, Huygens Institute",
     "source_url": "https://hdl.handle.net/10622/MDNVH5",
     "license": "CC-BY-SA-4.0",
     "citation": "Vellinga, Henrike; Nijman, Brecht; Kuruppath, Manjusha, 2024, 'GLOBALISE - Weights and Measures in the 18th Century Indian Ocean World', IISH Data Collection, V1",
     "units_count": 213,
-    "variants_count": 385
+    "variants_count": 385,
+    "structure": {
+      "units": "Each unit has label, type, and optional definitions array",
+      "definitions": "Each definition has text_nl (Dutch), text_en (English), and source citation - fields only present when data exists",
+      "lookup": "Maps spelling variants (lowercase) to unit IDs. For ambiguous terms (same spelling for different units), prefers the unit where this spelling is the preferred label"
+    }
   },
   "units": {
     "SU_0003": {
       "label": "Mutsje",
       "type": "volume",
-      "definition": "Measure of volume 1⁄8 mingelen, about 150 centiliters."
+      "definitions": [
+        {
+          "text_nl": "Inhoudsmaat, 1⁄8 mingelen, circa 150 centiliter.",
+          "text_en": "Measure of volume 1⁄8 mingelen, about 150 centiliters.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 79)"
+        },
+        {
+          "text_nl": "Inhoudsmaat natte waren, speciaal voor jenever: 1/8 mengel.",
+          "source": "(Verhoeff 1983, 116)"
+        }
+      ]
     },
     "SU_0007": {
       "label": "Bahar",
       "type": "weight",
-      "definition": "From Sanskrit, bahara, weight; a measure of weight widely used in Southeast Asia, 1 bahar = 3 pikul, or 170 kilograms, or 375 Dutch pounds; varying from place to place, but approximately 180 kilograms for pepper and 272 kilograms for cloves, but 7.25 kilograms when weighing gold. In the Moluccos Portuguese bahar was used with the equivalent of 550 Amsterdam pounds, a Javanese bahar was 220 pounds."
+      "definitions": [
+        {
+          "text_nl": "Inlandse inhoudsmaat, bevattende ongeveer 500 Amsterdams pond specerijen; het gewicht was afhankelijk van de soortelijke zwaarte. Als gewichtseenheid elders meestal 3 pikol of 375 pond. Op de Molukken bij het afwegen der kruidnagels werd de Portugese bahar gebruikt, 550 Hollandse pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 15)"
+        },
+        {
+          "text_nl": "Vanuit het Sanskrit, bahara, gewichtsmaat; een inlandse maat door heel zuidoost Azië gebruikt, 1 bahar = 3 pikul, of 170 kilo, of 375 Hollandse pond; varieerde van plaats tot plaats, was ongeveer 180 kilo peper en 272 kilo kruidnagel, maar 7.25 kilo voor goud. In de Molukken werd de Portugese bahar gebruikt met een equivalent van 550 Amsterdamse pond, en de Javaanse bahar was 220 pond.",
+          "text_en": "From Sanskrit, bahara, weight; a measure of weight widely used in Southeast Asia, 1 bahar = 3 pikul, or 170 kilograms, or 375 Dutch pounds; varying from place to place, but approximately 180 kilograms for pepper and 272 kilograms for cloves, but 7.25 kilograms when weighing gold. In the Moluccos Portuguese bahar was used with the equivalent of 550 Amsterdam pounds, a Javanese bahar was 220 pounds.",
+          "source": "(Lohanda et al. 2018, 22)"
+        }
+      ]
     },
     "SU_0011": {
       "label": "Pond (VOC)",
       "type": "weight",
-      "definition": "Measure of weight. The Amsterdam or Trooise (from Troyes) pound was 0.494 kilogrammes, the Delft, Antwerp or Brabantine pound were 0.4697 kilogrammes, the Cologne pount 0.4677 kilogram. The Amsterdam pound served as a standard weight."
+      "definitions": [
+        {
+          "text_nl": "GM2: gewicht; het Amsterdamse of Trooise (van Troyes) was 0,494 kilogram, het Delftse, Antwerpse of Brabantse 0,4697 kilogram, het Keulse 0,4677 kilogram. K: het Amsterdamse pond (lb.) diende als basisgewicht.",
+          "text_en": "Measure of weight. The Amsterdam or Trooise (from Troyes) pound was 0.494 kilogrammes, the Delft, Antwerp or Brabantine pound were 0.4697 kilogrammes, the Cologne pount 0.4677 kilogram. The Amsterdam pound served as a standard weight.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 92)"
+        },
+        {
+          "text_nl": "Gewicht: a) 16 ons, in waarde varierend van ca. 430 gram (Gents pond) tot 494 gram (Amsterdams waaggewicht). b) medicinaal pond: 12 ons.",
+          "source": "(Verhoeff 1983, 119)"
+        }
+      ]
     },
     "SU_0012": {
       "label": "Pond (Engels)",
       "type": "weight",
-      "definition": "Measure of weight. 9/20 of a kilogram"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid, 9/20 kilogram.",
+          "text_en": "Measure of weight. 9/20 of a kilogram",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 92)"
+        }
+      ]
     },
     "SU_0014": {
       "label": "Kan",
       "type": "volume",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Basisinhoudsmaat voor vloeistof, 1,51 liter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 58)"
+        }
+      ]
     },
     "SU_0015": {
       "label": "Compagnies Kan",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0017": {
       "label": "Kit",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0020": {
       "label": "Cojang",
       "type": "volume",
-      "definition": "Measure of weight, 1 koyang of rice is approximately 1750 kilograms, in Batavia it was 27-28 pikol; varied according to the area and the type of product, commonly about 3500 Dutch pounds or 1700 kilograms; for salt it was 40 pikul or 2420 kilograms, in the 17th century the VOC counted 1 koyang for 23 pikul, later 32 pikul. Weight of 30 pikul were approximately 1500 -2000 kilograms."
+      "definitions": [
+        {
+          "text_nl": "Inheemse maat in de Archipel, hoofdzakelijk gebruikt als rijstmaat, maar ook om het laadvermogen van vaartuigen aan te geven en dan gewoonlijk vertaald door last. In de zeventiende eeuw rekende de Compagnie een kojang op 23 pikol; later liep dat op tot 32 pikol. T2: last van 30 pikol, circa 1500-2000 kilogram. Maleis.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 63)"
+        },
+        {
+          "text_nl": "Gewichtseenheid, 1 koyang rijst is ongeveer 1750 kilo, in Batavia was het 27-28 pikol; varieerde per regio en type product, in het algemeen 3500 Hollandse ponden of 1700 kilo; voor zout was het 40 pikul of 2.420 kilo, in de 17e eeuw de VOC berekende 1 koyang voor 23 pikul, later 32 pikul. Gewicht van 30 pikul was ongeveer 1500-2000 kilogram.",
+          "text_en": "Measure of weight, 1 koyang of rice is approximately 1750 kilograms, in Batavia it was 27-28 pikol; varied according to the area and the type of product, commonly about 3500 Dutch pounds or 1700 kilograms; for salt it was 40 pikul or 2420 kilograms, in the 17th century the VOC counted 1 koyang for 23 pikul, later 32 pikul. Weight of 30 pikul were approximately 1500 -2000 kilograms.",
+          "source": "(Lohanda et al. 2018, 97)"
+        }
+      ]
     },
     "SU_0021": {
       "label": "Bos",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0022": {
       "label": "Heemraade-Bos",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0023": {
       "label": "Tjajang",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0024": {
       "label": "Kati",
       "type": "weight",
-      "definition": "A unit of weight, 1/100 pikol or about 600 grams. Kati on Banda weighs 5 3/4 pounds. Originally a chinese weight that was 16 taël. Malay käti."
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid, 1⁄100 pikol of ongeveer 6 hectogram. GM9: kati op Banda weegt 5 3⁄4 pond. A: gewichtseenheid van 625 gram. T4: een van oorsprong Chinees gewicht dat stond voor 16 taël, 1⁄100 pikol of circa 6 ons. Maleis käti.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 60)"
+        },
+        {
+          "text_nl": "Gewichtseenheid, 1⁄100 pikol of ongeveer 6 hectogram. Kati op Banda weegt 5 3⁄4 pond. Een van oorsprong Chinees gewicht dat stond voor 16 taël. Maleis käti.",
+          "text_en": "A unit of weight, 1/100 pikol or about 600 grams. Kati on Banda weighs 5 3/4 pounds. Originally a chinese weight that was 16 taël. Malay käti.",
+          "source": "(Lohanda et al. 2018, 92)"
+        }
+      ]
     },
     "SU_0026": {
       "label": "Rijnlandse Roede",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0027": {
       "label": "Rijnlandse Voet",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat; 31 centimeter. 12 duim is 1 voet; 12 of 16 voet is 1 roede.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 122)"
+        }
+      ]
     },
     "SU_0028": {
       "label": "Duim",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat, 1⁄11 voet of 2,6 centimeter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 41)"
+        },
+        {
+          "text_nl": "Lengtemaat: 1/10, 1/11 of 1/12 voet; ca. 2,5 cm.",
+          "source": "(Verhoeff 1983, 103)"
+        }
+      ]
     },
     "SU_0029": {
       "label": "Toembak",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0030": {
       "label": "Roede",
       "type": "area",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Met 'roede' werd ook de vierkante roede aangeduid.",
+          "source": "(Verhoeff 1983, 120)"
+        }
+      ]
     },
     "SU_0031": {
       "label": "Voet",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0032": {
       "label": "Taille",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengemaat: 1/16 el. De taille van de Haagse of Brabantse el, die vanaf 1725 officieel als 's lands el werd gebruikt, bedroeg 4,33 cm.",
+          "source": "(Verhoeff 1983, 125)"
+        }
+      ]
     },
     "SU_0033": {
       "label": "Ons",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "1. II,1: gewichtseenheid voor het wegen van edele metalen, 1⁄8 mark of 2 lood; 2. gewichtseenheid. I,2: 1⁄16 pond. GM3: 0,031 kilogram = 20 engels = 640 aas.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 82)"
+        },
+        {
+          "text_nl": "Gewicht: a) medicinaal gewicht: 1/12 pond. b) alle overige gewichten: 1/16 pond.",
+          "source": "(Verhoeff 1983, 117)"
+        }
+      ]
     },
     "SU_0034": {
       "label": "Loot",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid, 1⁄16 mark.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 70)"
+        },
+        {
+          "text_nl": "Gewicht: handelsgewicht: 1/32 pond, 10 engels.",
+          "source": "(Verhoeff 1983, 112)"
+        }
+      ]
     },
     "SU_0035": {
       "label": "Reaal",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0036": {
       "label": "Mark trois",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0037": {
       "label": "Stuivers",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0040": {
       "label": "Waterloot",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0041": {
       "label": "Mangely",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid voor het wegen van diamanten. Tamil manjadi, zaadkorrel van de adenanthera pavonina – vergelijk grein, dat ook een zaadkorrel was. De gewichten waren niet overal even zwaar, bijvoorbeeld 9, 12 of 131⁄2 in een pagode. Van de meest gebruikte waren volgens stapel 3023⁄4 mangelin gelijk aan 419 karaat. Dit komt vrij nauwkeurig overeen met de opgave van de Thévenot V, blz. 293: ‘Le poids principal des diamans est le mangelin; il pèse cinq grains et trois cinquièmes, et le carat ne pèse que quatre grains; et cing mangeins sont sept carats’. De Uytrekening daarentegen zegt, onder Golconda: ‘1 mangely is 13⁄8 caraat diamants gewigt’. Zie ook Yule-Burnell in voce mangelin. GM1: schommelend van 13⁄8 tot 11⁄2 karaat.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 72)"
+        }
+      ]
     },
     "SU_0042": {
       "label": "Karaat",
       "type": "weight",
-      "definition": "Gewicht in goud en zilverhandel: a) A'dam: 1/150 A'dams ons = 205,9 mg, vanaf eind 18e eeuw: 1/150 Hollands Troois ons = 205,1 mg […] c) (=goudkaraat): 1/160 Troois ons = 192.3 mg"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid bij het wegen van edele metalen, gelijk aan 1⁄24 mark en onderverdeeld in 12 grein. In de diamanthandel was een karaat 4 grein of ruim 1/5 gram. Voor de etymologie zie yule-burnell in voce carat.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 59)"
+        },
+        {
+          "text_en": "Gewicht in goud en zilverhandel: a) A'dam: 1/150 A'dams ons = 205,9 mg, vanaf eind 18e eeuw: 1/150 Hollands Troois ons = 205,1 mg […] c) (=goudkaraat): 1/160 Troois ons = 192.3 mg",
+          "source": "(Verhoeff 1983, 108)"
+        }
+      ]
     },
     "SU_0048": {
       "label": "Ammanam",
       "type": "quantities",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Hoeveelheid van 24.000 stuks op Ceylon, meest gezegd van areka- of pinangnoten. Op Ceylon had men ook nog grote ammanams van 27.000 tot 28.000 stuks, op Pulicat rekende men met ammanams van 20.000 stuks. De Versameling der Woorden stelt de ammanam op 26.000 stuks. Zie ook Stapel II, 2, blz. 391.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 12)"
+        }
+      ]
     },
     "SU_0060": {
       "label": "Calange",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid voor het wegen van parels en edelstenen, circa 7,2 gram. De onderverdeling was: 1 calange is 20 mangelin; 1 mangelin is 6 grein; 1 mangelin is 20 man; 1 man is 4 cani; 1 cani is 4 munderi.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 25)"
+        }
+      ]
     },
     "SU_0067": {
       "label": "Ceer",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid, niet overal gelijk. Meest 80 ropia-sicca, circa 1,7 pond. P: 1⁄40 men-i- sjah. Hindustani ser.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 29-30)"
+        }
+      ]
     },
     "SU_0069": {
       "label": "Cobido",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "De Indische ellemaat, niet overal even lang, maar gemiddeld circa 70 centimeter. Latijn cubitum = elleboog. Zie yule-burnell in voce covid.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 32-33)"
+        }
+      ]
     },
     "SU_0072": {
       "label": "Corge",
       "type": "quantities",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Bundel van 20 stuks geweven stoffen. Hindustani corge = 20. Zie yule-burnell in voce.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 34)"
+        }
+      ]
     },
     "SU_0082": {
       "label": "Amsterdamse el",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat, circa 69 centimeter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 41)"
+        },
+        {
+          "text_nl": "Lengtemaat: 68,8 cm.",
+          "source": "(Verhoeff 1983, 4)"
+        }
+      ]
     },
     "SU_0083": {
       "label": "Elle",
       "type": "length",
-      "definition": "European measure of length, used in the Asian textile trading. It was about 45 inches, or 0.688 metre."
+      "definitions": [
+        {
+          "text_nl": "Europese lengtemaat, gebruikt in de Aziatische textielhandel. Ongeveer 45 inches, of 0,688 meter",
+          "text_en": "European measure of length, used in the Asian textile trading. It was about 45 inches, or 0.688 metre.",
+          "source": "(Lohanda et al. 2018, 59)"
+        },
+        {
+          "text_nl": "Lengtemaat: speciaal voor textiel; ca. 0,70 m.",
+          "source": "(Verhoeff 1983, 103)"
+        }
+      ]
     },
     "SU_0084": {
       "label": "Engels",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid voor het wegen van edelgesteenten en edele metalen, 1⁄160 mark.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 42)"
+        },
+        {
+          "text_nl": "Gewicht: 1/320 pond, 1/20 ons.",
+          "source": "(Verhoeff 1983, 104)"
+        }
+      ]
     },
     "SU_0095": {
       "label": "Gantang",
       "type": "weight",
-      "definition": "Measure of weight, with regional variations. On West and Mid Java it was regarded as 1/10 pikol (10 kati, around 12 pounds); on East Java only 5 kati. On Borneo gantangs were 4 1/2 pounds. In the regulations of Batavia it was stated as 13 1/3 pounds. In Mataram it was a weight of 8 pounds. On Ambon 17 1/2 pounds."
+      "definitions": [
+        {
+          "text_nl": "1. Gewicht, verschillend per landstreek. Op West- en Midden-Java gold het vrij algemeen als 1⁄10 pikol (10 kati, ongeveer 12 pond); op Oost-Java maar 5 kati. Op Borneo had men gantangs van 4 1⁄2 pond. In de Bataviasche Statuten werd het bepaald op 13 1⁄3 pond. Van Goens zegt dat in Mataram de gantang een gewicht was ‘wegende 8 pond’; de Versameling der Woorden daarentegen: ‘een rijs- of peepermaat, waervan 400 in een last gaan’, wat neerkomt op 7 1⁄2 kati of 9 pond. Verder zegt laatstgenoemde bron dat op Ambon een gantang 171⁄2 pond was, ‘dog op andere plaatse wel ligter’. Zie De Haan, Priangan II, blz. 691 noot 3; 2. inhoudsmaat (vooral voor rijst en peper) van ruim 8 1⁄2 liter. T4: inhoudsmaat van circa 3 liter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 46)"
+        },
+        {
+          "text_nl": "Gewicht, verschillend per landstreek. Op West- en Midden-Java gold het vrij algemeen als 1⁄10 pikol (10 kati, ongeveer 12 pond); op Oost-Java maar 5 kati. Op Borneo had men gantangs van 4 1⁄2 pond. In de Bataviasche Statuten werd het bepaald op 13 1⁄3 pond. In Mataram was het een gewicht van 8 pond. Op Ambon 17 1⁄2 pond.",
+          "text_en": "Measure of weight, with regional variations. On West and Mid Java it was regarded as 1/10 pikol (10 kati, around 12 pounds); on East Java only 5 kati. On Borneo gantangs were 4 1/2 pounds. In the regulations of Batavia it was stated as 13 1/3 pounds. In Mataram it was a weight of 8 pounds. On Ambon 17 1/2 pounds.",
+          "source": "(Lohanda et al. 2018, 64)"
+        }
+      ]
     },
     "SU_0098": {
       "label": "Ges",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat in Perzië en Voor- Indië, niet overal even lang, ook wel aangeduid als el (ook de cobido werd zo aangeduid, maar was niet identiek met de ges). Op Coromandel was de ges 1 1⁄4 Hollandse el (GM1: circa 92 centimeter); volgens Stapel II, 3 was een ges in Perzië 17⁄16 el Hollands; de Versameling der Woorden zegt: ‘ges maakt 11⁄2 el tot Gamron’. De Compagnie rekende de cobido op gemiddeld 70 centimeter, de ges op 94 centimeter (P: de lengte van de ges was waarschijnlijk 0,63 meter). Zie hotz, blz. 404-405, en Yule-Burnell in voce gudge.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 48)"
+        }
+      ]
     },
     "SU_0106": {
       "label": "Kandijl",
       "type": "weight",
-      "definition": "Load, as much as a team of oxen can carry; it was about 480 pond in Machilipatnam, in Golconda 520 pond. One kandijl = 4 picols = 1⁄5 last."
+      "definitions": [
+        {
+          "text_nl": "Last, zoveel als een span ossen dragen kan. Volgens Valentijn V , 1, blz. 70 is dat 480 pond, ‘doch van mineraal 520 pond’; volgens Havart I, blz. 187, is een kandijl op Machilipatnam 480 pond, op Golconda 520 pond. Havart III, blz. 26 zegt: ‘ijder os draagd twee honderd veertig ponden’. Eenmaal was er sprake van 540 pond en van 690 pond. Zie ook Yule-Burnell in voce candi. K: 470 of 500 Amsterdamse pond. GM2: 1 kandijl = 4 pikol = 1⁄5 last.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 59)"
+        },
+        {
+          "text_en": "Load, as much as a team of oxen can carry; it was about 480 pond in Machilipatnam, in Golconda 520 pond. One kandijl = 4 picols = 1⁄5 last.",
+          "source": "(Lohanda et al. 2018, 89)"
+        }
+      ]
     },
     "SU_0116": {
       "label": "Last",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Kojang. GM2: 1 last = 20 pikol (circa 1250 kilogram). K: gewoonlijk 3000 pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 67)"
+        },
+        {
+          "text_nl": "Inhoudsmaat droge waren, speciaal graan. Grootste graanmaat in een belangrijk deel van Nederland, het Amsterdamse last werd in de 16e eeuw de algemene graanmaat voor de grootahandel en het lastvan andere steden werd verondersteld even groot te zijn, meest was het last een twaalfvoud, soms een elfvoud van de maten waarin het was onderverdeeld; de metingen van zevenboom van het Amsterdamse schepel geven een vermoedelijke werkelijke waarde van het last van 109 x 27.914=3014.7 liter, een afronding op 3010 liter lijkt redelijk",
+          "source": "(Verhoeff 1983, 111)"
+        }
+      ]
     },
     "SU_0124": {
       "label": "Man",
       "type": "weight",
-      "definition": "In West Asia wellknown term for a unity of different weight. In Arabia one man was known as 2 5/8 Dutch pounds, but there were also man of 20, 24, 36, 53, 68 and 74 pounds. It differed not only by country, but also by type of goods. For example, the indigo was mostly sold in mans of 36, the sulphur in man of 68 pond. In the same country sometimes two different values for a man were used, so in Gujarat one big man of 36 1/2 pound and a small man of 34 1/2 pound. Regardless of the local value, one man was always divided into 40 ceer; 10 man was one frasel, 150 man was one bahar. The word was not from the Portuguese moa = hand, but has an old Mesopotamian origin and appears in classic greek and Latin as mina."
+      "definitions": [
+        {
+          "text_nl": "1. In geheel West-Azië bekende naam voor een gewichtseenheid van de meest uiteenlopende zwaarte. In Arabië kende men een man van 25⁄8 pond Hollands, maar er waren ook mans van 20, 24, 36, 53, 68 en 74 pond. Het verschil werd niet slechts bepaald naar het land, maar ook door de te wegen koopwaar. Zo werd de indigo meest verkocht in mans van 36, de salpeter daarentegen in mans van 68 pond. In eenzelfde land had men soms twee soorten mans; zo kende men in Gudjarat een grote man van 36 1⁄2 pond en een kleine man van 341 ⁄2 pond. Onafhankelijk van de plaatselijke waarde was de man verdeeld in 40 ceer. 10 Man was een frasel, 150 man een bahar. Het woord man is niet het Portugese moa = hand, maar van oud-Mesopotamische oorsprong en komt reeds in het klassieke Grieks voor en in het Latijn als mina. Zie Yule-Burnell in voce maund; ook Hotz, blz. 410. 2. gewichtseenheid voor parels, 1⁄20 mangelin*.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 72)"
+        },
+        {
+          "text_nl": "In geheel West-Azië bekende naam voor een gewichtseenheid van de meest uiteenlopende zwaarte. In Arabië kende men een man van 2 5⁄8 pond Hollands, maar er waren ook mans van 20, 24, 36, 53, 68 en 74 pond. Het verschil werd niet slechts bepaald naar het land, maar ook door de te wegen koopwaar. Zo werd de indigo meest verkocht in mans van 36, de salpeter daarentegen in mans van 68 pond. In eenzelfde land had men soms twee soorten mans; zo kende men in Gudjarat een grote man van 36 1⁄2 pond en een kleine man van 34 1⁄2 pond. Onafhankelijk van de plaatselijke waarde was de man verdeeld in 40 ceer. 10 Man was een frasel, 150 man een bahar. Het woord man is niet het Portugese moa = hand, maar van oud- Mesopotamische oorsprong en komt reeds in het klassieke Grieks voor en in het Latijn als mina.",
+          "text_en": "In West Asia wellknown term for a unity of different weight. In Arabia one man was known as 2 5/8 Dutch pounds, but there were also man of 20, 24, 36, 53, 68 and 74 pounds. It differed not only by country, but also by type of goods. For example, the indigo was mostly sold in mans of 36, the sulphur in man of 68 pond. In the same country sometimes two different values for a man were used, so in Gujarat one big man of 36 1/2 pound and a small man of 34 1/2 pound. Regardless of the local value, one man was always divided into 40 ceer; 10 man was one frasel, 150 man was one bahar. The word was not from the Portuguese moa = hand, but has an old Mesopotamian origin and appears in classic greek and Latin as mina.",
+          "source": "(Lohanda et al. 2018, 109)"
+        }
+      ]
     },
     "SU_0126": {
       "label": "Mark",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid voor het wegen van goud, zilver en edelgesteenten. Niet overal even zwaar, maar meest 230,4 gram, en dan genoemd mark-troys, naar de stad Troyes in Frank- rijk. Er zijn verschillende onderverdelingen: 1 mark (fijns) = 12 penningen* = 24 karaat* = 288 grein* = 4920 milligram; 1 mark = 8 once* = 16 lood* = 64 quent* = 160 engels* = 5120 ase*; 1 mark = 10 mat*. Ook in de geneeskunde was de mark een gewichts- eenheid. De onderverdeling was daar: 1 mark = 8 oncen = 64 drachmen = 192 scrupel = 3840 grein. GM4: 1 mark = 16 lood = 288 grein.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 73)"
+        }
+      ]
     },
     "SU_0127": {
       "label": "Markal",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Maat voor granen; de inhoud aan graan had een gewicht van circa 12 ceer, circa 20,4 pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 73-4)"
+        }
+      ]
     },
     "SU_0149": {
       "label": "Parra",
       "type": "volume",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "1. Graanmaat, niet overal van dezelfde inhoud, zodat meest het gewicht erbij werd gevoegd. In Pulicat had men parra’s van 48, op Ceylon van 40, in Nagapattinam van 371⁄2 pond. In Pegu werd de rijst verhandeld bij parra’s van 52 pond. K: Malabars gewicht van 40 pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 87)"
+        }
+      ]
     },
     "SU_0155": {
       "label": "Pikol",
       "type": "weight",
-      "definition": "A man’s load, that can be carried on a yoke, regarded as 100 kati, approximately 60 to 62.5 kilograms, 125 to 133,3 pounds, two sacks taken as 60 kilograms for pepper, 125 Dutch pounds or 62 kilograms for tin, subdivided in 10 gantangs and 100 katis."
+      "definitions": [
+        {
+          "text_nl": "Draaglast; zoveel als een man aan een juk kan dragen, meest bepaald op 125 pond. Onderverdeeld in 10 gantang en 100 kati. Maleis pikul; pikulan = juk. P. stelt de pikol op 120 pond en maakt onderscheid in de pikol Siam en pikol Pegu van dat gewicht en de pikol Batavia en pikol Tayouan van 122 pond. K: 122 1⁄2 pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 91)"
+        },
+        {
+          "text_nl": "Draaglast; zoveel als een man aan een juk kan dragen, als 100 kati, ongeveer 60 tot 62.5 kilogram, 125 tot 133,3 pond, twee zakken peper zijnde 60 kilo, 125 Hollandse ponden of 62 kilo tin; onderverdeeld in 10 gantangs en 100 katis.",
+          "text_en": "A man’s load, that can be carried on a yoke, regarded as 100 kati, approximately 60 to 62.5 kilograms, 125 to 133,3 pounds, two sacks taken as 60 kilograms for pepper, 125 Dutch pounds or 62 kilograms for tin, subdivided in 10 gantangs and 100 katis.",
+          "source": "(Lohanda et al. 2018, 138)"
+        }
+      ]
     },
     "SU_0157": {
       "label": "Pint",
       "type": "volume",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Inhoudsmaat, 1⁄2 mingelen of 4 mutsjes, circa 0,6 liter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 91)"
+        }
+      ]
     },
     "SU_0172": {
       "label": "Roede",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat die lokaal vrij sterk varieerde; de Amsterdamse was 4,53 meter. K: Amsterdamse roede 13 of 16 voet; Rijnlandse roede 12 of 16 voet.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 98)"
+        },
+        {
+          "text_nl": "Door vrijwel het hele land bekende landmaat; zeer variabel, vooral door het verschillend aanta - van 7 tot 21 - voeten dat een roede kon bevatten.",
+          "source": "(Verhoeff 1983, 121)"
+        }
+      ]
     },
     "SU_0187": {
       "label": "Taël",
       "type": "weight",
-      "definition": "A measure of weight as well as a measure of coinage in several Eastern countries, like China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. As a weight measure the taël usually was 1/16 kati or about 37 1/2 grams. A weight like that formed the base for the coin system in Japan and was also called taël. This was divided in 10 maas = 100 condrin = 1000 rin (Japan had the decimal system). Until 1666 the Japanese taël was accounted for 57 stuiver, after that a decree by the Heren XVII instructed to fix the rate to 70 stuiver in order to bring some unification in the exchange of Indian coins. The Chinese taël was very similar to the Japanese, the value a little higher and set by the VOC to 80 stuiver. In Tonkin the taël was 1/16 kati as a weight measure; as a coin divided into 10 maas and 100 condrin, she was f 4,12 1/2 à f 4,25, because of higher silver level. In Siam the taël was as weight 1/20 kati or about 30 grams; as coin she was divided in 16 maas and 32 fuang. The value was over f 7. Also in Cambodja the taël was as weight 1/20 kati; as coin only f 3, because of less silver level. On Atjeh the golden taël was worth 4 rijksdaalder, divided into 16 golden maas. As silver coin there was also the Spanish reaal à 60 stuiver, divided into 8 silver maas. Also on Makassar there were golden taëls, divided into 16 golden maas that"
+      "definitions": [
+        {
+          "text_nl": "Zowel een gewichts- als een munteenheid in tal van oosterse landen, als China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. Als gewicht was de taël meest 1⁄16 kati of ongeveer 37 1⁄2 gram. Zodanig gewicht aan schuitzilver vormde in Japan de grondslag van het muntstelsel en werd eveneens taël genoemd. Deze was onderverdeeld in 10 maas = 100 condrin = 1000 rin (Japan had het decimale stelsel). Tot 1666 rekende men bij de Compagnie de Japanse taël op 57 stuiver, daarna werd ze ingevolge een instructie van Heren XVII, die enige eenheid in het zeer verwarde systeem van omrekening der Indische munten wilden brengen, gefixeerd op 70 stuiver. De Chinese taël kwam vrijwel met de Japanse overeen; de waarde was er iets hoger en werd bij de Compagnie berekend op 80 stuiver. In Tonkin was de taël als gewicht eveneens 1⁄16 kati; als munt, verdeeld in 10 maas en 100 condrin, gold ze ƒ 4,12 1⁄2 à ƒ 4,25, door hoger gehalte. In Siam was de taël als gewicht 1⁄20 kati of circa 30 gram; als munt was ze verdeeld in 16 maas en 32 fuang. De waarde was er ruim ƒ 7. Ook in Cambodja was de taël als gewicht 1⁄20 kati; als munt gold ze echter slechts ƒ 3, door minder gehal-te. Op Atjeh had men als munt de gouden taël ter waarde van 4 rijksdaalder, verdeeld in 16 gouden maas. Als zilvermunt had men daar nog de Spaanse reaal à 60 stuiver, onderverdeeld in 8 zilveren maas. Ook op Makassar had men gouden taëls, verdeeld in 16 gouden maas, welke laatste door de Compagnie werden aangenomen voor 30 stuiver. P: de taël gold (in Hindustan) 11 tot 13 ropia. T3: Chinees liang, Japans ryo.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 112)"
+        },
+        {
+          "text_nl": "Zowel een gewichts- als een munteenheid in tal van oosterse landen, als China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. Als gewicht was de taël meest 1⁄16 kati of ongeveer 37 1⁄2 gram. Zodanig gewicht aan schuitzilver vormde in Japan de grondslag van het muntstelsel en werd eveneens taël genoemd. Deze was onderverdeeld in 10 maas = 100 condrin = 1000 rin (Japan had het decimale stelsel). Tot 1666 rekende men bij de Compagnie de Japanse taël op 57 stuiver, daarna werd ze ingevolge een instructie van Heren XVII, die enige eenheid in het zeer verwarde systeem van omrekening der Indische munten wilden brengen, gefixeerd op 70 stuiver. De Chinese taël kwam vrijwel met de Japanse overeen; de waarde was er iets hoger en werd bij de Compagnie berekend op 80 stuiver. In Tonkin was de taël als gewicht eveneens 1⁄16 kati; als munt, verdeeld in 10 maas en 100 condrin, gold ze ƒ 4,12 1⁄2 à ƒ 4,25, door hoger gehalte. In Siam was de taël als gewicht 1⁄20 kati of circa 30 gram; als munt was ze verdeeld in 16 maas en 32 fuang. De waarde was er ruim ƒ 7. Ook in Cambodja was de taël als gewicht 1⁄20 kati; als munt gold ze echter slechts ƒ 3, door minder gehalte. Op Atjeh had men als munt de gouden taël ter waarde van 4 rijksdaalder, verdeeld in 16 gouden maas. Als zilvermunt had men daar nog de Spaanse reaal à 60 stuiver, onderverdeeld in 8 zilveren maas. Ook op Makassar had men gouden taëls, verdeeld in 16 gouden maas, welke laatste door de Compagnie werden aangenomen voor 30 stuiver. De taël gold (in Hindustan) was 11 tot 13 ropia waard.",
+          "text_en": "A measure of weight as well as a measure of coinage in several Eastern countries, like China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. As a weight measure the taël usually was 1/16 kati or about 37 1/2 grams. A weight like that formed the base for the coin system in Japan and was also called taël. This was divided in 10 maas = 100 condrin = 1000 rin (Japan had the decimal system). Until 1666 the Japanese taël was accounted for 57 stuiver, after that a decree by the Heren XVII instructed to fix the rate to 70 stuiver in order to bring some unification in the exchange of Indian coins. The Chinese taël was very similar to the Japanese, the value a little higher and set by the VOC to 80 stuiver. In Tonkin the taël was 1/16 kati as a weight measure; as a coin divided into 10 maas and 100 condrin, she was f 4,12 1/2 à f 4,25, because of higher silver level. In Siam the taël was as weight 1/20 kati or about 30 grams; as coin she was divided in 16 maas and 32 fuang. The value was over f 7. Also in Cambodja the taël was as weight 1/20 kati; as coin only f 3, because of less silver level. On Atjeh the golden taël was worth 4 rijksdaalder, divided into 16 golden maas. As silver coin there was also the Spanish reaal à 60 stuiver, divided into 8 silver maas. Also on Makassar there were golden taëls, divided into 16 golden maas that",
+          "source": "(Lohanda et al. 2018, 181-2)"
+        }
+      ]
     },
     "SU_0199": {
       "label": "Vadem",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat, 6 voet of 66 duim of circa 1,69 meter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 120)"
+        },
+        {
+          "text_nl": "Lengtemaat van 5 tot 6 voeten. […] grote vadem, in gebuirk bij marine en VOC: 6 Rijnlandsche voet = 1,88 meter.",
+          "source": "(Verhoeff 1983, 127)"
+        }
+      ]
     },
     "SU_0278": {
       "label": "Maat",
       "type": "volume",
-      "definition": ""
+      "definitions": [
+        {
+          "text_nl": "Betekenisvereniging tot een bepaalde maat. Vlaktemaat en inhoudsmaat droge waren.",
+          "source": "(Verhoeff 1983, 113)"
+        }
+      ]
     },
     "SU_0289": {
       "label": "Pak",
-      "type": "quantities",
-      "definition": ""
+      "type": "quantities"
     },
     "SU_0292": {
       "label": "pees",
       "type": "quantities",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Stuks. Afgekort als ps. Portugees peça, Frans pièce.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 89)"
+        }
+      ]
     },
     "SU_0343": {
       "label": "Tacker",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0344": {
       "label": "Vaam",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0345": {
       "label": "Halve kan",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0346": {
       "label": "Halve pint",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0347": {
       "label": "Quart Kan",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0348": {
       "label": "Halve Kit",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0349": {
       "label": "Java's Last",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0350": {
       "label": "Sanga",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0352": {
       "label": "Boschmaat",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0353": {
       "label": "Bamboes",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0354": {
       "label": "Clapperdop",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0356": {
       "label": "Goelak",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0357": {
       "label": "Rijnlandsche duim",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0358": {
       "label": "Fust",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0359": {
       "label": "Chioep",
-      "type": "misc",
-      "definition": ""
+      "type": "misc"
     },
     "SU_0360": {
       "label": "Voet",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Lengtemaat: a) Overal bekende lengtemaat, onderdeel van roede;bevat meest 10 of 12 duim en op enige plaatsen (o.a. Amsterdam, Breda, Haarlem) 11 duim; te Heerenveen 13 duim; vaak waren twee of meer voeten, voor verschillende doeleinden, in gebruik, hier te lande liepen de voeten uiteen 26.8 cm (Utrechtse stadsvoet) tot 32.6 cm (Friese koningsvoet) b) landmetersvoet of geometrische voet: de decimale voet (1/10 roede, 10 duim) die door landmeters werd gebruikt; bv bij de Rijnlandse roede: 37.67 cm",
+          "source": "(Verhoeff 1983, 130)"
+        }
+      ]
     },
     "SU_0361": {
       "label": "Coebang",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0362": {
       "label": "Boesoe",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0363": {
       "label": "Ropia",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0364": {
       "label": "Tampang",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0365": {
       "label": "Bidoor",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid op Malakka, speciaal gebruikt bij het afwegen van tin, gelijk aan 3 Hollandse pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 20)"
+        }
+      ]
     },
     "SU_0366": {
       "label": "Kipping",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0367": {
       "label": "Mediet",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0368": {
       "label": "Chioendoe",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0369": {
       "label": "Ammonam",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0370": {
       "label": "Coerni",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0371": {
       "label": "Cotty",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0372": {
       "label": "Ammonam",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0373": {
       "label": "Pelle",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0374": {
       "label": "Halve parra",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0375": {
       "label": "Dubbele Parra",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0376": {
       "label": "Halve mediet",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0377": {
       "label": "Halve markal",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0378": {
       "label": "Quart Markal",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0379": {
       "label": "Alak",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0380": {
       "label": "Chimmekit",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0382": {
       "label": "Cote",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0383": {
       "label": "Pallam",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0384": {
       "label": "Toelang",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0387": {
       "label": "Dubbele mediet",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0389": {
       "label": "Quart Parra",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0390": {
       "label": "Compagnies maon",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0391": {
       "label": "Bazaars Maon",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0392": {
       "label": "Maon Pakka",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0393": {
       "label": "Ceer Katja",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0394": {
       "label": "Bazaars Ceer",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0395": {
       "label": "Paens Ceerie",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0396": {
       "label": "Sjatak",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0397": {
       "label": "Thola Pakka",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0398": {
       "label": "Massa",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0399": {
       "label": "Anas Sikka",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0400": {
       "label": "Retti",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0401": {
       "label": "Neli",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0402": {
       "label": "Thola Katja",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0403": {
       "label": "Aas",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewicht: kleinste handelsgewicht, 1/10240 pond, 1/32 engels; afhankelijk van het pond varierend van 0,046 tot 0,048 gram",
+          "source": "(Verhoeff 1983, 99)"
+        }
+      ]
     },
     "SU_0404": {
       "label": "Pakka Retti",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0405": {
       "label": "Pouw",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0406": {
       "label": "Settak",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0407": {
       "label": "Tjitthur Maon",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0408": {
       "label": "Munts Maon",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0409": {
       "label": "Sikka Ropij",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0410": {
       "label": "Compagnies Cobido",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0411": {
       "label": "Bazaars Cobido",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0412": {
       "label": "Puntos",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0413": {
       "label": "Thola",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gewichtseenheid in Hindustan, circa 180 gram; onderverdeeld in 12 masha.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 115)"
+        }
+      ]
     },
     "SU_0414": {
       "label": "Ana",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0415": {
       "label": "Grijn",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "1. Gewicht: a) medicinaal gewicht: 1/5760 med. Pond, 1/20 scrupel b) diamantgewicht (ook wel in de parelhandel gebruikt): 1/4 karaat, ca 0.051 g c) ('Hollands grein') : bij enige auteurs synoniem voor aas 2. eenheid bij de vaststelling van gehalte: goud, verdeeld in 24 karaat a 12 grein; zilver, verdeeld in 12 pennign a 24 grein",
+          "source": "(Verhoeff 1983, 105)"
+        }
+      ]
     },
     "SU_0416": {
       "label": "Pantseras",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0417": {
       "label": "Sikka",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0418": {
       "label": "Ordinaire gos",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0419": {
       "label": "Alcatief gos",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0420": {
       "label": "Siccandrie",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0421": {
       "label": "Bazarie",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0422": {
       "label": "Koetika",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0424": {
       "label": "Maon Ketsja",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0425": {
       "label": "Ceer Pakka",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0426": {
       "label": "Harria",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0427": {
       "label": "Waal",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0428": {
       "label": "Tang",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0429": {
       "label": "Chouw",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0430": {
       "label": "Wassa",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0431": {
       "label": "Yard",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0432": {
       "label": "Tessoe",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0433": {
       "label": "Geeikte ges",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0434": {
       "label": "Basaarsges",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0435": {
       "label": "Kalsies",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0436": {
       "label": "Peis",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0437": {
       "label": "Once trois",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0438": {
       "label": "Pherra",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0439": {
       "label": "Souratsch Candyl",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0440": {
       "label": "Palie",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0441": {
       "label": "Souratsche Ceer",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0442": {
       "label": "Ges Souratsch",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0443": {
       "label": "Maon Suratsch",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0444": {
       "label": "Patti",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0445": {
       "label": "Frasila",
       "type": "weight",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Gebruikelijke gewichtseenheid in Arabië, 1⁄15 bahar. In het begin van de zeventiende eeuw was, volgens stapel, de frasel kennelijk circa 20 pond Hollands. Latere opgaven wijken daar vrij sterk van af. Bijvoorbeeld Huygelbosch zegt dat de basis van het Arabische gewichtsstelsel was de man of 25⁄8 pond Hollands; 10 man of 26 1⁄4 pond was 1 frasel. GM1: 1⁄25 bahar, die zelf een niet geheel vaste eenheid is; de frasel wisselt zo tussen 20 en 26 1⁄4 pond.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 44-45)"
+        }
+      ]
     },
     "SU_0446": {
       "label": "Wackeya",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0447": {
       "label": "Cafla",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0449": {
       "label": "Kel",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0450": {
       "label": "Thoman",
-      "type": "misc",
-      "definition": ""
+      "type": "misc"
     },
     "SU_0451": {
       "label": "Maas",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0452": {
       "label": "Groote balie",
       "type": "volume",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Inhoudsmaat voor natte waren en droge waren.",
+          "source": "(Verhoeff 1983, 100)"
+        }
+      ]
     },
     "SU_0453": {
       "label": "Pond (Frans)",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0454": {
       "label": "Conderyn",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0455": {
       "label": "Manderijns Cobido",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0456": {
       "label": "Winkeliers Cobido",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0457": {
       "label": "Timmermans Cobido",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0458": {
       "label": "Half musje",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0459": {
       "label": "Brootchiasche Ceer",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0460": {
       "label": "Ceer Bombaysch",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0461": {
       "label": "Maon (Engels)",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0462": {
       "label": "Casje",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0463": {
       "label": "Catjes Chinasch",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0464": {
       "label": "El",
-      "type": "area",
-      "definition": ""
+      "type": "area"
     },
     "SU_0465": {
       "label": "Canaat",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0466": {
       "label": "Zork",
-      "type": "misc",
-      "definition": ""
+      "type": "misc"
     },
     "SU_0467": {
       "label": "Mookje",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0468": {
       "label": "Avossi",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0469": {
       "label": "Hebreutie",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0470": {
       "label": "Ikje",
       "type": "length",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Japanse lengtemaat van 6 voet 3 duim, dat is 3 Nederlandse el, 1,909 meter.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 55)"
+        }
+      ]
     },
     "SU_0471": {
       "label": "Voet (Japans)",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0474": {
       "label": "Baal",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0475": {
       "label": "Gok",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0476": {
       "label": "Sigok",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0477": {
       "label": "Fiackgok",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0478": {
       "label": "Cingok",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0479": {
       "label": "Pagood",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0480": {
       "label": "Fanum",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0482": {
       "label": "Tok",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0483": {
       "label": "Garst",
       "type": "volume",
-      "definition": "(Dutch definition only in source)"
+      "definitions": [
+        {
+          "text_nl": "Inhoudsmaat voor rijst van variërende grootte op de kust van Coromandel. Telugu.",
+          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 46)"
+        }
+      ]
     },
     "SU_0484": {
       "label": "Callang",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0485": {
       "label": "Bhaar (Engels)",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0486": {
       "label": "Bhaar (Frans)",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0487": {
       "label": "Bhaar (Hollands)",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0488": {
       "label": "Wiese",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0489": {
       "label": "Quart mediet",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0490": {
       "label": "El (Engels)",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0491": {
       "label": "El (Frans)",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0492": {
       "label": "Nagapatnamse Maat",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0493": {
       "label": "Madrasse Garst",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0494": {
       "label": "Madrasse Markal",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0495": {
       "label": "Groote Candyl",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0496": {
       "label": "Kleine Candyl",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0497": {
       "label": "Groote Bhaar",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0498": {
       "label": "Kleine Bhaar",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0499": {
       "label": "Compagnies Pawa",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0500": {
       "label": "Tankan",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0501": {
       "label": "Dabboes",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0502": {
       "label": "Mauw",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0503": {
       "label": "Wisse",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0504": {
       "label": "Cotta nevel",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0505": {
       "label": "Patta nefel",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0506": {
       "label": "Qattie nevel",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0507": {
       "label": "Grote Wiese",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0508": {
       "label": "Kleine Wiese",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0509": {
       "label": "Manicom",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0510": {
       "label": "Tomb",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0511": {
       "label": "Garsje",
-      "type": "volume",
-      "definition": ""
+      "type": "volume"
     },
     "SU_0512": {
       "label": "Yze",
-      "type": "weight",
-      "definition": ""
+      "type": "weight"
     },
     "SU_0513": {
       "label": "Kleine Duim (Japans)",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0514": {
       "label": "Grote Duim (Japans)",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     },
     "SU_0515": {
       "label": "Kleine Voet (Japans)",
-      "type": "length",
-      "definition": ""
+      "type": "length"
     }
   },
   "lookup": {
@@ -1084,7 +1249,7 @@
     "alak": "SU_0379",
     "alcatief gos": "SU_0419",
     "ammanam": "SU_0048",
-    "ammonam": "SU_0048",
+    "ammonam": "SU_0369",
     "amsterdamse el": "SU_0082",
     "amsterdamse elle": "SU_0082",
     "ana": "SU_0414",
@@ -1132,7 +1297,7 @@
     "cattie": "SU_0024",
     "cattij": "SU_0024",
     "catty": "SU_0024",
-    "ceer": "SU_0459",
+    "ceer": "SU_0067",
     "ceer bombaysch": "SU_0460",
     "ceer katja": "SU_0393",
     "ceer ketsja": "SU_0393",
@@ -1260,7 +1425,7 @@
     "java's last": "SU_0349",
     "kalsie": "SU_0435",
     "kalsies": "SU_0435",
-    "kan": "SU_0015",
+    "kan": "SU_0014",
     "kandijl": "SU_0106",
     "karaat": "SU_0042",
     "kati": "SU_0024",
@@ -1387,7 +1552,7 @@
     "rijnlandse roede": "SU_0026",
     "rijnlandse voet": "SU_0027",
     "roe": "SU_0172",
-    "roede": "SU_0026",
+    "roede": "SU_0172",
     "roede rijnlandsch": "SU_0026",
     "roeij": "SU_0172",
     "ropia": "SU_0363",
@@ -1447,7 +1612,7 @@
     "tomb.": "SU_0510",
     "vaam": "SU_0344",
     "vadem": "SU_0199",
-    "voet": "SU_0027",
+    "voet": "SU_0360",
     "voet (japans)": "SU_0471",
     "voet rijnlandsch": "SU_0027",
     "waal": "SU_0427",

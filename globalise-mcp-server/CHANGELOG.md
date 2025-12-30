@@ -2,6 +2,33 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.13.0] - 2025-12-30
+
+### Changed
+- **BREAKING: Weights and Measures resource restructured** (v2.0 data format)
+  - Now preserves ALL definitions: Dutch (`text_nl`) and English (`text_en`) with scholarly source citations
+  - Previously only stored English definitions, losing 34 Dutch-only definitions
+  - Each unit can have multiple definition entries from different scholarly sources
+  - New structure: `definitions: [{ text_nl, text_en, source }, ...]`
+  - Units without definitions have no `definitions` field (cleaner JSON)
+
+### Fixed
+- **Ambiguous lookup terms**: 15 spelling variants that map to multiple units now consistently resolve to the unit where that spelling is the preferred label
+  - Example: "ceer" → SU_0067 (Ceer) rather than arbitrary regional variants
+  - Policy documented in `_meta.structure.lookup`
+
+### Added
+- **Validation scripts** for weights-measures data integrity:
+  - `scripts/validate-weights-measures.js` - Validates JSON against source TSVs
+  - `scripts/regenerate-weights-measures.js` - Regenerates JSON from source TSVs with consistent policy
+
+### Technical
+- JSON `_meta.version` bumped to "2.0" to reflect breaking structure change
+- 47 units now have definitions (13 with English, 47 with Dutch)
+- All 67 definition entries preserved with source citations
+
+---
+
 ## [1.12.0] - 2025-12-30
 
 ### Added
