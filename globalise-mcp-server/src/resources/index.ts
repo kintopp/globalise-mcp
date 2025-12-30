@@ -9,17 +9,10 @@
  */
 
 import { Resource, TextResourceContents } from '@modelcontextprotocol/sdk/types.js';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import weightsAndMeasures from './weights-measures.json' with { type: 'json' };
 
-// Load weights-measures data at module initialization
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const WEIGHTS_MEASURES_DATA = readFileSync(
-  join(__dirname, 'weights-measures.json'),
-  'utf-8'
-);
+// Pre-stringify for resource response
+const WEIGHTS_MEASURES_DATA = JSON.stringify(weightsAndMeasures, null, 2);
 
 /**
  * Resource definitions
