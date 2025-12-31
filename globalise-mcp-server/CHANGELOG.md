@@ -2,6 +2,24 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.16.0] - 2025-12-31
+
+### Changed
+- **Weights & Measures Resource v3.0**: Redesigned for LLM use (search + conversion assistance)
+  - Added 731 unit conversion records with human-readable ratios and context
+  - Example: `"1 Gantang = 13.33 Pond (VOC)"` with context `"rijst, Batavia"`
+  - Definitions now bilingual (nl/en) without scholarly source citations
+  - Kept SU_xxxx unit IDs for traceability to source dataset
+  - File size: 114 KB (was 57 KB)
+
+### Design Decisions
+- Dropped source citations from definitions (for scholarly use, refer to Dataverse)
+- Included full conversion table (was deferred to "phase 2")
+- Conversions include commodity and location context where available
+- Resource optimized for practical LLM use, not scholarly reference
+
+---
+
 ## [1.15.0] - 2025-12-31
 
 ### Added

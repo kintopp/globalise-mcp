@@ -1,18 +1,19 @@
 {
   "_meta": {
     "name": "VOC Weights & Measures Reference",
-    "version": "2.0",
-    "description": "Historical units of weight, volume, length, and quantity used in Dutch East India Company (VOC) trade records. Based on the Memoriën van Munten, Maaten, en Gewigten (1764-1771), administrative reports documenting local measurement systems across VOC settlements in Asia.",
+    "version": "3.0",
+    "description": "Historical units of weight, volume, length, and quantity used in Dutch East India Company (VOC) trade records. Based on the Memoriën van Munten, Maaten, en Gewigten (1764-1771). Use for query expansion and understanding historical measurements.",
     "source": "GLOBALISE Project, Huygens Institute",
     "source_url": "https://hdl.handle.net/10622/MDNVH5",
     "license": "CC-BY-SA-4.0",
     "citation": "Vellinga, Henrike; Nijman, Brecht; Kuruppath, Manjusha, 2024, 'GLOBALISE - Weights and Measures in the 18th Century Indian Ocean World', IISH Data Collection, V1",
     "units_count": 213,
     "variants_count": 385,
+    "conversions_count": 731,
     "structure": {
-      "units": "Each unit has label, type, and optional definitions array",
-      "definitions": "Each definition has text_nl (Dutch), text_en (English), and source citation - fields only present when data exists",
-      "lookup": "Maps spelling variants (lowercase) to unit IDs. For ambiguous terms (same spelling for different units), prefers the unit where this spelling is the preferred label"
+      "units": "Each unit has label, type, and optional definitions array (nl/en)",
+      "lookup": "Maps spelling variants (lowercase) to unit IDs for query expansion",
+      "conversions": "Unit conversion relationships with ratio and optional context (commodity, location)"
     }
   },
   "units": {
@@ -21,13 +22,11 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Inhoudsmaat, 1⁄8 mingelen, circa 150 centiliter.",
-          "text_en": "Measure of volume 1⁄8 mingelen, about 150 centiliters.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 79)"
+          "nl": "Inhoudsmaat, 1⁄8 mingelen, circa 150 centiliter.",
+          "en": "Measure of volume 1⁄8 mingelen, about 150 centiliters."
         },
         {
-          "text_nl": "Inhoudsmaat natte waren, speciaal voor jenever: 1/8 mengel.",
-          "source": "(Verhoeff 1983, 116)"
+          "nl": "Inhoudsmaat natte waren, speciaal voor jenever: 1/8 mengel."
         }
       ]
     },
@@ -36,13 +35,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Inlandse inhoudsmaat, bevattende ongeveer 500 Amsterdams pond specerijen; het gewicht was afhankelijk van de soortelijke zwaarte. Als gewichtseenheid elders meestal 3 pikol of 375 pond. Op de Molukken bij het afwegen der kruidnagels werd de Portugese bahar gebruikt, 550 Hollandse pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 15)"
+          "nl": "Inlandse inhoudsmaat, bevattende ongeveer 500 Amsterdams pond specerijen; het gewicht was afhankelijk van de soortelijke zwaarte. Als gewichtseenheid elders meestal 3 pikol of 375 pond. Op de Molukken bij het afwegen der kruidnagels werd de Portugese bahar gebruikt, 550 Hollandse pond."
         },
         {
-          "text_nl": "Vanuit het Sanskrit, bahara, gewichtsmaat; een inlandse maat door heel zuidoost Azië gebruikt, 1 bahar = 3 pikul, of 170 kilo, of 375 Hollandse pond; varieerde van plaats tot plaats, was ongeveer 180 kilo peper en 272 kilo kruidnagel, maar 7.25 kilo voor goud. In de Molukken werd de Portugese bahar gebruikt met een equivalent van 550 Amsterdamse pond, en de Javaanse bahar was 220 pond.",
-          "text_en": "From Sanskrit, bahara, weight; a measure of weight widely used in Southeast Asia, 1 bahar = 3 pikul, or 170 kilograms, or 375 Dutch pounds; varying from place to place, but approximately 180 kilograms for pepper and 272 kilograms for cloves, but 7.25 kilograms when weighing gold. In the Moluccos Portuguese bahar was used with the equivalent of 550 Amsterdam pounds, a Javanese bahar was 220 pounds.",
-          "source": "(Lohanda et al. 2018, 22)"
+          "nl": "Vanuit het Sanskrit, bahara, gewichtsmaat; een inlandse maat door heel zuidoost Azië gebruikt, 1 bahar = 3 pikul, of 170 kilo, of 375 Hollandse pond; varieerde van plaats tot plaats, was ongeveer 180 kilo peper en 272 kilo kruidnagel, maar 7.25 kilo voor goud. In de Molukken werd de Portugese bahar gebruikt met een equivalent van 550 Amsterdamse pond, en de Javaanse bahar was 220 pond.",
+          "en": "From Sanskrit, bahara, weight; a measure of weight widely used in Southeast Asia, 1 bahar = 3 pikul, or 170 kilograms, or 375 Dutch pounds; varying from place to place, but approximately 180 kilograms for pepper and 272 kilograms for cloves, but 7.25 kilograms when weighing gold. In the Moluccos Portuguese bahar was used with the equivalent of 550 Amsterdam pounds, a Javanese bahar was 220 pounds."
         }
       ]
     },
@@ -51,13 +48,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "GM2: gewicht; het Amsterdamse of Trooise (van Troyes) was 0,494 kilogram, het Delftse, Antwerpse of Brabantse 0,4697 kilogram, het Keulse 0,4677 kilogram. K: het Amsterdamse pond (lb.) diende als basisgewicht.",
-          "text_en": "Measure of weight. The Amsterdam or Trooise (from Troyes) pound was 0.494 kilogrammes, the Delft, Antwerp or Brabantine pound were 0.4697 kilogrammes, the Cologne pount 0.4677 kilogram. The Amsterdam pound served as a standard weight.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 92)"
+          "nl": "GM2: gewicht; het Amsterdamse of Trooise (van Troyes) was 0,494 kilogram, het Delftse, Antwerpse of Brabantse 0,4697 kilogram, het Keulse 0,4677 kilogram. K: het Amsterdamse pond (lb.) diende als basisgewicht.",
+          "en": "Measure of weight. The Amsterdam or Trooise (from Troyes) pound was 0.494 kilogrammes, the Delft, Antwerp or Brabantine pound were 0.4697 kilogrammes, the Cologne pount 0.4677 kilogram. The Amsterdam pound served as a standard weight."
         },
         {
-          "text_nl": "Gewicht: a) 16 ons, in waarde varierend van ca. 430 gram (Gents pond) tot 494 gram (Amsterdams waaggewicht). b) medicinaal pond: 12 ons.",
-          "source": "(Verhoeff 1983, 119)"
+          "nl": "Gewicht: a) 16 ons, in waarde varierend van ca. 430 gram (Gents pond) tot 494 gram (Amsterdams waaggewicht). b) medicinaal pond: 12 ons."
         }
       ]
     },
@@ -66,9 +61,8 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid, 9/20 kilogram.",
-          "text_en": "Measure of weight. 9/20 of a kilogram",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 92)"
+          "nl": "Gewichtseenheid, 9/20 kilogram.",
+          "en": "Measure of weight. 9/20 of a kilogram"
         }
       ]
     },
@@ -77,8 +71,7 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Basisinhoudsmaat voor vloeistof, 1,51 liter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 58)"
+          "nl": "Basisinhoudsmaat voor vloeistof, 1,51 liter."
         }
       ]
     },
@@ -95,13 +88,11 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Inheemse maat in de Archipel, hoofdzakelijk gebruikt als rijstmaat, maar ook om het laadvermogen van vaartuigen aan te geven en dan gewoonlijk vertaald door last. In de zeventiende eeuw rekende de Compagnie een kojang op 23 pikol; later liep dat op tot 32 pikol. T2: last van 30 pikol, circa 1500-2000 kilogram. Maleis.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 63)"
+          "nl": "Inheemse maat in de Archipel, hoofdzakelijk gebruikt als rijstmaat, maar ook om het laadvermogen van vaartuigen aan te geven en dan gewoonlijk vertaald door last. In de zeventiende eeuw rekende de Compagnie een kojang op 23 pikol; later liep dat op tot 32 pikol. T2: last van 30 pikol, circa 1500-2000 kilogram. Maleis."
         },
         {
-          "text_nl": "Gewichtseenheid, 1 koyang rijst is ongeveer 1750 kilo, in Batavia was het 27-28 pikol; varieerde per regio en type product, in het algemeen 3500 Hollandse ponden of 1700 kilo; voor zout was het 40 pikul of 2.420 kilo, in de 17e eeuw de VOC berekende 1 koyang voor 23 pikul, later 32 pikul. Gewicht van 30 pikul was ongeveer 1500-2000 kilogram.",
-          "text_en": "Measure of weight, 1 koyang of rice is approximately 1750 kilograms, in Batavia it was 27-28 pikol; varied according to the area and the type of product, commonly about 3500 Dutch pounds or 1700 kilograms; for salt it was 40 pikul or 2420 kilograms, in the 17th century the VOC counted 1 koyang for 23 pikul, later 32 pikul. Weight of 30 pikul were approximately 1500 -2000 kilograms.",
-          "source": "(Lohanda et al. 2018, 97)"
+          "nl": "Gewichtseenheid, 1 koyang rijst is ongeveer 1750 kilo, in Batavia was het 27-28 pikol; varieerde per regio en type product, in het algemeen 3500 Hollandse ponden of 1700 kilo; voor zout was het 40 pikul of 2.420 kilo, in de 17e eeuw de VOC berekende 1 koyang voor 23 pikul, later 32 pikul. Gewicht van 30 pikul was ongeveer 1500-2000 kilogram.",
+          "en": "Measure of weight, 1 koyang of rice is approximately 1750 kilograms, in Batavia it was 27-28 pikol; varied according to the area and the type of product, commonly about 3500 Dutch pounds or 1700 kilograms; for salt it was 40 pikul or 2420 kilograms, in the 17th century the VOC counted 1 koyang for 23 pikul, later 32 pikul. Weight of 30 pikul were approximately 1500 -2000 kilograms."
         }
       ]
     },
@@ -122,13 +113,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid, 1⁄100 pikol of ongeveer 6 hectogram. GM9: kati op Banda weegt 5 3⁄4 pond. A: gewichtseenheid van 625 gram. T4: een van oorsprong Chinees gewicht dat stond voor 16 taël, 1⁄100 pikol of circa 6 ons. Maleis käti.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 60)"
+          "nl": "Gewichtseenheid, 1⁄100 pikol of ongeveer 6 hectogram. GM9: kati op Banda weegt 5 3⁄4 pond. A: gewichtseenheid van 625 gram. T4: een van oorsprong Chinees gewicht dat stond voor 16 taël, 1⁄100 pikol of circa 6 ons. Maleis käti."
         },
         {
-          "text_nl": "Gewichtseenheid, 1⁄100 pikol of ongeveer 6 hectogram. Kati op Banda weegt 5 3⁄4 pond. Een van oorsprong Chinees gewicht dat stond voor 16 taël. Maleis käti.",
-          "text_en": "A unit of weight, 1/100 pikol or about 600 grams. Kati on Banda weighs 5 3/4 pounds. Originally a chinese weight that was 16 taël. Malay käti.",
-          "source": "(Lohanda et al. 2018, 92)"
+          "nl": "Gewichtseenheid, 1⁄100 pikol of ongeveer 6 hectogram. Kati op Banda weegt 5 3⁄4 pond. Een van oorsprong Chinees gewicht dat stond voor 16 taël. Maleis käti.",
+          "en": "A unit of weight, 1/100 pikol or about 600 grams. Kati on Banda weighs 5 3/4 pounds. Originally a chinese weight that was 16 taël. Malay käti."
         }
       ]
     },
@@ -141,8 +130,7 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat; 31 centimeter. 12 duim is 1 voet; 12 of 16 voet is 1 roede.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 122)"
+          "nl": "Lengtemaat; 31 centimeter. 12 duim is 1 voet; 12 of 16 voet is 1 roede."
         }
       ]
     },
@@ -151,12 +139,10 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat, 1⁄11 voet of 2,6 centimeter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 41)"
+          "nl": "Lengtemaat, 1⁄11 voet of 2,6 centimeter."
         },
         {
-          "text_nl": "Lengtemaat: 1/10, 1/11 of 1/12 voet; ca. 2,5 cm.",
-          "source": "(Verhoeff 1983, 103)"
+          "nl": "Lengtemaat: 1/10, 1/11 of 1/12 voet; ca. 2,5 cm."
         }
       ]
     },
@@ -169,8 +155,7 @@
       "type": "area",
       "definitions": [
         {
-          "text_nl": "Met 'roede' werd ook de vierkante roede aangeduid.",
-          "source": "(Verhoeff 1983, 120)"
+          "nl": "Met 'roede' werd ook de vierkante roede aangeduid."
         }
       ]
     },
@@ -183,8 +168,7 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengemaat: 1/16 el. De taille van de Haagse of Brabantse el, die vanaf 1725 officieel als 's lands el werd gebruikt, bedroeg 4,33 cm.",
-          "source": "(Verhoeff 1983, 125)"
+          "nl": "Lengemaat: 1/16 el. De taille van de Haagse of Brabantse el, die vanaf 1725 officieel als 's lands el werd gebruikt, bedroeg 4,33 cm."
         }
       ]
     },
@@ -193,12 +177,10 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "1. II,1: gewichtseenheid voor het wegen van edele metalen, 1⁄8 mark of 2 lood; 2. gewichtseenheid. I,2: 1⁄16 pond. GM3: 0,031 kilogram = 20 engels = 640 aas.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 82)"
+          "nl": "1. II,1: gewichtseenheid voor het wegen van edele metalen, 1⁄8 mark of 2 lood; 2. gewichtseenheid. I,2: 1⁄16 pond. GM3: 0,031 kilogram = 20 engels = 640 aas."
         },
         {
-          "text_nl": "Gewicht: a) medicinaal gewicht: 1/12 pond. b) alle overige gewichten: 1/16 pond.",
-          "source": "(Verhoeff 1983, 117)"
+          "nl": "Gewicht: a) medicinaal gewicht: 1/12 pond. b) alle overige gewichten: 1/16 pond."
         }
       ]
     },
@@ -207,12 +189,10 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid, 1⁄16 mark.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 70)"
+          "nl": "Gewichtseenheid, 1⁄16 mark."
         },
         {
-          "text_nl": "Gewicht: handelsgewicht: 1/32 pond, 10 engels.",
-          "source": "(Verhoeff 1983, 112)"
+          "nl": "Gewicht: handelsgewicht: 1/32 pond, 10 engels."
         }
       ]
     },
@@ -237,8 +217,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid voor het wegen van diamanten. Tamil manjadi, zaadkorrel van de adenanthera pavonina – vergelijk grein, dat ook een zaadkorrel was. De gewichten waren niet overal even zwaar, bijvoorbeeld 9, 12 of 131⁄2 in een pagode. Van de meest gebruikte waren volgens stapel 3023⁄4 mangelin gelijk aan 419 karaat. Dit komt vrij nauwkeurig overeen met de opgave van de Thévenot V, blz. 293: ‘Le poids principal des diamans est le mangelin; il pèse cinq grains et trois cinquièmes, et le carat ne pèse que quatre grains; et cing mangeins sont sept carats’. De Uytrekening daarentegen zegt, onder Golconda: ‘1 mangely is 13⁄8 caraat diamants gewigt’. Zie ook Yule-Burnell in voce mangelin. GM1: schommelend van 13⁄8 tot 11⁄2 karaat.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 72)"
+          "nl": "Gewichtseenheid voor het wegen van diamanten. Tamil manjadi, zaadkorrel van de adenanthera pavonina – vergelijk grein, dat ook een zaadkorrel was. De gewichten waren niet overal even zwaar, bijvoorbeeld 9, 12 of 131⁄2 in een pagode. Van de meest gebruikte waren volgens stapel 3023⁄4 mangelin gelijk aan 419 karaat. Dit komt vrij nauwkeurig overeen met de opgave van de Thévenot V, blz. 293: ‘Le poids principal des diamans est le mangelin; il pèse cinq grains et trois cinquièmes, et le carat ne pèse que quatre grains; et cing mangeins sont sept carats’. De Uytrekening daarentegen zegt, onder Golconda: ‘1 mangely is 13⁄8 caraat diamants gewigt’. Zie ook Yule-Burnell in voce mangelin. GM1: schommelend van 13⁄8 tot 11⁄2 karaat."
         }
       ]
     },
@@ -247,12 +226,10 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid bij het wegen van edele metalen, gelijk aan 1⁄24 mark en onderverdeeld in 12 grein. In de diamanthandel was een karaat 4 grein of ruim 1/5 gram. Voor de etymologie zie yule-burnell in voce carat.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 59)"
+          "nl": "Gewichtseenheid bij het wegen van edele metalen, gelijk aan 1⁄24 mark en onderverdeeld in 12 grein. In de diamanthandel was een karaat 4 grein of ruim 1/5 gram. Voor de etymologie zie yule-burnell in voce carat."
         },
         {
-          "text_en": "Gewicht in goud en zilverhandel: a) A'dam: 1/150 A'dams ons = 205,9 mg, vanaf eind 18e eeuw: 1/150 Hollands Troois ons = 205,1 mg […] c) (=goudkaraat): 1/160 Troois ons = 192.3 mg",
-          "source": "(Verhoeff 1983, 108)"
+          "en": "Gewicht in goud en zilverhandel: a) A'dam: 1/150 A'dams ons = 205,9 mg, vanaf eind 18e eeuw: 1/150 Hollands Troois ons = 205,1 mg […] c) (=goudkaraat): 1/160 Troois ons = 192.3 mg"
         }
       ]
     },
@@ -261,8 +238,7 @@
       "type": "quantities",
       "definitions": [
         {
-          "text_nl": "Hoeveelheid van 24.000 stuks op Ceylon, meest gezegd van areka- of pinangnoten. Op Ceylon had men ook nog grote ammanams van 27.000 tot 28.000 stuks, op Pulicat rekende men met ammanams van 20.000 stuks. De Versameling der Woorden stelt de ammanam op 26.000 stuks. Zie ook Stapel II, 2, blz. 391.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 12)"
+          "nl": "Hoeveelheid van 24.000 stuks op Ceylon, meest gezegd van areka- of pinangnoten. Op Ceylon had men ook nog grote ammanams van 27.000 tot 28.000 stuks, op Pulicat rekende men met ammanams van 20.000 stuks. De Versameling der Woorden stelt de ammanam op 26.000 stuks. Zie ook Stapel II, 2, blz. 391."
         }
       ]
     },
@@ -271,8 +247,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid voor het wegen van parels en edelstenen, circa 7,2 gram. De onderverdeling was: 1 calange is 20 mangelin; 1 mangelin is 6 grein; 1 mangelin is 20 man; 1 man is 4 cani; 1 cani is 4 munderi.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 25)"
+          "nl": "Gewichtseenheid voor het wegen van parels en edelstenen, circa 7,2 gram. De onderverdeling was: 1 calange is 20 mangelin; 1 mangelin is 6 grein; 1 mangelin is 20 man; 1 man is 4 cani; 1 cani is 4 munderi."
         }
       ]
     },
@@ -281,8 +256,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid, niet overal gelijk. Meest 80 ropia-sicca, circa 1,7 pond. P: 1⁄40 men-i- sjah. Hindustani ser.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 29-30)"
+          "nl": "Gewichtseenheid, niet overal gelijk. Meest 80 ropia-sicca, circa 1,7 pond. P: 1⁄40 men-i- sjah. Hindustani ser."
         }
       ]
     },
@@ -291,8 +265,7 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "De Indische ellemaat, niet overal even lang, maar gemiddeld circa 70 centimeter. Latijn cubitum = elleboog. Zie yule-burnell in voce covid.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 32-33)"
+          "nl": "De Indische ellemaat, niet overal even lang, maar gemiddeld circa 70 centimeter. Latijn cubitum = elleboog. Zie yule-burnell in voce covid."
         }
       ]
     },
@@ -301,8 +274,7 @@
       "type": "quantities",
       "definitions": [
         {
-          "text_nl": "Bundel van 20 stuks geweven stoffen. Hindustani corge = 20. Zie yule-burnell in voce.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 34)"
+          "nl": "Bundel van 20 stuks geweven stoffen. Hindustani corge = 20. Zie yule-burnell in voce."
         }
       ]
     },
@@ -311,12 +283,10 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat, circa 69 centimeter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 41)"
+          "nl": "Lengtemaat, circa 69 centimeter."
         },
         {
-          "text_nl": "Lengtemaat: 68,8 cm.",
-          "source": "(Verhoeff 1983, 4)"
+          "nl": "Lengtemaat: 68,8 cm."
         }
       ]
     },
@@ -325,13 +295,11 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Europese lengtemaat, gebruikt in de Aziatische textielhandel. Ongeveer 45 inches, of 0,688 meter",
-          "text_en": "European measure of length, used in the Asian textile trading. It was about 45 inches, or 0.688 metre.",
-          "source": "(Lohanda et al. 2018, 59)"
+          "nl": "Europese lengtemaat, gebruikt in de Aziatische textielhandel. Ongeveer 45 inches, of 0,688 meter",
+          "en": "European measure of length, used in the Asian textile trading. It was about 45 inches, or 0.688 metre."
         },
         {
-          "text_nl": "Lengtemaat: speciaal voor textiel; ca. 0,70 m.",
-          "source": "(Verhoeff 1983, 103)"
+          "nl": "Lengtemaat: speciaal voor textiel; ca. 0,70 m."
         }
       ]
     },
@@ -340,12 +308,10 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid voor het wegen van edelgesteenten en edele metalen, 1⁄160 mark.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 42)"
+          "nl": "Gewichtseenheid voor het wegen van edelgesteenten en edele metalen, 1⁄160 mark."
         },
         {
-          "text_nl": "Gewicht: 1/320 pond, 1/20 ons.",
-          "source": "(Verhoeff 1983, 104)"
+          "nl": "Gewicht: 1/320 pond, 1/20 ons."
         }
       ]
     },
@@ -354,13 +320,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "1. Gewicht, verschillend per landstreek. Op West- en Midden-Java gold het vrij algemeen als 1⁄10 pikol (10 kati, ongeveer 12 pond); op Oost-Java maar 5 kati. Op Borneo had men gantangs van 4 1⁄2 pond. In de Bataviasche Statuten werd het bepaald op 13 1⁄3 pond. Van Goens zegt dat in Mataram de gantang een gewicht was ‘wegende 8 pond’; de Versameling der Woorden daarentegen: ‘een rijs- of peepermaat, waervan 400 in een last gaan’, wat neerkomt op 7 1⁄2 kati of 9 pond. Verder zegt laatstgenoemde bron dat op Ambon een gantang 171⁄2 pond was, ‘dog op andere plaatse wel ligter’. Zie De Haan, Priangan II, blz. 691 noot 3; 2. inhoudsmaat (vooral voor rijst en peper) van ruim 8 1⁄2 liter. T4: inhoudsmaat van circa 3 liter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 46)"
+          "nl": "1. Gewicht, verschillend per landstreek. Op West- en Midden-Java gold het vrij algemeen als 1⁄10 pikol (10 kati, ongeveer 12 pond); op Oost-Java maar 5 kati. Op Borneo had men gantangs van 4 1⁄2 pond. In de Bataviasche Statuten werd het bepaald op 13 1⁄3 pond. Van Goens zegt dat in Mataram de gantang een gewicht was ‘wegende 8 pond’; de Versameling der Woorden daarentegen: ‘een rijs- of peepermaat, waervan 400 in een last gaan’, wat neerkomt op 7 1⁄2 kati of 9 pond. Verder zegt laatstgenoemde bron dat op Ambon een gantang 171⁄2 pond was, ‘dog op andere plaatse wel ligter’. Zie De Haan, Priangan II, blz. 691 noot 3; 2. inhoudsmaat (vooral voor rijst en peper) van ruim 8 1⁄2 liter. T4: inhoudsmaat van circa 3 liter."
         },
         {
-          "text_nl": "Gewicht, verschillend per landstreek. Op West- en Midden-Java gold het vrij algemeen als 1⁄10 pikol (10 kati, ongeveer 12 pond); op Oost-Java maar 5 kati. Op Borneo had men gantangs van 4 1⁄2 pond. In de Bataviasche Statuten werd het bepaald op 13 1⁄3 pond. In Mataram was het een gewicht van 8 pond. Op Ambon 17 1⁄2 pond.",
-          "text_en": "Measure of weight, with regional variations. On West and Mid Java it was regarded as 1/10 pikol (10 kati, around 12 pounds); on East Java only 5 kati. On Borneo gantangs were 4 1/2 pounds. In the regulations of Batavia it was stated as 13 1/3 pounds. In Mataram it was a weight of 8 pounds. On Ambon 17 1/2 pounds.",
-          "source": "(Lohanda et al. 2018, 64)"
+          "nl": "Gewicht, verschillend per landstreek. Op West- en Midden-Java gold het vrij algemeen als 1⁄10 pikol (10 kati, ongeveer 12 pond); op Oost-Java maar 5 kati. Op Borneo had men gantangs van 4 1⁄2 pond. In de Bataviasche Statuten werd het bepaald op 13 1⁄3 pond. In Mataram was het een gewicht van 8 pond. Op Ambon 17 1⁄2 pond.",
+          "en": "Measure of weight, with regional variations. On West and Mid Java it was regarded as 1/10 pikol (10 kati, around 12 pounds); on East Java only 5 kati. On Borneo gantangs were 4 1/2 pounds. In the regulations of Batavia it was stated as 13 1/3 pounds. In Mataram it was a weight of 8 pounds. On Ambon 17 1/2 pounds."
         }
       ]
     },
@@ -369,8 +333,7 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat in Perzië en Voor- Indië, niet overal even lang, ook wel aangeduid als el (ook de cobido werd zo aangeduid, maar was niet identiek met de ges). Op Coromandel was de ges 1 1⁄4 Hollandse el (GM1: circa 92 centimeter); volgens Stapel II, 3 was een ges in Perzië 17⁄16 el Hollands; de Versameling der Woorden zegt: ‘ges maakt 11⁄2 el tot Gamron’. De Compagnie rekende de cobido op gemiddeld 70 centimeter, de ges op 94 centimeter (P: de lengte van de ges was waarschijnlijk 0,63 meter). Zie hotz, blz. 404-405, en Yule-Burnell in voce gudge.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 48)"
+          "nl": "Lengtemaat in Perzië en Voor- Indië, niet overal even lang, ook wel aangeduid als el (ook de cobido werd zo aangeduid, maar was niet identiek met de ges). Op Coromandel was de ges 1 1⁄4 Hollandse el (GM1: circa 92 centimeter); volgens Stapel II, 3 was een ges in Perzië 17⁄16 el Hollands; de Versameling der Woorden zegt: ‘ges maakt 11⁄2 el tot Gamron’. De Compagnie rekende de cobido op gemiddeld 70 centimeter, de ges op 94 centimeter (P: de lengte van de ges was waarschijnlijk 0,63 meter). Zie hotz, blz. 404-405, en Yule-Burnell in voce gudge."
         }
       ]
     },
@@ -379,12 +342,10 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Last, zoveel als een span ossen dragen kan. Volgens Valentijn V , 1, blz. 70 is dat 480 pond, ‘doch van mineraal 520 pond’; volgens Havart I, blz. 187, is een kandijl op Machilipatnam 480 pond, op Golconda 520 pond. Havart III, blz. 26 zegt: ‘ijder os draagd twee honderd veertig ponden’. Eenmaal was er sprake van 540 pond en van 690 pond. Zie ook Yule-Burnell in voce candi. K: 470 of 500 Amsterdamse pond. GM2: 1 kandijl = 4 pikol = 1⁄5 last.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 59)"
+          "nl": "Last, zoveel als een span ossen dragen kan. Volgens Valentijn V , 1, blz. 70 is dat 480 pond, ‘doch van mineraal 520 pond’; volgens Havart I, blz. 187, is een kandijl op Machilipatnam 480 pond, op Golconda 520 pond. Havart III, blz. 26 zegt: ‘ijder os draagd twee honderd veertig ponden’. Eenmaal was er sprake van 540 pond en van 690 pond. Zie ook Yule-Burnell in voce candi. K: 470 of 500 Amsterdamse pond. GM2: 1 kandijl = 4 pikol = 1⁄5 last."
         },
         {
-          "text_en": "Load, as much as a team of oxen can carry; it was about 480 pond in Machilipatnam, in Golconda 520 pond. One kandijl = 4 picols = 1⁄5 last.",
-          "source": "(Lohanda et al. 2018, 89)"
+          "en": "Load, as much as a team of oxen can carry; it was about 480 pond in Machilipatnam, in Golconda 520 pond. One kandijl = 4 picols = 1⁄5 last."
         }
       ]
     },
@@ -393,12 +354,10 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Kojang. GM2: 1 last = 20 pikol (circa 1250 kilogram). K: gewoonlijk 3000 pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 67)"
+          "nl": "Kojang. GM2: 1 last = 20 pikol (circa 1250 kilogram). K: gewoonlijk 3000 pond."
         },
         {
-          "text_nl": "Inhoudsmaat droge waren, speciaal graan. Grootste graanmaat in een belangrijk deel van Nederland, het Amsterdamse last werd in de 16e eeuw de algemene graanmaat voor de grootahandel en het lastvan andere steden werd verondersteld even groot te zijn, meest was het last een twaalfvoud, soms een elfvoud van de maten waarin het was onderverdeeld; de metingen van zevenboom van het Amsterdamse schepel geven een vermoedelijke werkelijke waarde van het last van 109 x 27.914=3014.7 liter, een afronding op 3010 liter lijkt redelijk",
-          "source": "(Verhoeff 1983, 111)"
+          "nl": "Inhoudsmaat droge waren, speciaal graan. Grootste graanmaat in een belangrijk deel van Nederland, het Amsterdamse last werd in de 16e eeuw de algemene graanmaat voor de grootahandel en het lastvan andere steden werd verondersteld even groot te zijn, meest was het last een twaalfvoud, soms een elfvoud van de maten waarin het was onderverdeeld; de metingen van zevenboom van het Amsterdamse schepel geven een vermoedelijke werkelijke waarde van het last van 109 x 27.914=3014.7 liter, een afronding op 3010 liter lijkt redelijk"
         }
       ]
     },
@@ -407,13 +366,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "1. In geheel West-Azië bekende naam voor een gewichtseenheid van de meest uiteenlopende zwaarte. In Arabië kende men een man van 25⁄8 pond Hollands, maar er waren ook mans van 20, 24, 36, 53, 68 en 74 pond. Het verschil werd niet slechts bepaald naar het land, maar ook door de te wegen koopwaar. Zo werd de indigo meest verkocht in mans van 36, de salpeter daarentegen in mans van 68 pond. In eenzelfde land had men soms twee soorten mans; zo kende men in Gudjarat een grote man van 36 1⁄2 pond en een kleine man van 341 ⁄2 pond. Onafhankelijk van de plaatselijke waarde was de man verdeeld in 40 ceer. 10 Man was een frasel, 150 man een bahar. Het woord man is niet het Portugese moa = hand, maar van oud-Mesopotamische oorsprong en komt reeds in het klassieke Grieks voor en in het Latijn als mina. Zie Yule-Burnell in voce maund; ook Hotz, blz. 410. 2. gewichtseenheid voor parels, 1⁄20 mangelin*.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 72)"
+          "nl": "1. In geheel West-Azië bekende naam voor een gewichtseenheid van de meest uiteenlopende zwaarte. In Arabië kende men een man van 25⁄8 pond Hollands, maar er waren ook mans van 20, 24, 36, 53, 68 en 74 pond. Het verschil werd niet slechts bepaald naar het land, maar ook door de te wegen koopwaar. Zo werd de indigo meest verkocht in mans van 36, de salpeter daarentegen in mans van 68 pond. In eenzelfde land had men soms twee soorten mans; zo kende men in Gudjarat een grote man van 36 1⁄2 pond en een kleine man van 341 ⁄2 pond. Onafhankelijk van de plaatselijke waarde was de man verdeeld in 40 ceer. 10 Man was een frasel, 150 man een bahar. Het woord man is niet het Portugese moa = hand, maar van oud-Mesopotamische oorsprong en komt reeds in het klassieke Grieks voor en in het Latijn als mina. Zie Yule-Burnell in voce maund; ook Hotz, blz. 410. 2. gewichtseenheid voor parels, 1⁄20 mangelin*."
         },
         {
-          "text_nl": "In geheel West-Azië bekende naam voor een gewichtseenheid van de meest uiteenlopende zwaarte. In Arabië kende men een man van 2 5⁄8 pond Hollands, maar er waren ook mans van 20, 24, 36, 53, 68 en 74 pond. Het verschil werd niet slechts bepaald naar het land, maar ook door de te wegen koopwaar. Zo werd de indigo meest verkocht in mans van 36, de salpeter daarentegen in mans van 68 pond. In eenzelfde land had men soms twee soorten mans; zo kende men in Gudjarat een grote man van 36 1⁄2 pond en een kleine man van 34 1⁄2 pond. Onafhankelijk van de plaatselijke waarde was de man verdeeld in 40 ceer. 10 Man was een frasel, 150 man een bahar. Het woord man is niet het Portugese moa = hand, maar van oud- Mesopotamische oorsprong en komt reeds in het klassieke Grieks voor en in het Latijn als mina.",
-          "text_en": "In West Asia wellknown term for a unity of different weight. In Arabia one man was known as 2 5/8 Dutch pounds, but there were also man of 20, 24, 36, 53, 68 and 74 pounds. It differed not only by country, but also by type of goods. For example, the indigo was mostly sold in mans of 36, the sulphur in man of 68 pond. In the same country sometimes two different values for a man were used, so in Gujarat one big man of 36 1/2 pound and a small man of 34 1/2 pound. Regardless of the local value, one man was always divided into 40 ceer; 10 man was one frasel, 150 man was one bahar. The word was not from the Portuguese moa = hand, but has an old Mesopotamian origin and appears in classic greek and Latin as mina.",
-          "source": "(Lohanda et al. 2018, 109)"
+          "nl": "In geheel West-Azië bekende naam voor een gewichtseenheid van de meest uiteenlopende zwaarte. In Arabië kende men een man van 2 5⁄8 pond Hollands, maar er waren ook mans van 20, 24, 36, 53, 68 en 74 pond. Het verschil werd niet slechts bepaald naar het land, maar ook door de te wegen koopwaar. Zo werd de indigo meest verkocht in mans van 36, de salpeter daarentegen in mans van 68 pond. In eenzelfde land had men soms twee soorten mans; zo kende men in Gudjarat een grote man van 36 1⁄2 pond en een kleine man van 34 1⁄2 pond. Onafhankelijk van de plaatselijke waarde was de man verdeeld in 40 ceer. 10 Man was een frasel, 150 man een bahar. Het woord man is niet het Portugese moa = hand, maar van oud- Mesopotamische oorsprong en komt reeds in het klassieke Grieks voor en in het Latijn als mina.",
+          "en": "In West Asia wellknown term for a unity of different weight. In Arabia one man was known as 2 5/8 Dutch pounds, but there were also man of 20, 24, 36, 53, 68 and 74 pounds. It differed not only by country, but also by type of goods. For example, the indigo was mostly sold in mans of 36, the sulphur in man of 68 pond. In the same country sometimes two different values for a man were used, so in Gujarat one big man of 36 1/2 pound and a small man of 34 1/2 pound. Regardless of the local value, one man was always divided into 40 ceer; 10 man was one frasel, 150 man was one bahar. The word was not from the Portuguese moa = hand, but has an old Mesopotamian origin and appears in classic greek and Latin as mina."
         }
       ]
     },
@@ -422,8 +379,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid voor het wegen van goud, zilver en edelgesteenten. Niet overal even zwaar, maar meest 230,4 gram, en dan genoemd mark-troys, naar de stad Troyes in Frank- rijk. Er zijn verschillende onderverdelingen: 1 mark (fijns) = 12 penningen* = 24 karaat* = 288 grein* = 4920 milligram; 1 mark = 8 once* = 16 lood* = 64 quent* = 160 engels* = 5120 ase*; 1 mark = 10 mat*. Ook in de geneeskunde was de mark een gewichts- eenheid. De onderverdeling was daar: 1 mark = 8 oncen = 64 drachmen = 192 scrupel = 3840 grein. GM4: 1 mark = 16 lood = 288 grein.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 73)"
+          "nl": "Gewichtseenheid voor het wegen van goud, zilver en edelgesteenten. Niet overal even zwaar, maar meest 230,4 gram, en dan genoemd mark-troys, naar de stad Troyes in Frank- rijk. Er zijn verschillende onderverdelingen: 1 mark (fijns) = 12 penningen* = 24 karaat* = 288 grein* = 4920 milligram; 1 mark = 8 once* = 16 lood* = 64 quent* = 160 engels* = 5120 ase*; 1 mark = 10 mat*. Ook in de geneeskunde was de mark een gewichts- eenheid. De onderverdeling was daar: 1 mark = 8 oncen = 64 drachmen = 192 scrupel = 3840 grein. GM4: 1 mark = 16 lood = 288 grein."
         }
       ]
     },
@@ -432,8 +388,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Maat voor granen; de inhoud aan graan had een gewicht van circa 12 ceer, circa 20,4 pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 73-4)"
+          "nl": "Maat voor granen; de inhoud aan graan had een gewicht van circa 12 ceer, circa 20,4 pond."
         }
       ]
     },
@@ -442,8 +397,7 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "1. Graanmaat, niet overal van dezelfde inhoud, zodat meest het gewicht erbij werd gevoegd. In Pulicat had men parra’s van 48, op Ceylon van 40, in Nagapattinam van 371⁄2 pond. In Pegu werd de rijst verhandeld bij parra’s van 52 pond. K: Malabars gewicht van 40 pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 87)"
+          "nl": "1. Graanmaat, niet overal van dezelfde inhoud, zodat meest het gewicht erbij werd gevoegd. In Pulicat had men parra’s van 48, op Ceylon van 40, in Nagapattinam van 371⁄2 pond. In Pegu werd de rijst verhandeld bij parra’s van 52 pond. K: Malabars gewicht van 40 pond."
         }
       ]
     },
@@ -452,13 +406,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Draaglast; zoveel als een man aan een juk kan dragen, meest bepaald op 125 pond. Onderverdeeld in 10 gantang en 100 kati. Maleis pikul; pikulan = juk. P. stelt de pikol op 120 pond en maakt onderscheid in de pikol Siam en pikol Pegu van dat gewicht en de pikol Batavia en pikol Tayouan van 122 pond. K: 122 1⁄2 pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 91)"
+          "nl": "Draaglast; zoveel als een man aan een juk kan dragen, meest bepaald op 125 pond. Onderverdeeld in 10 gantang en 100 kati. Maleis pikul; pikulan = juk. P. stelt de pikol op 120 pond en maakt onderscheid in de pikol Siam en pikol Pegu van dat gewicht en de pikol Batavia en pikol Tayouan van 122 pond. K: 122 1⁄2 pond."
         },
         {
-          "text_nl": "Draaglast; zoveel als een man aan een juk kan dragen, als 100 kati, ongeveer 60 tot 62.5 kilogram, 125 tot 133,3 pond, twee zakken peper zijnde 60 kilo, 125 Hollandse ponden of 62 kilo tin; onderverdeeld in 10 gantangs en 100 katis.",
-          "text_en": "A man’s load, that can be carried on a yoke, regarded as 100 kati, approximately 60 to 62.5 kilograms, 125 to 133,3 pounds, two sacks taken as 60 kilograms for pepper, 125 Dutch pounds or 62 kilograms for tin, subdivided in 10 gantangs and 100 katis.",
-          "source": "(Lohanda et al. 2018, 138)"
+          "nl": "Draaglast; zoveel als een man aan een juk kan dragen, als 100 kati, ongeveer 60 tot 62.5 kilogram, 125 tot 133,3 pond, twee zakken peper zijnde 60 kilo, 125 Hollandse ponden of 62 kilo tin; onderverdeeld in 10 gantangs en 100 katis.",
+          "en": "A man’s load, that can be carried on a yoke, regarded as 100 kati, approximately 60 to 62.5 kilograms, 125 to 133,3 pounds, two sacks taken as 60 kilograms for pepper, 125 Dutch pounds or 62 kilograms for tin, subdivided in 10 gantangs and 100 katis."
         }
       ]
     },
@@ -467,8 +419,7 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Inhoudsmaat, 1⁄2 mingelen of 4 mutsjes, circa 0,6 liter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 91)"
+          "nl": "Inhoudsmaat, 1⁄2 mingelen of 4 mutsjes, circa 0,6 liter."
         }
       ]
     },
@@ -477,12 +428,10 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat die lokaal vrij sterk varieerde; de Amsterdamse was 4,53 meter. K: Amsterdamse roede 13 of 16 voet; Rijnlandse roede 12 of 16 voet.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 98)"
+          "nl": "Lengtemaat die lokaal vrij sterk varieerde; de Amsterdamse was 4,53 meter. K: Amsterdamse roede 13 of 16 voet; Rijnlandse roede 12 of 16 voet."
         },
         {
-          "text_nl": "Door vrijwel het hele land bekende landmaat; zeer variabel, vooral door het verschillend aanta - van 7 tot 21 - voeten dat een roede kon bevatten.",
-          "source": "(Verhoeff 1983, 121)"
+          "nl": "Door vrijwel het hele land bekende landmaat; zeer variabel, vooral door het verschillend aanta - van 7 tot 21 - voeten dat een roede kon bevatten."
         }
       ]
     },
@@ -491,13 +440,11 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Zowel een gewichts- als een munteenheid in tal van oosterse landen, als China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. Als gewicht was de taël meest 1⁄16 kati of ongeveer 37 1⁄2 gram. Zodanig gewicht aan schuitzilver vormde in Japan de grondslag van het muntstelsel en werd eveneens taël genoemd. Deze was onderverdeeld in 10 maas = 100 condrin = 1000 rin (Japan had het decimale stelsel). Tot 1666 rekende men bij de Compagnie de Japanse taël op 57 stuiver, daarna werd ze ingevolge een instructie van Heren XVII, die enige eenheid in het zeer verwarde systeem van omrekening der Indische munten wilden brengen, gefixeerd op 70 stuiver. De Chinese taël kwam vrijwel met de Japanse overeen; de waarde was er iets hoger en werd bij de Compagnie berekend op 80 stuiver. In Tonkin was de taël als gewicht eveneens 1⁄16 kati; als munt, verdeeld in 10 maas en 100 condrin, gold ze ƒ 4,12 1⁄2 à ƒ 4,25, door hoger gehalte. In Siam was de taël als gewicht 1⁄20 kati of circa 30 gram; als munt was ze verdeeld in 16 maas en 32 fuang. De waarde was er ruim ƒ 7. Ook in Cambodja was de taël als gewicht 1⁄20 kati; als munt gold ze echter slechts ƒ 3, door minder gehal-te. Op Atjeh had men als munt de gouden taël ter waarde van 4 rijksdaalder, verdeeld in 16 gouden maas. Als zilvermunt had men daar nog de Spaanse reaal à 60 stuiver, onderverdeeld in 8 zilveren maas. Ook op Makassar had men gouden taëls, verdeeld in 16 gouden maas, welke laatste door de Compagnie werden aangenomen voor 30 stuiver. P: de taël gold (in Hindustan) 11 tot 13 ropia. T3: Chinees liang, Japans ryo.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 112)"
+          "nl": "Zowel een gewichts- als een munteenheid in tal van oosterse landen, als China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. Als gewicht was de taël meest 1⁄16 kati of ongeveer 37 1⁄2 gram. Zodanig gewicht aan schuitzilver vormde in Japan de grondslag van het muntstelsel en werd eveneens taël genoemd. Deze was onderverdeeld in 10 maas = 100 condrin = 1000 rin (Japan had het decimale stelsel). Tot 1666 rekende men bij de Compagnie de Japanse taël op 57 stuiver, daarna werd ze ingevolge een instructie van Heren XVII, die enige eenheid in het zeer verwarde systeem van omrekening der Indische munten wilden brengen, gefixeerd op 70 stuiver. De Chinese taël kwam vrijwel met de Japanse overeen; de waarde was er iets hoger en werd bij de Compagnie berekend op 80 stuiver. In Tonkin was de taël als gewicht eveneens 1⁄16 kati; als munt, verdeeld in 10 maas en 100 condrin, gold ze ƒ 4,12 1⁄2 à ƒ 4,25, door hoger gehalte. In Siam was de taël als gewicht 1⁄20 kati of circa 30 gram; als munt was ze verdeeld in 16 maas en 32 fuang. De waarde was er ruim ƒ 7. Ook in Cambodja was de taël als gewicht 1⁄20 kati; als munt gold ze echter slechts ƒ 3, door minder gehal-te. Op Atjeh had men als munt de gouden taël ter waarde van 4 rijksdaalder, verdeeld in 16 gouden maas. Als zilvermunt had men daar nog de Spaanse reaal à 60 stuiver, onderverdeeld in 8 zilveren maas. Ook op Makassar had men gouden taëls, verdeeld in 16 gouden maas, welke laatste door de Compagnie werden aangenomen voor 30 stuiver. P: de taël gold (in Hindustan) 11 tot 13 ropia. T3: Chinees liang, Japans ryo."
         },
         {
-          "text_nl": "Zowel een gewichts- als een munteenheid in tal van oosterse landen, als China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. Als gewicht was de taël meest 1⁄16 kati of ongeveer 37 1⁄2 gram. Zodanig gewicht aan schuitzilver vormde in Japan de grondslag van het muntstelsel en werd eveneens taël genoemd. Deze was onderverdeeld in 10 maas = 100 condrin = 1000 rin (Japan had het decimale stelsel). Tot 1666 rekende men bij de Compagnie de Japanse taël op 57 stuiver, daarna werd ze ingevolge een instructie van Heren XVII, die enige eenheid in het zeer verwarde systeem van omrekening der Indische munten wilden brengen, gefixeerd op 70 stuiver. De Chinese taël kwam vrijwel met de Japanse overeen; de waarde was er iets hoger en werd bij de Compagnie berekend op 80 stuiver. In Tonkin was de taël als gewicht eveneens 1⁄16 kati; als munt, verdeeld in 10 maas en 100 condrin, gold ze ƒ 4,12 1⁄2 à ƒ 4,25, door hoger gehalte. In Siam was de taël als gewicht 1⁄20 kati of circa 30 gram; als munt was ze verdeeld in 16 maas en 32 fuang. De waarde was er ruim ƒ 7. Ook in Cambodja was de taël als gewicht 1⁄20 kati; als munt gold ze echter slechts ƒ 3, door minder gehalte. Op Atjeh had men als munt de gouden taël ter waarde van 4 rijksdaalder, verdeeld in 16 gouden maas. Als zilvermunt had men daar nog de Spaanse reaal à 60 stuiver, onderverdeeld in 8 zilveren maas. Ook op Makassar had men gouden taëls, verdeeld in 16 gouden maas, welke laatste door de Compagnie werden aangenomen voor 30 stuiver. De taël gold (in Hindustan) was 11 tot 13 ropia waard.",
-          "text_en": "A measure of weight as well as a measure of coinage in several Eastern countries, like China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. As a weight measure the taël usually was 1/16 kati or about 37 1/2 grams. A weight like that formed the base for the coin system in Japan and was also called taël. This was divided in 10 maas = 100 condrin = 1000 rin (Japan had the decimal system). Until 1666 the Japanese taël was accounted for 57 stuiver, after that a decree by the Heren XVII instructed to fix the rate to 70 stuiver in order to bring some unification in the exchange of Indian coins. The Chinese taël was very similar to the Japanese, the value a little higher and set by the VOC to 80 stuiver. In Tonkin the taël was 1/16 kati as a weight measure; as a coin divided into 10 maas and 100 condrin, she was f 4,12 1/2 à f 4,25, because of higher silver level. In Siam the taël was as weight 1/20 kati or about 30 grams; as coin she was divided in 16 maas and 32 fuang. The value was over f 7. Also in Cambodja the taël was as weight 1/20 kati; as coin only f 3, because of less silver level. On Atjeh the golden taël was worth 4 rijksdaalder, divided into 16 golden maas. As silver coin there was also the Spanish reaal à 60 stuiver, divided into 8 silver maas. Also on Makassar there were golden taëls, divided into 16 golden maas that",
-          "source": "(Lohanda et al. 2018, 181-2)"
+          "nl": "Zowel een gewichts- als een munteenheid in tal van oosterse landen, als China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. Als gewicht was de taël meest 1⁄16 kati of ongeveer 37 1⁄2 gram. Zodanig gewicht aan schuitzilver vormde in Japan de grondslag van het muntstelsel en werd eveneens taël genoemd. Deze was onderverdeeld in 10 maas = 100 condrin = 1000 rin (Japan had het decimale stelsel). Tot 1666 rekende men bij de Compagnie de Japanse taël op 57 stuiver, daarna werd ze ingevolge een instructie van Heren XVII, die enige eenheid in het zeer verwarde systeem van omrekening der Indische munten wilden brengen, gefixeerd op 70 stuiver. De Chinese taël kwam vrijwel met de Japanse overeen; de waarde was er iets hoger en werd bij de Compagnie berekend op 80 stuiver. In Tonkin was de taël als gewicht eveneens 1⁄16 kati; als munt, verdeeld in 10 maas en 100 condrin, gold ze ƒ 4,12 1⁄2 à ƒ 4,25, door hoger gehalte. In Siam was de taël als gewicht 1⁄20 kati of circa 30 gram; als munt was ze verdeeld in 16 maas en 32 fuang. De waarde was er ruim ƒ 7. Ook in Cambodja was de taël als gewicht 1⁄20 kati; als munt gold ze echter slechts ƒ 3, door minder gehalte. Op Atjeh had men als munt de gouden taël ter waarde van 4 rijksdaalder, verdeeld in 16 gouden maas. Als zilvermunt had men daar nog de Spaanse reaal à 60 stuiver, onderverdeeld in 8 zilveren maas. Ook op Makassar had men gouden taëls, verdeeld in 16 gouden maas, welke laatste door de Compagnie werden aangenomen voor 30 stuiver. De taël gold (in Hindustan) was 11 tot 13 ropia waard.",
+          "en": "A measure of weight as well as a measure of coinage in several Eastern countries, like China, Japan, Tonkin, Cambodja, Siam, Atjeh, Makassar, Bandjarmasin etc. As a weight measure the taël usually was 1/16 kati or about 37 1/2 grams. A weight like that formed the base for the coin system in Japan and was also called taël. This was divided in 10 maas = 100 condrin = 1000 rin (Japan had the decimal system). Until 1666 the Japanese taël was accounted for 57 stuiver, after that a decree by the Heren XVII instructed to fix the rate to 70 stuiver in order to bring some unification in the exchange of Indian coins. The Chinese taël was very similar to the Japanese, the value a little higher and set by the VOC to 80 stuiver. In Tonkin the taël was 1/16 kati as a weight measure; as a coin divided into 10 maas and 100 condrin, she was f 4,12 1/2 à f 4,25, because of higher silver level. In Siam the taël was as weight 1/20 kati or about 30 grams; as coin she was divided in 16 maas and 32 fuang. The value was over f 7. Also in Cambodja the taël was as weight 1/20 kati; as coin only f 3, because of less silver level. On Atjeh the golden taël was worth 4 rijksdaalder, divided into 16 golden maas. As silver coin there was also the Spanish reaal à 60 stuiver, divided into 8 silver maas. Also on Makassar there were golden taëls, divided into 16 golden maas that"
         }
       ]
     },
@@ -506,12 +453,10 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat, 6 voet of 66 duim of circa 1,69 meter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 120)"
+          "nl": "Lengtemaat, 6 voet of 66 duim of circa 1,69 meter."
         },
         {
-          "text_nl": "Lengtemaat van 5 tot 6 voeten. […] grote vadem, in gebuirk bij marine en VOC: 6 Rijnlandsche voet = 1,88 meter.",
-          "source": "(Verhoeff 1983, 127)"
+          "nl": "Lengtemaat van 5 tot 6 voeten. […] grote vadem, in gebuirk bij marine en VOC: 6 Rijnlandsche voet = 1,88 meter."
         }
       ]
     },
@@ -520,8 +465,7 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Betekenisvereniging tot een bepaalde maat. Vlaktemaat en inhoudsmaat droge waren.",
-          "source": "(Verhoeff 1983, 113)"
+          "nl": "Betekenisvereniging tot een bepaalde maat. Vlaktemaat en inhoudsmaat droge waren."
         }
       ]
     },
@@ -534,8 +478,7 @@
       "type": "quantities",
       "definitions": [
         {
-          "text_nl": "Stuks. Afgekort als ps. Portugees peça, Frans pièce.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 89)"
+          "nl": "Stuks. Afgekort als ps. Portugees peça, Frans pièce."
         }
       ]
     },
@@ -604,8 +547,7 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Lengtemaat: a) Overal bekende lengtemaat, onderdeel van roede;bevat meest 10 of 12 duim en op enige plaatsen (o.a. Amsterdam, Breda, Haarlem) 11 duim; te Heerenveen 13 duim; vaak waren twee of meer voeten, voor verschillende doeleinden, in gebruik, hier te lande liepen de voeten uiteen 26.8 cm (Utrechtse stadsvoet) tot 32.6 cm (Friese koningsvoet) b) landmetersvoet of geometrische voet: de decimale voet (1/10 roede, 10 duim) die door landmeters werd gebruikt; bv bij de Rijnlandse roede: 37.67 cm",
-          "source": "(Verhoeff 1983, 130)"
+          "nl": "Lengtemaat: a) Overal bekende lengtemaat, onderdeel van roede;bevat meest 10 of 12 duim en op enige plaatsen (o.a. Amsterdam, Breda, Haarlem) 11 duim; te Heerenveen 13 duim; vaak waren twee of meer voeten, voor verschillende doeleinden, in gebruik, hier te lande liepen de voeten uiteen 26.8 cm (Utrechtse stadsvoet) tot 32.6 cm (Friese koningsvoet) b) landmetersvoet of geometrische voet: de decimale voet (1/10 roede, 10 duim) die door landmeters werd gebruikt; bv bij de Rijnlandse roede: 37.67 cm"
         }
       ]
     },
@@ -630,8 +572,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid op Malakka, speciaal gebruikt bij het afwegen van tin, gelijk aan 3 Hollandse pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 20)"
+          "nl": "Gewichtseenheid op Malakka, speciaal gebruikt bij het afwegen van tin, gelijk aan 3 Hollandse pond."
         }
       ]
     },
@@ -772,8 +713,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewicht: kleinste handelsgewicht, 1/10240 pond, 1/32 engels; afhankelijk van het pond varierend van 0,046 tot 0,048 gram",
-          "source": "(Verhoeff 1983, 99)"
+          "nl": "Gewicht: kleinste handelsgewicht, 1/10240 pond, 1/32 engels; afhankelijk van het pond varierend van 0,046 tot 0,048 gram"
         }
       ]
     },
@@ -818,8 +758,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gewichtseenheid in Hindustan, circa 180 gram; onderverdeeld in 12 masha.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 115)"
+          "nl": "Gewichtseenheid in Hindustan, circa 180 gram; onderverdeeld in 12 masha."
         }
       ]
     },
@@ -832,8 +771,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "1. Gewicht: a) medicinaal gewicht: 1/5760 med. Pond, 1/20 scrupel b) diamantgewicht (ook wel in de parelhandel gebruikt): 1/4 karaat, ca 0.051 g c) ('Hollands grein') : bij enige auteurs synoniem voor aas 2. eenheid bij de vaststelling van gehalte: goud, verdeeld in 24 karaat a 12 grein; zilver, verdeeld in 12 pennign a 24 grein",
-          "source": "(Verhoeff 1983, 105)"
+          "nl": "1. Gewicht: a) medicinaal gewicht: 1/5760 med. Pond, 1/20 scrupel b) diamantgewicht (ook wel in de parelhandel gebruikt): 1/4 karaat, ca 0.051 g c) ('Hollands grein') : bij enige auteurs synoniem voor aas 2. eenheid bij de vaststelling van gehalte: goud, verdeeld in 24 karaat a 12 grein; zilver, verdeeld in 12 pennign a 24 grein"
         }
       ]
     },
@@ -954,8 +892,7 @@
       "type": "weight",
       "definitions": [
         {
-          "text_nl": "Gebruikelijke gewichtseenheid in Arabië, 1⁄15 bahar. In het begin van de zeventiende eeuw was, volgens stapel, de frasel kennelijk circa 20 pond Hollands. Latere opgaven wijken daar vrij sterk van af. Bijvoorbeeld Huygelbosch zegt dat de basis van het Arabische gewichtsstelsel was de man of 25⁄8 pond Hollands; 10 man of 26 1⁄4 pond was 1 frasel. GM1: 1⁄25 bahar, die zelf een niet geheel vaste eenheid is; de frasel wisselt zo tussen 20 en 26 1⁄4 pond.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 44-45)"
+          "nl": "Gebruikelijke gewichtseenheid in Arabië, 1⁄15 bahar. In het begin van de zeventiende eeuw was, volgens stapel, de frasel kennelijk circa 20 pond Hollands. Latere opgaven wijken daar vrij sterk van af. Bijvoorbeeld Huygelbosch zegt dat de basis van het Arabische gewichtsstelsel was de man of 25⁄8 pond Hollands; 10 man of 26 1⁄4 pond was 1 frasel. GM1: 1⁄25 bahar, die zelf een niet geheel vaste eenheid is; de frasel wisselt zo tussen 20 en 26 1⁄4 pond."
         }
       ]
     },
@@ -984,8 +921,7 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Inhoudsmaat voor natte waren en droge waren.",
-          "source": "(Verhoeff 1983, 100)"
+          "nl": "Inhoudsmaat voor natte waren en droge waren."
         }
       ]
     },
@@ -1062,8 +998,7 @@
       "type": "length",
       "definitions": [
         {
-          "text_nl": "Japanse lengtemaat van 6 voet 3 duim, dat is 3 Nederlandse el, 1,909 meter.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 55)"
+          "nl": "Japanse lengtemaat van 6 voet 3 duim, dat is 3 Nederlandse el, 1,909 meter."
         }
       ]
     },
@@ -1108,8 +1043,7 @@
       "type": "volume",
       "definitions": [
         {
-          "text_nl": "Inhoudsmaat voor rijst van variërende grootte op de kust van Coromandel. Telugu.",
-          "source": "(Kooijmans and Schooneveld-Oosterling 2000, 46)"
+          "nl": "Inhoudsmaat voor rijst van variërende grootte op de kust van Coromandel. Telugu."
         }
       ]
     },
@@ -1628,5 +1562,4393 @@
     "yard": "SU_0431",
     "yze": "SU_0512",
     "zork": "SU_0466"
-  }
+  },
+  "conversions": [
+    {
+      "from": "SU_0014",
+      "to": "SU_0003",
+      "ratio": "1 Kan = 8 Mutsje",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0015",
+      "ratio": "1 Kit = 10 Compagnies Kan",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0011",
+      "ratio": "1 Gantang = 13.33 Pond (VOC)",
+      "context": "rijst, Batavia"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3066.67 Pond (VOC)",
+      "context": "rijst, Batavia"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 3375 Pond (VOC)",
+      "context": "rijst, Batavia"
+    },
+    {
+      "from": "SU_0022",
+      "to": "SU_0011",
+      "ratio": "1 Heemraade-Bos = 20 Pond (VOC)",
+      "context": "pady, Batavia"
+    },
+    {
+      "from": "SU_0022",
+      "to": "SU_0024",
+      "ratio": "1 Heemraade-Bos = 16 Kati",
+      "context": "pady, Batavia"
+    },
+    {
+      "from": "SU_0023",
+      "to": "SU_0021",
+      "ratio": "1 Tjajang = 200 Bos",
+      "context": "pady, Batavia"
+    },
+    {
+      "from": "SU_0026",
+      "to": "SU_0027",
+      "ratio": "1 Rijnlandse Roede = 12 Rijnlandse Voet",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0027",
+      "to": "SU_0357",
+      "ratio": "1 Rijnlandse Voet = 12 Rijnlandsche duim",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0032",
+      "ratio": "1 Elle = 16 Taille",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0029",
+      "to": "SU_0031",
+      "ratio": "1 Toembak = 90 Voet",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0033",
+      "ratio": "1 Pond (VOC) = 16 Ons",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0034",
+      "ratio": "1 Pond (VOC) = 32 Loot",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0037",
+      "ratio": "1 Reaal = 48 Stuivers",
+      "context": "goud, zilver, Batavia"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0155",
+      "ratio": "1 Cojang = 28 Pikol",
+      "context": "rijst, catjang, bonen etc., Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 3500 Pond (VOC)",
+      "context": "rijst, catjang, bonen etc., Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 3750 Pond (VOC)",
+      "context": "rijst, catjang, bonen etc., Surabaja"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0278",
+      "ratio": "1 Cojang = 58 Maat",
+      "context": "zout, Rembang"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 75 Pond (VOC)",
+      "context": "zout, Rembang"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 4350 Pond (VOC)",
+      "context": "zout, Rembang"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0278",
+      "ratio": "1 Cojang = 40 Maat",
+      "context": "zout, Surabaja"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 125 Pond (VOC)",
+      "context": "zout, Surabaja"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 5000 Pond (VOC)",
+      "context": "zout, Surabaja"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 125 Pond (VOC)",
+      "context": "Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0024",
+      "ratio": "1 Maat = 10 Kati",
+      "context": "graan, Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 12.5 Pond (VOC)",
+      "context": "graan, Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0343",
+      "to": "SU_0015",
+      "ratio": "1 Tacker = 25 Compagnies Kan",
+      "context": "olie, Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0343",
+      "to": "SU_0015",
+      "ratio": "1 Tacker = 1.75-3.125 Compagnies Kan",
+      "context": "olie, Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0344",
+      "to": "SU_0031",
+      "ratio": "1 Vaam = 36 Voet",
+      "context": "hout, Java's Noord Oostkust"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0157",
+      "to": "SU_0345",
+      "ratio": "1 Pint = 1 Halve kan",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0157",
+      "to": "SU_0003",
+      "ratio": "1 Pint = 5 Mutsje",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0346",
+      "to": "SU_0003",
+      "ratio": "1 Halve pint = 2.5 Mutsje",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0347",
+      "to": "SU_0003",
+      "ratio": "1 Quart Kan = 2.5 Mutsje",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0348",
+      "to": "SU_0015",
+      "ratio": "1 Halve Kit = 5 Compagnies Kan",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0458",
+      "to": "SU_0015",
+      "ratio": "1 Half musje = 5 Compagnies Kan",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0011",
+      "ratio": "1 Gantang = 13.33 Pond (VOC)",
+      "context": "rijst, Cheribon"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0349",
+      "ratio": "1 Cojang = 1 Java's Last",
+      "context": "rijst, Cheribon"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 3500 Pond (VOC)",
+      "context": "rijst, Cheribon"
+    },
+    {
+      "from": "SU_0350",
+      "to": "SU_0021",
+      "ratio": "1 Sanga = 5 Bos",
+      "context": "pady of rijst in de bolster, Cheribon"
+    },
+    {
+      "from": "SU_0023",
+      "to": "SU_0350",
+      "ratio": "1 Tjajang = 40 Sanga",
+      "context": "pady of rijst in de bolster, Cheribon"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0024",
+      "ratio": "1 Bos = 8-10 Kati",
+      "context": "pady of rijst in de bolster, Cheribon"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0011",
+      "ratio": "1 Bos = 10-13 Pond (VOC)",
+      "context": "pady of rijst in de bolster, Cheribon"
+    },
+    {
+      "from": "SU_0026",
+      "to": "SU_0027",
+      "ratio": "1 Rijnlandse Roede = 12 Rijnlandse Voet",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0027",
+      "to": "SU_0357",
+      "ratio": "1 Rijnlandse Voet = 12 Rijnlandsche duim",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0352",
+      "to": "SU_0360",
+      "ratio": "1 Boschmaat = 13 Voet",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0033",
+      "ratio": "1 Pond (VOC) = 16 Ons",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0034",
+      "ratio": "1 Pond (VOC) = 32 Loot",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0033",
+      "ratio": "1 Kati = 20 Ons",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0033",
+      "ratio": "1 Reaal = 0.1111111111111111 Ons",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0036",
+      "ratio": "1 Reaal = 0.1111111111111111 Mark trois",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0037",
+      "ratio": "1 Reaal = 48 Stuivers",
+      "context": "Cheribon"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0095",
+      "ratio": "1 Cojang = 200 Gantang",
+      "context": "rijst, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0353",
+      "ratio": "1 Gantang = 8 Bamboes",
+      "context": "rijst, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0353",
+      "to": "SU_0354",
+      "ratio": "1 Bamboes = 2 Clapperdop",
+      "context": "rijst, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0354",
+      "to": "SU_0024",
+      "ratio": "1 Clapperdop = 2 Kati",
+      "context": "rijst, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 8000 Pond (VOC)",
+      "context": "rijst, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0155",
+      "ratio": "1 Cojang = 27 Pikol",
+      "context": "zout, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "zout, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0024",
+      "ratio": "1 Cojang = 2700 Kati",
+      "context": "zout, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 3375 Pond (VOC)",
+      "context": "zout, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0187",
+      "ratio": "1 Kati = 16 Taël",
+      "context": "Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0024",
+      "ratio": "1 Bahar = 300 Kati",
+      "context": "Lampong Toulong Bauwang | Lampong Poetie"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 375 Pond (VOC)",
+      "context": "Lampong Toulong Bauwang | Lampong Poetie"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0035",
+      "ratio": "1 Taël = 2.25 Reaal",
+      "context": "goud, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0037",
+      "ratio": "1 Reaal = 50-51 Stuivers",
+      "context": "goud, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0042",
+      "to": "SU_0042",
+      "ratio": "1 Karaat = 1 Karaat",
+      "context": "diamanten, Bantam | Lampong | Bantamsche Bovenlanden"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0095",
+      "ratio": "1 Gantang = 1 Gantang",
+      "context": "rijst, Nassau, Kasteel"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0015",
+      "ratio": "1 Kit = 10 Compagnies Kan",
+      "context": "Nassau, Kasteel"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Nassau, Kasteel"
+    },
+    {
+      "from": "SU_0345",
+      "to": "SU_0003",
+      "ratio": "1 Halve kan = 5 Mutsje",
+      "context": "Nassau, Kasteel"
+    },
+    {
+      "from": "SU_0458",
+      "to": "SU_0458",
+      "ratio": "1 Half musje = 1 Half musje",
+      "context": "Nassau, Kasteel"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3000 Pond (VOC)",
+      "context": "Rijst, padie, zout, Ternate"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3066.67 Pond (VOC)",
+      "context": "tarwe, Ternate"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 75 Pond (VOC)",
+      "context": "rijst, Ternate"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 60 Pond (VOC)",
+      "context": "padie, Ternate"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 50 Pond (VOC)",
+      "context": "zout, Ternate"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 66.67 Pond (VOC)",
+      "context": "tarwe, Ternate"
+    },
+    {
+      "from": "SU_0353",
+      "to": "SU_0011",
+      "ratio": "1 Bamboes = 1.5 Pond (VOC)",
+      "context": "rijst, zout, Ternate"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0014",
+      "ratio": "1 Kit = 10 Kan",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0199",
+      "to": "SU_0083",
+      "ratio": "1 Vadem = 2.5 Elle",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0028",
+      "ratio": "1 Elle = 26.25 Duim",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0172",
+      "to": "SU_0027",
+      "ratio": "1 Roede = 12 Rijnlandse Voet",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0027",
+      "to": "SU_0357",
+      "ratio": "1 Rijnlandse Voet = 12 Rijnlandsche duim",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Ternate"
+    },
+    {
+      "from": "SU_0036",
+      "to": "SU_0035",
+      "ratio": "1 Mark trois = 9 Reaal",
+      "context": "goud, Ternate"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0011",
+      "ratio": "1 Maat = 66.67 Pond (VOC)",
+      "context": "rijst, Celebes"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0278",
+      "ratio": "1 Last = 46 Maat",
+      "context": "rijst, Celebes"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3066.67 Pond (VOC)",
+      "context": "rijst, Celebes"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0011",
+      "ratio": "1 Gantang = 7.67 Pond (VOC)",
+      "context": "rijst, Celebes"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0095",
+      "ratio": "1 Last = 400 Gantang",
+      "context": "rijst, Celebes"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0011",
+      "ratio": "1 Gantang = 11.5 Pond (VOC)",
+      "context": "rijst, Celebes"
+    },
+    {
+      "from": "SU_0358",
+      "to": "SU_0358",
+      "ratio": "1 Fust = 1 Fust",
+      "context": "Celebes"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Celebes"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0082",
+      "ratio": "1 Elle = 1 Amsterdamse el",
+      "context": "Celebes"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Celebes"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Celebes"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0095",
+      "ratio": "1 Cojang = 800 Gantang",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 4800 Pond (VOC)",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0278",
+      "ratio": "1 Cojang = 80 Maat",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0155",
+      "ratio": "1 Cojang = 40 Pikol",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 125 Pond (VOC)",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 5000 Pond (VOC)",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0095",
+      "ratio": "1 Maat = 10 Gantang",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0359",
+      "ratio": "1 Gantang = 4 Chioep",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0011",
+      "ratio": "1 Gantang = 6 Pond (VOC)",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0359",
+      "to": "SU_0011",
+      "ratio": "1 Chioep = 1.5 Pond (VOC)",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0149",
+      "ratio": "1 Cojang = 120 Parra",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 4800 Pond (VOC)",
+      "context": "rijst, Malakka"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 4600 Pond (VOC)",
+      "context": "cadjang, Malakka"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0278",
+      "ratio": "1 Last = 46 Maat",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3066.67 Pond (VOC)",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0014",
+      "ratio": "1 Gantang = 2.5 Kan",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0014",
+      "ratio": "1 Kit = 10 Kan",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0095",
+      "ratio": "1 Kit = 4 Gantang",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0003",
+      "to": "SU_0345",
+      "ratio": "1 Mutsje = 2 Halve kan",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0026",
+      "to": "SU_0027",
+      "ratio": "1 Rijnlandse Roede = 12 Rijnlandse Voet",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0027",
+      "to": "SU_0357",
+      "ratio": "1 Rijnlandse Voet = 12 Rijnlandsche duim",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0360",
+      "to": "SU_0028",
+      "ratio": "1 Voet = 11 Duim",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0028",
+      "ratio": "1 Elle = 26.5 Duim",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0069",
+      "ratio": "1 Elle = 1.5 Cobido",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0187",
+      "ratio": "1 Kati = 20 Taël",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0035",
+      "ratio": "1 Kati = 34 Reaal",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0036",
+      "ratio": "1 Kati = 3.78 Mark trois",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0036",
+      "to": "SU_0187",
+      "ratio": "1 Mark trois = 5.29 Taël",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0036",
+      "to": "SU_0035",
+      "ratio": "1 Mark trois = 9 Reaal",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0451",
+      "ratio": "1 Taël = 16 Maas",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0035",
+      "ratio": "1 Taël = 1.7 Reaal",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0451",
+      "to": "SU_0361",
+      "ratio": "1 Maas = 4 Coebang",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0361",
+      "to": "SU_0362",
+      "ratio": "1 Coebang = 2 Boesoe",
+      "context": "goud, Malakka"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0363",
+      "ratio": "1 Taël = 4 Ropia",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0155",
+      "ratio": "1 Bahar = 3 Pikol",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0024",
+      "ratio": "1 Bahar = 300 Kati",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 375 Pond (VOC)",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 125 Pond (VOC)",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0187",
+      "ratio": "1 Kati = 16 Taël",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0033",
+      "ratio": "1 Pond (VOC) = 16 Ons",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0034",
+      "ratio": "1 Pond (VOC) = 32 Loot",
+      "context": "Malakka"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0364",
+      "ratio": "1 Bahar = 240 Tampang",
+      "context": "tin, Malakka, op alle Maleische plaatsen"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0365",
+      "ratio": "1 Bahar = 120 Bidoor",
+      "context": "tin, Malakka, op alle Maleische plaatsen"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0366",
+      "ratio": "1 Bahar = 8 Kipping",
+      "context": "tin, Malakka, op alle Maleische plaatsen"
+    },
+    {
+      "from": "SU_0364",
+      "to": "SU_0024",
+      "ratio": "1 Tampang = 1 Kati",
+      "context": "tin, Malakka, op alle Maleische plaatsen"
+    },
+    {
+      "from": "SU_0365",
+      "to": "SU_0037",
+      "ratio": "1 Bidoor = 12 Stuivers",
+      "context": "Malakka, op alle Maleische plaatsen"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0368",
+      "ratio": "1 Mediet = 4 Chioendoe",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 1.67 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0367",
+      "ratio": "1 Parra = 24 Mediet",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0149",
+      "ratio": "1 Last = 75 Parra",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3000 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0369",
+      "to": "SU_0149",
+      "ratio": "1 Ammonam = 8 Parra",
+      "context": "graanen, Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0369",
+      "to": "SU_0370",
+      "ratio": "1 Ammonam = 44 Coerni",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0014",
+      "ratio": "1 Mediet = 0.7 Kan",
+      "context": "olie, Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0083",
+      "ratio": "1 Cobido = 0.67 Elle",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0371",
+      "to": "SU_0011",
+      "ratio": "1 Cotty = 25 Pond (VOC)",
+      "context": "Maldivosche Cauris, Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0048",
+      "to": "SU_0292",
+      "ratio": "1 Ammanam = 24000-26000 pees",
+      "context": "areca, Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0372",
+      "to": "SU_0369",
+      "ratio": "1 Ammonam = 1 Ammonam",
+      "context": "zaadkoren, Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0372",
+      "to": "SU_0030",
+      "ratio": "1 Ammonam = 750 Roede",
+      "context": "Matara"
+    },
+    {
+      "from": "SU_0372",
+      "to": "SU_0030",
+      "ratio": "1 Ammonam = 900 Roede",
+      "context": "Colombo"
+    },
+    {
+      "from": "SU_0372",
+      "to": "SU_0030",
+      "ratio": "1 Ammonam = 600 Roede",
+      "context": "Matara | Colombo"
+    },
+    {
+      "from": "SU_0373",
+      "to": "SU_0372",
+      "ratio": "1 Pelle = 0.25 Ammonam",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0373",
+      "to": "SU_0370",
+      "ratio": "1 Pelle = 11 Coerni",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0370",
+      "to": "SU_0372",
+      "ratio": "1 Coerni = 0.02 Ammonam",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0374",
+      "to": "SU_0011",
+      "ratio": "1 Halve parra = 20 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0375",
+      "to": "SU_0011",
+      "ratio": "1 Dubbele Parra = 80 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 1.33 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0376",
+      "to": "SU_0011",
+      "ratio": "1 Halve mediet = 0.67 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0011",
+      "ratio": "1 Markal = 8.88 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0377",
+      "to": "SU_0011",
+      "ratio": "1 Halve markal = 4.44 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0378",
+      "to": "SU_0011",
+      "ratio": "1 Quart Markal = 2.22 Pond (VOC)",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0003",
+      "ratio": "1 Compagnies Kan = 10 Mutsje",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0345",
+      "to": "SU_0003",
+      "ratio": "1 Halve kan = 5 Mutsje",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0015",
+      "ratio": "1 Kit = 10 Compagnies Kan",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0083",
+      "ratio": "1 Cobido = 0.67 Elle",
+      "context": "Colombo | Galle | Trincomale | Kalpitiya"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0149",
+      "ratio": "1 Last = 75 Parra",
+      "context": "Mannar"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "rijst, Mannar"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0379",
+      "ratio": "1 Mediet = 1.5 Alak",
+      "context": "rijst, Mannar"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0367",
+      "ratio": "1 Parra = 30 Mediet",
+      "context": "rijst, Mannar"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0379",
+      "ratio": "1 Parra = 45 Alak",
+      "context": "rijst, Mannar"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0127",
+      "ratio": "1 Parra = 0.53 Markal",
+      "context": "Mannar"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0367",
+      "ratio": "1 Markal = 16 Mediet",
+      "context": "Mannar"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0379",
+      "ratio": "1 Markal = 24 Alak",
+      "context": "Mannar"
+    },
+    {
+      "from": "SU_0380",
+      "to": "SU_0367",
+      "ratio": "1 Chimmekit = 4 Mediet",
+      "context": "boter, olie, Mannar"
+    },
+    {
+      "from": "SU_0380",
+      "to": "SU_0379",
+      "ratio": "1 Chimmekit = 6 Alak",
+      "context": "boter, olie, Mannar"
+    },
+    {
+      "from": "SU_0380",
+      "to": "SU_0011",
+      "ratio": "1 Chimmekit = 4.75 Pond (VOC)",
+      "context": "boter, olie, Mannar"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 480 Pond (VOC)",
+      "context": "Mannar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 24 Pond (VOC)",
+      "context": "Mannar"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0116",
+      "ratio": "1 Kandijl = 0.2 Last",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0011",
+      "ratio": "1 Kandijl = 600 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0382",
+      "to": "SU_0116",
+      "ratio": "1 Cote = 0.093 Last",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0382",
+      "to": "SU_0011",
+      "ratio": "1 Cote = 280 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0116",
+      "ratio": "1 Parra = 0.013 Last",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0149",
+      "ratio": "1 Markal = 0.33 Parra",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0011",
+      "ratio": "1 Markal = 13.33 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0149",
+      "ratio": "1 Mediet = 0.1 Parra",
+      "context": "Tuticorin"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 2 Pond (VOC)",
+      "context": "Tuticorin"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0149",
+      "ratio": "1 Mediet = 0.055 Parra",
+      "context": "Ponnekail"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0149",
+      "ratio": "1 Mediet = 0.0625 Parra",
+      "context": "Manapar"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0149",
+      "ratio": "1 Mediet = 0.074 Parra",
+      "context": "Kilakkarai"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0149",
+      "ratio": "1 Mediet = 0.027 Parra",
+      "context": "Cape Comorin"
+    },
+    {
+      "from": "SU_0383",
+      "to": "SU_0011",
+      "ratio": "1 Pallam = 0.167 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0384",
+      "to": "SU_0011",
+      "ratio": "1 Toelang = 16.67 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0060",
+      "to": "SU_0011",
+      "ratio": "1 Calange = 0.01 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 24 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 480 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 500 Pond (VOC)",
+      "context": "Cape Comorin"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "rijst, nely, Cochin"
+    },
+    {
+      "from": "SU_0387",
+      "to": "SU_0011",
+      "ratio": "1 Dubbele mediet = 2 Pond (VOC)",
+      "context": "rijst, nely, Cochin"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 1 Pond (VOC)",
+      "context": "rijst, nely, Cochin"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 55 Pond (VOC)",
+      "context": "metselkalk, Cochin"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0015",
+      "ratio": "1 Compagnies Kan = 1 Compagnies Kan",
+      "context": "Cochin"
+    },
+    {
+      "from": "SU_0345",
+      "to": "SU_0345",
+      "ratio": "1 Halve kan = 1 Halve kan",
+      "context": "Cochin"
+    },
+    {
+      "from": "SU_0157",
+      "to": "SU_0157",
+      "ratio": "1 Pint = 1 Pint",
+      "context": "Cochin"
+    },
+    {
+      "from": "SU_0003",
+      "to": "SU_0003",
+      "ratio": "1 Mutsje = 1 Mutsje",
+      "context": "Cochin"
+    },
+    {
+      "from": "SU_0017",
+      "to": "SU_0017",
+      "ratio": "1 Kit = 1 Kit",
+      "context": "Cochin"
+    },
+    {
+      "from": "SU_0375",
+      "to": "SU_0011",
+      "ratio": "1 Dubbele Parra = 80 Pond (VOC)",
+      "context": "rijst, Quilon"
+    },
+    {
+      "from": "SU_0374",
+      "to": "SU_0011",
+      "ratio": "1 Halve parra = 20 Pond (VOC)",
+      "context": "rijst, Quilon"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "rijst, Quilon"
+    },
+    {
+      "from": "SU_0389",
+      "to": "SU_0011",
+      "ratio": "1 Quart Parra = 10 Pond (VOC)",
+      "context": "rijst, Quilon"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "rijst, Cannanur"
+    },
+    {
+      "from": "SU_0375",
+      "to": "SU_0011",
+      "ratio": "1 Dubbele Parra = 80 Pond (VOC)",
+      "context": "rijst, Chettuvay"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "rijst, Chettuvay"
+    },
+    {
+      "from": "SU_0374",
+      "to": "SU_0011",
+      "ratio": "1 Halve parra = 20 Pond (VOC)",
+      "context": "rijst, Chettuvay"
+    },
+    {
+      "from": "SU_0015",
+      "to": "SU_0015",
+      "ratio": "1 Compagnies Kan = 1 Compagnies Kan",
+      "context": "Chettuvay"
+    },
+    {
+      "from": "SU_0003",
+      "to": "SU_0003",
+      "ratio": "1 Mutsje = 1 Mutsje",
+      "context": "Chettuvay"
+    },
+    {
+      "from": "SU_0345",
+      "to": "SU_0345",
+      "ratio": "1 Halve kan = 1 Halve kan",
+      "context": "Chettuvay"
+    },
+    {
+      "from": "SU_0374",
+      "to": "SU_0011",
+      "ratio": "1 Halve parra = 20 Pond (VOC)",
+      "context": "rijst, Pappinivattam"
+    },
+    {
+      "from": "SU_0390",
+      "to": "SU_0011",
+      "ratio": "1 Compagnies maon = 68 Pond (VOC)",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0391",
+      "to": "SU_0011",
+      "ratio": "1 Bazaars Maon = 76 Pond (VOC)",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0392",
+      "to": "SU_0011",
+      "ratio": "1 Maon Pakka = 77 Pond (VOC)",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0124",
+      "ratio": "1 Ceer = 0.025 Man",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Katja = 1.7 Pond (VOC)",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0394",
+      "to": "SU_0011",
+      "ratio": "1 Bazaars Ceer = 1.9 Pond (VOC)",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0395",
+      "to": "SU_0011",
+      "ratio": "1 Paens Ceerie = 1.925 Pond (VOC)",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0395",
+      "ratio": "1 Man = 8 Paens Ceerie",
+      "context": "graan, Hooghly"
+    },
+    {
+      "from": "SU_0395",
+      "to": "SU_0067",
+      "ratio": "1 Paens Ceerie = 5 Ceer",
+      "context": "graan, Hooghly"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0396",
+      "ratio": "1 Ceer = 0.0625 Sjatak",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0397",
+      "to": "SU_0398",
+      "ratio": "1 Thola Pakka = 12 Massa",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0397",
+      "to": "SU_0363",
+      "ratio": "1 Thola Pakka = 1 Ropia",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0397",
+      "to": "SU_0399",
+      "ratio": "1 Thola Pakka = 2.25 Anas Sikka",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0397",
+      "to": "SU_0033",
+      "ratio": "1 Thola Pakka = 1 Ons",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0398",
+      "to": "SU_0400",
+      "ratio": "1 Massa = 8 Retti",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0401",
+      "ratio": "1 Retti = 4 Neli",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0402",
+      "to": "SU_0409",
+      "ratio": "1 Thola Katja = 1 Sikka Ropij",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0409",
+      "to": "SU_0400",
+      "ratio": "1 Sikka Ropij = 82 Retti",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0398",
+      "to": "SU_0403",
+      "ratio": "1 Massa = 23.83 Aas",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0403",
+      "ratio": "1 Retti = 3 Aas",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0401",
+      "to": "SU_0403",
+      "ratio": "1 Neli = 0.75 Aas",
+      "context": "goud, zilver, Hooghly"
+    },
+    {
+      "from": "SU_0098",
+      "to": "SU_0083",
+      "ratio": "1 Ges = 1.35 Elle",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0357",
+      "ratio": "1 Cobido = 17 Rijnlandsche duim",
+      "context": "Hooghly"
+    },
+    {
+      "from": "SU_0390",
+      "to": "SU_0011",
+      "ratio": "1 Compagnies maon = 68 Pond (VOC)",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0390",
+      "to": "SU_0067",
+      "ratio": "1 Compagnies maon = 40 Ceer",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.7 Pond (VOC)",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0405",
+      "to": "SU_0067",
+      "ratio": "1 Pouw = 0.25 Ceer",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0405",
+      "to": "SU_0011",
+      "ratio": "1 Pouw = 0.425 Pond (VOC)",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0406",
+      "to": "SU_0067",
+      "ratio": "1 Settak = 0.0625 Ceer",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0406",
+      "to": "SU_0011",
+      "ratio": "1 Settak = 0.11 Pond (VOC)",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0392",
+      "to": "SU_0425",
+      "ratio": "1 Maon Pakka = 40 Ceer Pakka",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0392",
+      "to": "SU_0011",
+      "ratio": "1 Maon Pakka = 76 Pond (VOC)",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.9 Pond (VOC)",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0405",
+      "to": "SU_0067",
+      "ratio": "1 Pouw = 0.25 Ceer",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0405",
+      "to": "SU_0011",
+      "ratio": "1 Pouw = 0.48 Pond (VOC)",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0406",
+      "to": "SU_0067",
+      "ratio": "1 Settak = 0.0625 Ceer",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0406",
+      "to": "SU_0011",
+      "ratio": "1 Settak = 0.12 Pond (VOC)",
+      "context": "alle goederen, behalve zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0407",
+      "to": "SU_0067",
+      "ratio": "1 Tjitthur Maon = 40 Ceer",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0407",
+      "to": "SU_0011",
+      "ratio": "1 Tjitthur Maon = 72 Pond (VOC)",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.8 Pond (VOC)",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0405",
+      "to": "SU_0067",
+      "ratio": "1 Pouw = 0.25 Ceer",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0405",
+      "to": "SU_0011",
+      "ratio": "1 Pouw = 0.45 Pond (VOC)",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0406",
+      "to": "SU_0067",
+      "ratio": "1 Settak = 0.0625 Ceer",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0406",
+      "to": "SU_0011",
+      "ratio": "1 Settak = 0.11 Pond (VOC)",
+      "context": "zijde, Kasimbazar"
+    },
+    {
+      "from": "SU_0408",
+      "to": "SU_0409",
+      "ratio": "1 Munts Maon = 3200 Sikka Ropij",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0410",
+      "to": "SU_0083",
+      "ratio": "1 Compagnies Cobido = 0.67 Elle",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0410",
+      "to": "SU_0412",
+      "ratio": "1 Compagnies Cobido = 13.33 Puntos",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0411",
+      "to": "SU_0083",
+      "ratio": "1 Bazaars Cobido = 0.57 Elle",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0411",
+      "to": "SU_0412",
+      "ratio": "1 Bazaars Cobido = 11.43 Puntos",
+      "context": "Kasimbazar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40 Ceer",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0406",
+      "ratio": "1 Ceer = 16 Settak",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0413",
+      "to": "SU_0398",
+      "ratio": "1 Thola = 12 Massa",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0409",
+      "to": "SU_0398",
+      "ratio": "1 Sikka Ropij = 10.5 Massa",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0413",
+      "to": "SU_0398",
+      "ratio": "1 Thola = 12 Massa",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0416",
+      "ratio": "1 Man = 8 Pantseras",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0416",
+      "to": "SU_0067",
+      "ratio": "1 Pantseras = 5 Ceer",
+      "context": "graan, Patna"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 72.5 Pond (VOC)",
+      "context": "alle mineralen als: koper, spiaulter, tin, lood, kwikzilver, ijzer. Vermilioen, witlood, areek, amfioen, salpeter, rijst en alle granen, Patna"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.81 Pond (VOC)",
+      "context": "alle mineralen als: koper, spiaulter, tin, lood, kwikzilver, ijzer. Vermilioen, witlood, areek, amfioen, salpeter, rijst en alle granen, Patna"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 76 Pond (VOC)",
+      "context": "nagulen, foely, peper, kardamom, aluin, zwavel, verfstoffen, borax, camfer, seep, zyde, Patna"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.56 Pond (VOC)",
+      "context": "nagulen, foely, peper, kardamom, aluin, zwavel, verfstoffen, borax, camfer, seep, zyde, Patna"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 74.25 Pond (VOC)",
+      "context": "nooten, kaneel, Patna"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.81 Pond (VOC)",
+      "context": "nooten, kaneel, Patna"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 75 Pond (VOC)",
+      "context": "sandelhout, sappanhout, Patna"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 1.875 Pond (VOC)",
+      "context": "sandelhout, sappanhout, Patna"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0417",
+      "ratio": "1 Pond (VOC) = 42.5 Sikka",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0418",
+      "to": "SU_0083",
+      "ratio": "1 Ordinaire gos = 1.5 Elle",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0419",
+      "to": "SU_0464",
+      "ratio": "1 Alcatief gos = 1.06 El",
+      "context": "Patna"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40 Ceer",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0409",
+      "ratio": "1 Man = 3200 Sikka Ropij",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0409",
+      "ratio": "1 Man = 3280 Sikka Ropij",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0409",
+      "ratio": "1 Man = 3680 Sikka Ropij",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0409",
+      "ratio": "1 Man = 2880 Sikka Ropij",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0409",
+      "ratio": "1 Man = 2400 Sikka Ropij",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0420",
+      "to": "SU_0069",
+      "ratio": "1 Siccandrie = 1.75 Cobido",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0421",
+      "to": "SU_0069",
+      "ratio": "1 Bazarie = 2.25 Cobido",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0422",
+      "to": "SU_0069",
+      "ratio": "1 Koetika = 2.5 Cobido",
+      "context": "Decca (Dhaka)"
+    },
+    {
+      "from": "SU_0439",
+      "to": "SU_0424",
+      "ratio": "1 Souratsch Candyl = 20 Maon Ketsja",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0439",
+      "to": "SU_0392",
+      "ratio": "1 Souratsch Candyl = 10 Maon Pakka",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Katja = 0.86 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0392",
+      "to": "SU_0011",
+      "ratio": "1 Maon Pakka = 69 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Pakka = 1.73 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0424",
+      "to": "SU_0011",
+      "ratio": "1 Maon Ketsja = 34.5 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0426",
+      "to": "SU_0424",
+      "ratio": "1 Harria = 7 Maon Ketsja",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0426",
+      "to": "SU_0011",
+      "ratio": "1 Harria = 241.5 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0424",
+      "to": "SU_0067",
+      "ratio": "1 Maon Ketsja = 40 Ceer",
+      "context": "alluin, arrek, bensuin, caret, eliphantstanden, graanen, indigo, copera, koper in staaven, koeken en plaaten, lood, meny, metaal, quikzilver, sandelhout, zout, spiaulter, staal, vermiljoen, yzer, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40.25 Ceer",
+      "context": "saffraan, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 34.72 Pond (VOC)",
+      "context": "saffraan, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 41 Ceer",
+      "context": "poedersuiker, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 35.25 Pond (VOC)",
+      "context": "poedersuiker, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 42 Ceer",
+      "context": "lampolie, amandelen, bloem van pistasjes, caatjoe schoon gemaakt, camphur chineesch, caneel, cardamom, cattoen, catoengaren, coffyboonen, comynzaad dat schoon gemaakt is, corianderzaad, drooge gember, drooge tammer, foely, hazenooten, jagersuiker, kismis, mastix, nagulen, nicla, nooten, peper zwarte, pistasjes, salpeter, sappanhout bimasch en siamsch, tapekier, tjarolie, thee, wax, waxkaarsen, zeep, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 36.23 Pond (VOC)",
+      "context": "lampolie, amandelen, bloem van pistasjes, caatjoe schoon gemaakt, camphur chineesch, caneel, cardamom, cattoen, catoengaren, coffyboonen, comynzaad dat schoon gemaakt is, corianderzaad, drooge gember, drooge tammer, foely, hazenooten, jagersuiker, kismis, mastix, nagulen, nicla, nooten, peper zwarte, pistasjes, salpeter, sappanhout bimasch en siamsch, tapekier, tjarolie, thee, wax, waxkaarsen, zeep, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 43.25 Ceer",
+      "context": "candysuiker, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 37.3 Pond (VOC)",
+      "context": "candysuiker, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 44 Ceer",
+      "context": "akkelkra, arabische gom, artal, assa foetida, bengaalsche peper, cauries, caroe, galnooten, goegel, gomlak op stokjes, harpuis, hingra,  cayer, keriata, lange peper, miroe natte [..]mer, olibanum, piplemoel, poetjoek, ruinaxwortelen, sorengie, staartpeper, zwavelaarde, Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 37.95 Pond (VOC)",
+      "context": "akkelkra, arabische gom, artal, assa foetida, bengaalsche peper, cauries, caroe, galnooten, goegel, gomlak op stokjes, harpuis, hingra,  cayer, keriata, lange peper, miroe natte [..]mer, olibanum, piplemoel, poetjoek, ruinaxwortelen, sorengie, staartpeper, zwavelaarde, Surat"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0425",
+      "ratio": "1 Ceer Katja = 2 Ceer Pakka",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0413",
+      "ratio": "1 Ceer Katja = 35 Thola",
+      "context": "goud, zilver, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0413",
+      "to": "SU_0427",
+      "ratio": "1 Thola = 32 Waal",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0413",
+      "to": "SU_0398",
+      "ratio": "1 Thola = 12 Massa",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0398",
+      "to": "SU_0427",
+      "ratio": "1 Massa = 2.25 Waal",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0398",
+      "to": "SU_0400",
+      "ratio": "1 Massa = 8 Retti",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0427",
+      "to": "SU_0400",
+      "ratio": "1 Waal = 3 Retti",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0401",
+      "ratio": "1 Retti = 4 Neli",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0033",
+      "to": "SU_0413",
+      "ratio": "1 Ons = 2.33 Thola",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0033",
+      "ratio": "1 Ceer Katja = 14 Ons",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0427",
+      "to": "SU_0403",
+      "ratio": "1 Waal = 8 Aas",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0398",
+      "to": "SU_0403",
+      "ratio": "1 Massa = 21.33 Aas",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0403",
+      "ratio": "1 Retti = 2.67 Aas",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0401",
+      "to": "SU_0403",
+      "ratio": "1 Neli = 0.67 Aas",
+      "context": "goud, zilver, Surat | Broach | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0428",
+      "to": "SU_0400",
+      "ratio": "1 Tang = 24 Retti",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0428",
+      "to": "SU_0042",
+      "ratio": "1 Tang = 20.4 Karaat",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0042",
+      "ratio": "1 Retti = 0.85 Karaat",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0428",
+      "to": "SU_0429",
+      "ratio": "1 Tang = 330 Chouw",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0429",
+      "to": "SU_0415",
+      "ratio": "1 Chouw = 0.74 Grijn",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0429",
+      "to": "SU_0414",
+      "ratio": "1 Chouw = 16 Ana",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0414",
+      "to": "SU_0415",
+      "ratio": "1 Ana = 0.03 Grijn",
+      "context": "parel, Surat | Khambat | Bassein | Danda Rajapur | Rijken van Kets (Kutch) en Halar"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0430",
+      "ratio": "1 Retti = 20 Wassa",
+      "context": "diamant, Surat"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0414",
+      "ratio": "1 Retti = 16 Ana",
+      "context": "diamant, Surat"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0415",
+      "ratio": "1 Retti = 10.2 Grijn",
+      "context": "diamant, Surat"
+    },
+    {
+      "from": "SU_0430",
+      "to": "SU_0415",
+      "ratio": "1 Wassa = 0.51 Grijn",
+      "context": "diamant, Surat"
+    },
+    {
+      "from": "SU_0414",
+      "to": "SU_0415",
+      "ratio": "1 Ana = 0.3 Grijn",
+      "context": "diamant, Surat"
+    },
+    {
+      "from": "SU_0431",
+      "to": "SU_0098",
+      "ratio": "1 Yard = 1.33 Ges",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0098",
+      "to": "SU_0432",
+      "ratio": "1 Ges = 24 Tessoe",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 36.25 Pond (VOC)",
+      "context": "Broach"
+    },
+    {
+      "from": "SU_0441",
+      "to": "SU_0459",
+      "ratio": "1 Souratsche Ceer = 1.05 Brootchiasche Ceer",
+      "context": "Broach"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0459",
+      "ratio": "1 Man = 40 Brootchiasche Ceer",
+      "context": "saffraan, cattoen, catteongaren, salpeter, tjarolia, tapekier, thee, asfa foetia, artal, hingra; gum olibanum, Broach"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0459",
+      "ratio": "1 Man = 41 Brootchiasche Ceer",
+      "context": "drooge tammer, mirrhe, Broach"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0459",
+      "ratio": "1 Man = 42 Brootchiasche Ceer",
+      "context": "benzuin, indigo, koper in plaaten, koper in koeken, lood, sandelhout, natte tammer, suiker candy, akkelkra, gum arabicum, bengaalsche lange peper of piper, goegel, galnoten, gomlak op stokjes, kayer, harpuis, lange peper, piplemoel, zwavelaarde, staartpeper, poetjoek, ruinaxwortelen, Broach"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0459",
+      "ratio": "1 Man = 44 Brootchiasche Ceer",
+      "context": "zout, Broach"
+    },
+    {
+      "from": "SU_0435",
+      "to": "SU_0124",
+      "ratio": "1 Kalsies = 16 Man",
+      "context": "graan, Broach"
+    },
+    {
+      "from": "SU_0441",
+      "to": "SU_0459",
+      "ratio": "1 Souratsche Ceer = 1.0625 Brootchiasche Ceer",
+      "context": "goud, zilver, Broach"
+    },
+    {
+      "from": "SU_0459",
+      "to": "SU_0427",
+      "ratio": "1 Brootchiasche Ceer = 1174 Waal",
+      "context": "goud, zilver, Broach"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40.038 Ceer",
+      "context": "Khambat"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 36.2 Pond (VOC)",
+      "context": "alle koopmanschappen, graanen, vruchten en andere levensbehoeften, Ahmadabad"
+    },
+    {
+      "from": "SU_0098",
+      "to": "SU_0083",
+      "ratio": "1 Ges = 9.94 Elle",
+      "context": "alle lywaaten en maufacturen, zonder onderscheid, Ahmadabad"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 46.6 Pond (VOC)",
+      "context": "de meeste waaren, Agra"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40 Ceer",
+      "context": "indigo, Agra"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0436",
+      "ratio": "1 Ceer = 30 Peis",
+      "context": "indigo, Agra"
+    },
+    {
+      "from": "SU_0460",
+      "to": "SU_0033",
+      "ratio": "1 Ceer Bombaysch = 14.07 Ons",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40 Ceer",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 35.19 Pond (VOC)",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0124",
+      "ratio": "1 Kandijl = 20 Man",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0011",
+      "ratio": "1 Kandijl = 703.7 Pond (VOC)",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0461",
+      "to": "SU_0011",
+      "ratio": "1 Maon (Engels) = 25.68 Pond (VOC)",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0461",
+      "to": "SU_0012",
+      "ratio": "1 Maon (Engels) = 28 Pond (Engels)",
+      "context": "Bombay | Poona"
+    },
+    {
+      "from": "SU_0427",
+      "to": "SU_0415",
+      "ratio": "1 Waal = 2.5 Grijn",
+      "context": "goud, zilver, Bombay | Poona"
+    },
+    {
+      "from": "SU_0413",
+      "to": "SU_0427",
+      "ratio": "1 Thola = 40 Waal",
+      "context": "goud, zilver, Bombay | Poona"
+    },
+    {
+      "from": "SU_0439",
+      "to": "SU_0438",
+      "ratio": "1 Souratsch Candyl = 10 Pherra",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0439",
+      "to": "SU_0011",
+      "ratio": "1 Souratsch Candyl = 690 Pond (VOC)",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0438",
+      "to": "SU_0011",
+      "ratio": "1 Pherra = 69 Pond (VOC)",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0438",
+      "to": "SU_0124",
+      "ratio": "1 Pherra = 2 Man",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0438",
+      "to": "SU_0440",
+      "ratio": "1 Pherra = 20 Palie",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0440",
+      "to": "SU_0441",
+      "ratio": "1 Palie = 4 Souratsche Ceer",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0440",
+      "to": "SU_0011",
+      "ratio": "1 Palie = 3.45 Pond (VOC)",
+      "context": "graan, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0431",
+      "to": "SU_0442",
+      "ratio": "1 Yard = 1.33 Ges Souratsch",
+      "context": "fluwelen, lakenen en andere europeesche manufactuuren, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0442",
+      "to": "SU_0442",
+      "ratio": "1 Ges Souratsch = 1 Ges Souratsch",
+      "context": "lywaaten, en andere indiasche stukgoederen, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0424",
+      "ratio": "1 Kandijl = 20 Maon Ketsja",
+      "context": "alle koopmanschappen, geen uitzonderingen, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0392",
+      "ratio": "1 Kandijl = 10 Maon Pakka",
+      "context": "alle koopmanschappen, geen uitzonderingen, Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man =  Ceer",
+      "context": "Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0011",
+      "ratio": "1 Ceer = 24.3 Pond (VOC)",
+      "context": "Bombay | Bassein | Poona"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 40 Ceer",
+      "context": "Danda Rajapur"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0441",
+      "ratio": "1 Man = 26.67 Souratsche Ceer",
+      "context": "Danda Rajapur"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 23.5 Pond (VOC)",
+      "context": "Danda Rajapur"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0441",
+      "ratio": "1 Ceer = 0.67 Souratsche Ceer",
+      "context": "Danda Rajapur"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0033",
+      "ratio": "1 Ceer = 9.2 Ons",
+      "context": "Danda Rajapur"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0443",
+      "ratio": "1 Kandijl = 28 Maon Suratsch",
+      "context": "pady, rijst in den bolster, Danda Rajapur"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0011",
+      "ratio": "1 Kandijl = 966 Pond (VOC)",
+      "context": "pady, rijst in den bolster, Danda Rajapur"
+    },
+    {
+      "from": "SU_0431",
+      "to": "SU_0083",
+      "ratio": "1 Yard = 1.33 Elle",
+      "context": "lakens, wolle stoffen, Danda Rajapur"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0028",
+      "ratio": "1 Cobido = 16 Duim",
+      "context": "stukgoederen, zyde of catoene, Danda Rajapur"
+    },
+    {
+      "from": "SU_0442",
+      "to": "SU_0442",
+      "ratio": "1 Ges Souratsch = 1 Ges Souratsch",
+      "context": "stukgoederen, zyde of catoene, Danda Rajapur"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0124",
+      "ratio": "1 Kandijl = 20 Man",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 28 Pond (VOC)",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0067",
+      "ratio": "1 Kandijl = 960 Ceer",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0011",
+      "ratio": "1 Kandijl = 560 Pond (VOC)",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 48 Ceer",
+      "context": "alle koopmanschappen, bhelave de uitzonderingen, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 28 Pond (VOC)",
+      "context": "alle koopmanschappen, bhelave de uitzonderingen, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 49.71 Ceer",
+      "context": "garioffel-nagulen, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 29 Pond (VOC)",
+      "context": "garioffel-nagulen, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 43.5 Ceer",
+      "context": "ghie, gesmolten boter en olie, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 25.375 Pond (VOC)",
+      "context": "ghie, gesmolten boter en olie, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0067",
+      "ratio": "1 Man = 52 Ceer",
+      "context": "cattoen, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 30.5 Pond (VOC)",
+      "context": "cattoen, Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0067",
+      "ratio": "1 Pond (VOC) = 1.71 Ceer",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0444",
+      "to": "SU_0011",
+      "ratio": "1 Patti = 1 Pond (VOC)",
+      "context": "graan, Kets (Kutch)"
+    },
+    {
+      "from": "SU_0440",
+      "to": "SU_0011",
+      "ratio": "1 Palie = 2.75 Pond (VOC)",
+      "context": "graan, Halar"
+    },
+    {
+      "from": "SU_0431",
+      "to": "SU_0432",
+      "ratio": "1 Yard = 32 Tessoe",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0098",
+      "to": "SU_0432",
+      "ratio": "1 Ges = 24 Tessoe",
+      "context": "Kets (Kutch) | Halar"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 405 Pond (VOC)",
+      "context": "Mokka"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0445",
+      "ratio": "1 Bahar = 15 Frasila",
+      "context": "Mokka"
+    },
+    {
+      "from": "SU_0445",
+      "to": "SU_0011",
+      "ratio": "1 Frasila = 27 Pond (VOC)",
+      "context": "Mokka"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 2.7 Pond (VOC)",
+      "context": "Mokka"
+    },
+    {
+      "from": "SU_0446",
+      "to": "SU_0447",
+      "ratio": "1 Wackeya = 10 Cafla",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0446",
+      "to": "SU_0446",
+      "ratio": "1 Wackeya = 1 Wackeya",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0447",
+      "to": "SU_0447",
+      "ratio": "1 Cafla = 1 Cafla",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0403",
+      "to": "SU_0403",
+      "ratio": "1 Aas = 1 Aas",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0042",
+      "to": "SU_0042",
+      "ratio": "1 Karaat = 1 Karaat",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0126",
+      "to": "SU_0126",
+      "ratio": "1 Mark = 1 Mark",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0033",
+      "to": "SU_0033",
+      "ratio": "1 Ons = 1 Ons",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0084",
+      "to": "SU_0042",
+      "ratio": "1 Engels = 7.75 Karaat",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0403",
+      "to": "SU_0042",
+      "ratio": "1 Aas = 0.75 Karaat",
+      "context": "goud, zilver, Mokka"
+    },
+    {
+      "from": "SU_0442",
+      "to": "SU_0098",
+      "ratio": "1 Ges Souratsch = 0.92 Ges",
+      "context": "stukgoederen, Mokka"
+    },
+    {
+      "from": "SU_0098",
+      "to": "SU_0028",
+      "ratio": "1 Ges = 22.19 Duim",
+      "context": "stukgoederen, Mokka"
+    },
+    {
+      "from": "SU_0449",
+      "to": "SU_0011",
+      "ratio": "1 Kel = 4.15 Pond (VOC)",
+      "context": "rijst en andere graanen, Mokka"
+    },
+    {
+      "from": "SU_0450",
+      "to": "SU_0449",
+      "ratio": "1 Thoman = 40 Kel",
+      "context": "rijst en andere graanen, Mokka"
+    },
+    {
+      "from": "SU_0450",
+      "to": "SU_0443",
+      "ratio": "1 Thoman = 5 Maon Suratsch",
+      "context": "rijst en andere graanen, Mokka"
+    },
+    {
+      "from": "SU_0450",
+      "to": "SU_0011",
+      "ratio": "1 Thoman = 172.5 Pond (VOC)",
+      "context": "rijst en andere graanen, Mokka"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0451",
+      "ratio": "1 Taël = 16 Maas",
+      "context": "goud, Padang"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0155",
+      "ratio": "1 Bahar = 3 Pikol",
+      "context": "peper, Padang"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 375 Pond (VOC)",
+      "context": "peper, Padang"
+    },
+    {
+      "from": "SU_0452",
+      "to": "SU_0024",
+      "ratio": "1 Groote balie = 60 Kati",
+      "context": "rijst, Palembang"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 6000 Pond (VOC)",
+      "context": "rijst, Palembang"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0024",
+      "ratio": "1 Gantang = 6 Kati",
+      "context": "rijst, Palembang"
+    },
+    {
+      "from": "SU_0356",
+      "to": "SU_0024",
+      "ratio": "1 Goelak = 1.25 Kati",
+      "context": "peper, Palembang"
+    },
+    {
+      "from": "SU_0356",
+      "to": "SU_0155",
+      "ratio": "1 Goelak = 12.5 Pikol",
+      "context": "peper, Palembang"
+    },
+    {
+      "from": "SU_0356",
+      "to": "SU_0011",
+      "ratio": "1 Goelak = 1562.5 Pond (VOC)",
+      "context": "peper, Palembang"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0463",
+      "ratio": "1 Pikol = 100 Catjes Chinasch",
+      "context": "peper, Palembang"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 122.5 Pond (VOC)",
+      "context": "peper, Palembang"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 122.5 Pond (VOC)",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0012",
+      "ratio": "1 Pikol = 133.33 Pond (Engels)",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0453",
+      "ratio": "1 Pikol = 123 Pond (Frans)",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0187",
+      "ratio": "1 Kati = 16 Taël",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0451",
+      "ratio": "1 Taël = 10 Maas",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0451",
+      "to": "SU_0454",
+      "ratio": "1 Maas = 10 Conderyn",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0454",
+      "to": "SU_0462",
+      "ratio": "1 Conderyn = 10 Casje",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0455",
+      "to": "SU_0412",
+      "ratio": "1 Manderijns Cobido = 10 Puntos",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0412",
+      "to": "SU_0454",
+      "ratio": "1 Puntos = 10 Conderyn",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0456",
+      "to": "SU_0412",
+      "ratio": "1 Winkeliers Cobido = 10 Puntos",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0457",
+      "to": "SU_0412",
+      "ratio": "1 Timmermans Cobido = 10 Puntos",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0455",
+      "to": "SU_0028",
+      "ratio": "1 Manderijns Cobido = 14.375-14.5 Duim",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0456",
+      "to": "SU_0028",
+      "ratio": "1 Winkeliers Cobido = 14.125 Duim",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0457",
+      "to": "SU_0028",
+      "ratio": "1 Timmermans Cobido = 13.625-13.75 Duim",
+      "context": "Kanton"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0187",
+      "ratio": "1 Kati = 20 Taël",
+      "context": "zilver, Ayutthaya"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 118 Pond (VOC)",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.18 Pond (VOC)",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3066.67 Pond (VOC)",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0278",
+      "ratio": "1 Last = 46 Maat",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0278",
+      "to": "SU_0095",
+      "ratio": "1 Maat = 5 Gantang",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0095",
+      "ratio": "1 Last = 230 Gantang",
+      "context": "Ayutthaya"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0155",
+      "ratio": "1 Bahar = 3 Pikol",
+      "context": "thin, Ayutthaya"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 354 Pond (VOC)",
+      "context": "thin, Ayutthaya"
+    },
+    {
+      "from": "SU_0465",
+      "to": "SU_0466",
+      "ratio": "1 Canaat = 14 Zork",
+      "context": "hout, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 15 pees",
+      "context": "hartevellen jannema, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 30 pees",
+      "context": "hartevellen cheman, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 50 pees",
+      "context": "hartevellen cobito, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 40 pees",
+      "context": "hartevellen attemaat, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 50 pees",
+      "context": "hartevellen drie zoort, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 50 pees",
+      "context": "hartevellen bariga, Ayutthaya"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0292",
+      "ratio": "1 Bos = 15 pees",
+      "context": "hartevellen jannema, Ayutthaya"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0292",
+      "ratio": "1 Bos = 30 pees",
+      "context": "hartevellen cheman, Ayutthaya"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0292",
+      "ratio": "1 Bos = 50 pees",
+      "context": "hartevellen cobito, Ayutthaya"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0292",
+      "ratio": "1 Bos = 40 pees",
+      "context": "hartevellen attemaat, Ayutthaya"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0292",
+      "ratio": "1 Bos = 50 pees",
+      "context": "hartevellen drie zoort, Ayutthaya"
+    },
+    {
+      "from": "SU_0021",
+      "to": "SU_0292",
+      "ratio": "1 Bos = 50 pees",
+      "context": "hartevellen bariga, Ayutthaya"
+    },
+    {
+      "from": "SU_0289",
+      "to": "SU_0292",
+      "ratio": "1 Pak = 15 pees",
+      "context": "koe en buffelshuyden, Ayutthaya"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 120 Pond (VOC)",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0187",
+      "ratio": "1 Kati = 16 Taël",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.2 Pond (VOC)",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0451",
+      "ratio": "1 Taël = 10 Maas",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0033",
+      "ratio": "1 Taël = 1.2 Ons",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0451",
+      "to": "SU_0454",
+      "ratio": "1 Maas = 10 Conderyn",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0451",
+      "to": "SU_0084",
+      "ratio": "1 Maas = 2.5 Engels",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0454",
+      "to": "SU_0462",
+      "ratio": "1 Conderyn = 10 Casje",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0454",
+      "to": "SU_0403",
+      "ratio": "1 Conderyn = 8 Aas",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0467",
+      "to": "SU_0462",
+      "ratio": "1 Mookje = 10 Casje",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0468",
+      "to": "SU_0462",
+      "ratio": "1 Avossi = 100 Casje",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0469",
+      "to": "SU_0462",
+      "ratio": "1 Hebreutie = 1000 Casje",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0470",
+      "to": "SU_0083",
+      "ratio": "1 Ikje = 2.875 Elle",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0470",
+      "to": "SU_0513",
+      "ratio": "1 Ikje = 65 Kleine Duim (Japans)",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0515",
+      "to": "SU_0513",
+      "ratio": "1 Kleine Voet (Japans) = 10 Kleine Duim (Japans)",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0515",
+      "to": "SU_0028",
+      "ratio": "1 Kleine Voet (Japans) = 11.88 Duim",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0471",
+      "to": "SU_0514",
+      "ratio": "1 Voet (Japans) = 10 Grote Duim (Japans)",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0471",
+      "to": "SU_0028",
+      "ratio": "1 Voet (Japans) = 14.75 Duim",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0015",
+      "ratio": "1 Gantang = 1.33 Compagnies Kan",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0024",
+      "ratio": "1 Gantang = 2.5 Kati",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0474",
+      "to": "SU_0095",
+      "ratio": "1 Baal = 33 Gantang",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0474",
+      "to": "SU_0024",
+      "ratio": "1 Baal = 82-83 Kati",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0474",
+      "to": "SU_0011",
+      "ratio": "1 Baal = 98.4-99.6 Pond (VOC)",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0475",
+      "to": "SU_0474",
+      "ratio": "1 Gok = 3 Baal",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0475",
+      "to": "SU_0095",
+      "ratio": "1 Gok = 99 Gantang",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0476",
+      "to": "SU_0475",
+      "ratio": "1 Sigok = 10 Gok",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0477",
+      "to": "SU_0476",
+      "ratio": "1 Fiackgok = 10 Sigok",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0478",
+      "to": "SU_0477",
+      "ratio": "1 Cingok = 10 Fiackgok",
+      "context": "Nagasaki"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0033",
+      "ratio": "1 Pond (VOC) = 16 Ons",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3000 Pond (VOC)",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 480 Pond (VOC)",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0124",
+      "ratio": "1 Bahar = 20 Man",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 24 Pond (VOC)",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0383",
+      "to": "SU_0479",
+      "ratio": "1 Pallam = 8 Pagood",
+      "context": "drogerijen etc van boutecquirs, Nagapattinam"
+    },
+    {
+      "from": "SU_0383",
+      "to": "SU_0035",
+      "ratio": "1 Pallam = 1 Reaal",
+      "context": "drogerijen etc van boutecquirs, Nagapattinam"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0383",
+      "ratio": "1 Pond (VOC) = 18 Pallam",
+      "context": "drogerijen etc van boutecquirs, Nagapattinam"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0479",
+      "ratio": "1 Pond (VOC) = 144 Pagood",
+      "context": "drogerijen etc van boutecquirs, Nagapattinam"
+    },
+    {
+      "from": "SU_0033",
+      "to": "SU_0479",
+      "ratio": "1 Ons = 0.11 Pagood",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0479",
+      "to": "SU_0480",
+      "ratio": "1 Pagood = 10 Fanum",
+      "context": "Nagapattinam"
+    },
+    {
+      "from": "SU_0041",
+      "to": "SU_0480",
+      "ratio": "1 Mangely = 1 Fanum",
+      "context": "diamanten, Nagapattinam"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0041",
+      "ratio": "1 Pond (VOC) = 1440 Mangely",
+      "context": "diamanten, Nagapattinam"
+    },
+    {
+      "from": "SU_0060",
+      "to": "SU_0041",
+      "ratio": "1 Calange = 13 Mangely",
+      "context": "andere gesteentes en corale, Nagapattinam"
+    },
+    {
+      "from": "SU_0482",
+      "to": "SU_0011",
+      "ratio": "1 Tok = 3.5 Pond (VOC)",
+      "context": "fruytagien, wortelen, tabak en andere grove waren, iten catoen, Nagapattinam"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0083",
+      "ratio": "1 Elle = 1 Elle",
+      "context": "laakens, stoffen enz, Nagapattinam"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0028",
+      "ratio": "1 Cobido = 17 Duim",
+      "context": "inlandsche lywaaten, Nagapattinam"
+    },
+    {
+      "from": "SU_0072",
+      "to": "SU_0292",
+      "ratio": "1 Corge = 20 pees",
+      "context": "lywaaten, Nagapattinam"
+    },
+    {
+      "from": "SU_0048",
+      "to": "SU_0292",
+      "ratio": "1 Ammanam = 20000 pees",
+      "context": "areek nooten, Nagapattinam"
+    },
+    {
+      "from": "SU_0048",
+      "to": "SU_0292",
+      "ratio": "1 Ammanam = 24000 pees",
+      "context": "areek nooten, Ceylon"
+    },
+    {
+      "from": "SU_0483",
+      "to": "SU_0127",
+      "ratio": "1 Garst = 22000 Markal",
+      "context": "ryst of graan, Nagapattinam"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0106",
+      "ratio": "1 Markal = 157.5 Kandijl",
+      "context": "ryst of graan, Nagapattinam"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0483",
+      "ratio": "1 Parra = 18 Garst",
+      "context": "ryst of graan, Nagapattinam"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0011",
+      "ratio": "1 Parra = 40 Pond (VOC)",
+      "context": "ryst of graan, Nagapattinam"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0011",
+      "ratio": "1 Markal = 4 Pond (VOC)",
+      "context": "graan, Nagapattinam"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0011",
+      "ratio": "1 Markal = 5 Pond (VOC)",
+      "context": "booter, Nagapattinam"
+    },
+    {
+      "from": "SU_0484",
+      "to": "SU_0484",
+      "ratio": "1 Callang = 1 Callang",
+      "context": "liquide dingen, Nagapattinam"
+    },
+    {
+      "from": "SU_0485",
+      "to": "SU_0012",
+      "ratio": "1 Bhaar (Engels) = 500 Pond (Engels)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0485",
+      "to": "SU_0011",
+      "ratio": "1 Bhaar (Engels) = 460-462 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0486",
+      "to": "SU_0011",
+      "ratio": "1 Bhaar (Frans) = 480 Pond (VOC)",
+      "context": "Pondicherry"
+    },
+    {
+      "from": "SU_0487",
+      "to": "SU_0011",
+      "ratio": "1 Bhaar (Hollands) = 480 Pond (VOC)",
+      "context": "Pondicherry"
+    },
+    {
+      "from": "SU_0487",
+      "to": "SU_0011",
+      "ratio": "1 Bhaar (Hollands) = 480 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0487",
+      "to": "SU_0011",
+      "ratio": "1 Bhaar (Hollands) = 480 Pond (VOC)",
+      "context": "Lalpettai | Kanchipuram | Walajapet | Arcot"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 23 Pond (VOC)",
+      "context": "Lalpettai | Kanchipuram | Walajapet | Arcot"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0011",
+      "ratio": "1 Man = 24 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0482",
+      "to": "SU_0479",
+      "ratio": "1 Tok = 500 Pagood",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0488",
+      "to": "SU_0479",
+      "ratio": "1 Wiese = 400 Pagood",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0067",
+      "to": "SU_0383",
+      "ratio": "1 Ceer = 8 Pallam",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0383",
+      "ratio": "1 Ceer Katja = 8 Pallam",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0383",
+      "to": "SU_0479",
+      "ratio": "1 Pallam = 10 Pagood",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Katja = 0.55 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0383",
+      "ratio": "1 Ceer Pakka = 24 Pallam",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0479",
+      "ratio": "1 Ceer Pakka = 240 Pagood",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Pakka = 1.67 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0479",
+      "ratio": "1 Pond (VOC) = 144 Pagood",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0011",
+      "ratio": "1 Markal = 11.375 Pond (VOC)",
+      "context": "graanen, Sadras"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0367",
+      "ratio": "1 Markal = 8 Mediet",
+      "context": "graanen, Sadras"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 1.42 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0489",
+      "ratio": "1 Mediet = 4 Quart mediet",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0489",
+      "to": "SU_0011",
+      "ratio": "1 Quart mediet = 0.36 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 1.625 Pond (VOC)",
+      "context": "vette waaren, Sadras"
+    },
+    {
+      "from": "SU_0489",
+      "to": "SU_0011",
+      "ratio": "1 Quart mediet = 0.41 Pond (VOC)",
+      "context": "vette waaren, Sadras"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0011",
+      "ratio": "1 Markal = 6.625 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0083",
+      "to": "SU_0069",
+      "ratio": "1 Elle = 1.5 Cobido",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0490",
+      "to": "SU_0069",
+      "ratio": "1 El (Engels) = 2.25 Cobido",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0491",
+      "to": "SU_0069",
+      "ratio": "1 El (Frans) = 2.5 Cobido",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0127",
+      "ratio": "1 Parra = 4 Markal",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0149",
+      "ratio": "1 Last = 75 Parra",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0127",
+      "ratio": "1 Last = 300 Markal",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0492",
+      "ratio": "1 Last = 750 Nagapatnamse Maat",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0149",
+      "to": "SU_0492",
+      "ratio": "1 Parra = 10 Nagapatnamse Maat",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3000 Pond (VOC)",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0493",
+      "to": "SU_0011",
+      "ratio": "1 Madrasse Garst = 400 Pond (VOC)",
+      "context": "Madras"
+    },
+    {
+      "from": "SU_0493",
+      "to": "SU_0127",
+      "ratio": "1 Madrasse Garst = 800 Markal",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0494",
+      "to": "SU_0127",
+      "ratio": "1 Madrasse Markal = 2 Markal",
+      "context": "Sadras"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0020",
+      "ratio": "1 Last = 600 Cojang",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0127",
+      "ratio": "1 Last = 600 Markal",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0495",
+      "to": "SU_0127",
+      "ratio": "1 Groote Candyl = 200 Markal",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0496",
+      "to": "SU_0127",
+      "ratio": "1 Kleine Candyl = 80 Markal",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0497",
+      "to": "SU_0127",
+      "ratio": "1 Groote Bhaar = 200 Markal",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0498",
+      "to": "SU_0127",
+      "ratio": "1 Kleine Bhaar = 80 Markal",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0499",
+      "to": "SU_0127",
+      "ratio": "1 Compagnies Pawa = 5.5 Markal",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0500",
+      "ratio": "1 Markal = 16 Tankan",
+      "context": "rijst, Jagannathapuram"
+    },
+    {
+      "from": "SU_0127",
+      "to": "SU_0501",
+      "ratio": "1 Markal = 256 Dabboes",
+      "context": "rijst, Jagannathapuram"
+    },
+    {
+      "from": "SU_0500",
+      "to": "SU_0501",
+      "ratio": "1 Tankan = 16 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0502",
+      "ratio": "1 Bahar = 20 Mauw",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0502",
+      "to": "SU_0503",
+      "ratio": "1 Mauw = 8 Wisse",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0503",
+      "to": "SU_0011",
+      "ratio": "1 Wisse = 3 Pond (VOC)",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0501",
+      "ratio": "1 Pond (VOC) = 35.5 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0501",
+      "ratio": "1 Ceer Pakka = 64 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0501",
+      "ratio": "1 Ceer Katja = 18 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0507",
+      "to": "SU_0501",
+      "ratio": "1 Grote Wiese = 96 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0508",
+      "to": "SU_0501",
+      "ratio": "1 Kleine Wiese = 90 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0384",
+      "to": "SU_0363",
+      "ratio": "1 Toelang = 1 Ropia",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0363",
+      "to": "SU_0501",
+      "ratio": "1 Ropia = 0.75 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0504",
+      "to": "SU_0501",
+      "ratio": "1 Cotta nevel = 1 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0505",
+      "to": "SU_0501",
+      "ratio": "1 Patta nefel = 1.5 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0506",
+      "to": "SU_0501",
+      "ratio": "1 Qattie nevel = 3 Dabboes",
+      "context": "Jagannathapuram"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0501",
+      "ratio": "1 Pond (VOC) = 35.5 Dabboes",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0149",
+      "ratio": "1 Last = 100 Parra",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0020",
+      "ratio": "1 Last = 600 Cojang",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0492",
+      "ratio": "1 Cojang = 1000 Nagapatnamse Maat",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0425",
+      "ratio": "1 Cojang = 4 Ceer Pakka",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0501",
+      "ratio": "1 Cojang = 256 Dabboes",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 7.31 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 4387.5 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0501",
+      "ratio": "1 Cojang = 248 Dabboes",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0501",
+      "ratio": "1 Cojang = 7.07 Dabboes",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 4241.33 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0501",
+      "ratio": "1 Cojang = 192 Dabboes",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 5.5 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 3300 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0509",
+      "to": "SU_0020",
+      "ratio": "1 Manicom = 0.25 Cojang",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 480 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0124",
+      "ratio": "1 Bahar = 20 Man",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 432.5 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0124",
+      "ratio": "1 Bahar = 20 Man",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0488",
+      "to": "SU_0501",
+      "ratio": "1 Wiese = 96 Dabboes",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0488",
+      "to": "SU_0067",
+      "ratio": "1 Wiese = 5 Ceer",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0488",
+      "to": "SU_0011",
+      "ratio": "1 Wiese = 2.74 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Pakka = 1.8125-1.824 Pond (VOC)",
+      "context": "Bimlipatam"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0024",
+      "ratio": "1 Gantang = 4-5 Kati",
+      "context": "Bandjarmasin"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0011",
+      "ratio": "1 Gantang = 5-6.25 Pond (VOC)",
+      "context": "Bandjarmasin"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Bandjarmasin"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 125 Pond (VOC)",
+      "context": "Bandjarmasin"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0035",
+      "ratio": "1 Kati = 23 Reaal",
+      "context": "Bandjarmasin"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 1.25 Pond (VOC)",
+      "context": "Concordia, Kasteel"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "Concordia, Kasteel"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0011",
+      "ratio": "1 Pikol = 125 Pond (VOC)",
+      "context": "Concordia, Kasteel"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0451",
+      "ratio": "1 Taël = 10 Maas",
+      "context": "Concordia, Kasteel"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0011",
+      "ratio": "1 Taël = 0.08 Pond (VOC)",
+      "context": "Concordia, Kasteel"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0501",
+      "ratio": "1 Pond (VOC) = 36 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0393",
+      "ratio": "1 Pond (VOC) = 2 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0011",
+      "to": "SU_0425",
+      "ratio": "1 Pond (VOC) = 0.56 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0501",
+      "ratio": "1 Ceer Pakka = 64 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0393",
+      "ratio": "1 Ceer Pakka = 3.56 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Pakka = 1.78 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0501",
+      "ratio": "1 Ceer Katja = 18 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0425",
+      "ratio": "1 Ceer Katja = 0.28 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Katja = 0.5 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0020",
+      "ratio": "1 Mediet = 0.25 Cojang",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0510",
+      "ratio": "1 Mediet = 0.025 Tomb",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0501",
+      "ratio": "1 Mediet = 75.38 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0393",
+      "ratio": "1 Mediet = 4.19 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0425",
+      "ratio": "1 Mediet = 1.18 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0011",
+      "ratio": "1 Mediet = 2.09 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0367",
+      "ratio": "1 Cojang = 4 Mediet",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0510",
+      "ratio": "1 Cojang = 0.1 Tomb",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0501",
+      "ratio": "1 Cojang = 301.5 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0393",
+      "ratio": "1 Cojang = 16.75 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0425",
+      "ratio": "1 Cojang = 4.71 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0011",
+      "ratio": "1 Cojang = 8.38 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0367",
+      "ratio": "1 Tomb = 40 Mediet",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0020",
+      "ratio": "1 Tomb = 10 Cojang",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0106",
+      "ratio": "1 Tomb = 0.05 Kandijl",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0501",
+      "ratio": "1 Tomb = 3015 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0393",
+      "ratio": "1 Tomb = 167.5 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0425",
+      "ratio": "1 Tomb = 47.1 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0510",
+      "to": "SU_0011",
+      "ratio": "1 Tomb = 83.75 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0367",
+      "ratio": "1 Kandijl = 800 Mediet",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0020",
+      "ratio": "1 Kandijl = 200 Cojang",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0510",
+      "ratio": "1 Kandijl = 20 Tomb",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0501",
+      "ratio": "1 Kandijl = 60300 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0393",
+      "ratio": "1 Kandijl = 3350 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0425",
+      "ratio": "1 Kandijl = 942.19 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0106",
+      "to": "SU_0011",
+      "ratio": "1 Kandijl = 1675 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0511",
+      "ratio": "1 Last = 1 Garsje",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0367",
+      "ratio": "1 Last = 2400 Mediet",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0020",
+      "ratio": "1 Last = 600 Cojang",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0510",
+      "ratio": "1 Last = 60 Tomb",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0106",
+      "ratio": "1 Last = 3 Kandijl",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0501",
+      "ratio": "1 Last = 180900 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0393",
+      "ratio": "1 Last = 10050 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0425",
+      "ratio": "1 Last = 2826.56 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0116",
+      "to": "SU_0011",
+      "ratio": "1 Last = 5025 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0512",
+      "to": "SU_0501",
+      "ratio": "1 Yze = 108 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0512",
+      "to": "SU_0393",
+      "ratio": "1 Yze = 6 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0512",
+      "to": "SU_0425",
+      "ratio": "1 Yze = 1.69 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0512",
+      "to": "SU_0011",
+      "ratio": "1 Yze = 3 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0106",
+      "ratio": "1 Bahar = 1 Kandijl",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0512",
+      "ratio": "1 Bahar = 160 Yze",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0124",
+      "ratio": "1 Bahar = 20 Man",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0501",
+      "ratio": "1 Bahar = 17289 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0393",
+      "ratio": "1 Bahar = 960 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0425",
+      "ratio": "1 Bahar = 270 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0007",
+      "to": "SU_0011",
+      "ratio": "1 Bahar = 480 Pond (VOC)",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0512",
+      "ratio": "1 Man = 8 Yze",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0501",
+      "ratio": "1 Man = 864 Dabboes",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0393",
+      "ratio": "1 Man = 48 Ceer Katja",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0124",
+      "to": "SU_0425",
+      "ratio": "1 Man = 13.5 Ceer Pakka",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0155",
+      "to": "SU_0024",
+      "ratio": "1 Pikol = 100 Kati",
+      "context": "alle koopmanschappen, Nagasaki"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0083",
+      "ratio": "1 Cobido = 2 Elle",
+      "context": "inlandsche lywaaten, Nagapattinam"
+    },
+    {
+      "from": "SU_0069",
+      "to": "SU_0083",
+      "ratio": "1 Cobido = 2 Elle",
+      "context": "lywaaten, en andere diergelyke goederen, Bimlipatam"
+    },
+    {
+      "from": "SU_0429",
+      "to": "SU_0415",
+      "ratio": "1 Chouw = 1 Grijn",
+      "context": "goud, zilver, Bombay | Poona"
+    },
+    {
+      "from": "SU_0042",
+      "to": "SU_0041",
+      "ratio": "1 Karaat = 3.5 Mangely",
+      "context": "diamanten, Nagapattinam"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0033",
+      "ratio": "1 Reaal = 8 Ons",
+      "context": "goud, zilver, Batavia"
+    },
+    {
+      "from": "SU_0035",
+      "to": "SU_0036",
+      "ratio": "1 Reaal = 1 Mark trois",
+      "context": "goud, zilver, Batavia"
+    },
+    {
+      "from": "SU_0433",
+      "to": "SU_0083",
+      "ratio": "1 Geeikte ges = 9.96 Elle",
+      "context": "Broach"
+    },
+    {
+      "from": "SU_0434",
+      "to": "SU_0083",
+      "ratio": "1 Basaarsges = 9.94 Elle",
+      "context": "Broach"
+    },
+    {
+      "from": "SU_0187",
+      "to": "SU_0024",
+      "ratio": "1 Taël = 1 Kati",
+      "context": "goud, Palembang"
+    },
+    {
+      "from": "SU_0437",
+      "to": "SU_0427",
+      "ratio": "1 Once trois = 1293 Waal",
+      "context": "goud, zilver, Bombay | Poona"
+    },
+    {
+      "from": "SU_0024",
+      "to": "SU_0011",
+      "ratio": "1 Kati = 20 Pond (VOC)",
+      "context": "pady, Batavia"
+    },
+    {
+      "from": "SU_0040",
+      "to": "SU_0011",
+      "ratio": "1 Waterloot = 25 Pond (VOC)",
+      "context": "Batavia"
+    },
+    {
+      "from": "SU_0425",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Pakka = 86.25 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0452",
+      "to": "SU_0020",
+      "ratio": "1 Groote balie = 1 Cojang",
+      "context": "rijst, Palembang"
+    },
+    {
+      "from": "SU_0393",
+      "to": "SU_0011",
+      "ratio": "1 Ceer Katja = 86.25 Pond (VOC)",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0400",
+      "to": "SU_0042",
+      "ratio": "1 Retti = 85 Karaat",
+      "context": "diamant, Surat"
+    },
+    {
+      "from": "SU_0442",
+      "to": "SU_0083",
+      "ratio": "1 Ges Souratsch = 100.4 Elle",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0434",
+      "to": "SU_0083",
+      "ratio": "1 Basaarsges = 100.6 Elle",
+      "context": "Surat"
+    },
+    {
+      "from": "SU_0404",
+      "to": "SU_0042",
+      "ratio": "1 Pakka Retti = 100 Karaat",
+      "context": "parels, diamanten en andere edelstenen, Hooghly"
+    },
+    {
+      "from": "SU_0356",
+      "to": "SU_0007",
+      "ratio": "1 Goelak = 1 Bahar",
+      "context": "Lampong en Bovenlanden (van Bantam), behalve Lampon Touland Bauwan en Lampong Poetie"
+    },
+    {
+      "from": "SU_0020",
+      "to": "SU_0106",
+      "ratio": "1 Cojang = 1 Kandijl",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0356",
+      "to": "SU_0007",
+      "ratio": "1 Goelak = 1 Bahar",
+      "context": "Lampong Toulong Bauwang | Lampong Poetie"
+    },
+    {
+      "from": "SU_0095",
+      "to": "SU_0020",
+      "ratio": "1 Gantang = 1 Cojang",
+      "context": "rijst, Palembang"
+    },
+    {
+      "from": "SU_0367",
+      "to": "SU_0106",
+      "ratio": "1 Mediet = 1 Kandijl",
+      "context": "Palicol"
+    },
+    {
+      "from": "SU_0041",
+      "to": "SU_0011",
+      "ratio": "1 Mangely = 0.52 Pond (VOC)",
+      "context": "Madurai"
+    },
+    {
+      "from": "SU_0098",
+      "to": "SU_0083",
+      "ratio": "1 Ges = 962 Elle",
+      "context": "Kets | Halar"
+    },
+    {
+      "from": "SU_0413",
+      "to": "SU_0415",
+      "ratio": "1 Thola =  Grijn",
+      "context": "Patna"
+    }
+  ]
 }
