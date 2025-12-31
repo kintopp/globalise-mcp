@@ -2,6 +2,33 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.14.0] - 2025-12-31
+
+### Added
+- **SQLite-backed Archival Index Tool**: New `globalise_find_archival_documents` tool for querying 228K+ VOC archival document indexes locally
+  - **OBP (Digitized Indexes)**: ~227K document entries with settlement, year, folio, inventory, and description metadata
+  - **Generale Missiven**: ~950 official letters with dates, chambers (Amsterdam/Zeeland), RGP references, and National Archives scan URLs
+  - **Full-text search**: FTS5-powered description search with support for AND, OR, NOT, prefix*, and "exact phrase" queries
+  - **Rich filters**: source (obp/gm/all), inventoryNumber, settlement (OBP), yearFrom/To, folioFrom/To (OBP with inventory), chamber (GM), htrAvailable (GM)
+  - **Aggregations**: Returns settlement, year, inventory, and chamber distribution counts
+  - **Workflow integration**: Inventory numbers link directly to `globalise_search_by_inventory` for finding transcribed pages
+
+### Technical
+- New dependencies: `better-sqlite3` (synchronous SQLite), `csv-parse` (CSV parsing)
+- Database built from committed CSVs via `npm run build:db` (~227K OBP + ~950 GM rows)
+- Source CSVs from IISH Dataverse committed to `data/sources/` for Railway build access
+- Database file (~50MB) generated at build time, gitignored
+- Lazy database initialization with read-only mode and 64MB cache
+
+### Files Added
+- `src/tools/archival-index.ts` - Tool implementation with Zod schemas
+- `src/utils/database.ts` - SQLite wrapper with lazy initialization
+- `scripts/build-archival-db.ts` - CSV-to-SQLite build script
+- `data/sources/obp-indexes.csv` - OBP source data (~78MB)
+- `data/sources/generale-missiven.csv` - GM source data (~461KB)
+
+---
+
 ## [1.13.0] - 2025-12-30
 
 ### Changed

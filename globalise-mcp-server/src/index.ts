@@ -41,6 +41,10 @@ import {
   searchByLanguage,
   searchByLanguageInputSchema,
 } from './tools/convenience.js';
+import {
+  findArchivalDocuments,
+  findArchivalDocumentsInputSchema,
+} from './tools/archival-index.js';
 
 // Import resource definitions
 import { RESOURCES, readResource } from './resources/index.js';
@@ -220,6 +224,27 @@ const TOOLS: Tool[] = [
       idempotentHint: true,
     },
   },
+  {
+    name: 'globalise_find_archival_documents',
+    description:
+      '**ARCHIVAL INDEX SEARCH** - Query local database of 228K+ VOC archival document indexes (OBP + Generale Missiven) to find documents by metadata before searching transcriptions. ' +
+      '\n\n**USE WHEN:** User wants to scope a search using archival metadata like settlement, year range, folio numbers, or needs finding aid information. ' +
+      'Examples: "find documents about Ceylon from 1720-1750", "what inventories have documents about Batavia?", "find Generale Missiven from Amsterdam chamber", ' +
+      '"locate documents near folio 700 in inventory 1543". ' +
+      '\n\n**DATA SOURCES:** ' +
+      '(1) OBP (Digitized Indexes): ~227K document entries with settlement, year, folio, inventory, description. ' +
+      '(2) GM (Generale Missiven): ~950 official letters with dates, chambers (Amsterdam/Zeeland), RGP references, scan URLs. ' +
+      '\n\n**WORKFLOW:** Use this tool first to identify relevant inventories/folios, then use globalise_search_transcriptions or globalise_retrieve_document to access actual transcribed text. ' +
+      '\n\n**FILTERS:** source (obp/gm/all), full-text query in descriptions, inventoryNumber, settlement (OBP), yearFrom/To, folioFrom/To (OBP, with inventory), chamber (GM), htrAvailable (GM). ' +
+      '\n\n**RETURNS:** Document metadata with inventory numbers, descriptions, year ranges, and aggregations for scoping. GM results include National Archives scan URLs. ' +
+      '\n\n**CONNECTION TO TRANSCRIPTIONS:** Inventory numbers link to transcription search. Use inventoryNumber from results with globalise_search_by_inventory to find transcribed pages.',
+    inputSchema: zodToJsonSchema(findArchivalDocumentsInputSchema) as Tool['inputSchema'],
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+  },
 ];
 
 /**
@@ -228,7 +253,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.13.0',
+    version: '1.14.0',
   },
   {
     capabilities: {
@@ -325,6 +350,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'globalise_search_by_language': {
         const input = searchByLanguageInputSchema.parse(args);
         result = await searchByLanguage(input);
+        break;
+      }
+
+      case 'globalise_find_archival_documents': {
+        const input = findArchivalDocumentsInputSchema.parse(args);
+        result = await findArchivalDocuments(input);
         break;
       }
 

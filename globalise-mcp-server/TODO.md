@@ -51,38 +51,68 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ### SQLite Database for Large Reference Datasets
 
-**Priority:** Medium
-**Status:** Under consideration (pending cost analysis)
+**Priority:** High
+**Status:** Ready to implement (plan complete)
 
 **Background:**
-Several GLOBALISE datasets are too large for MCP resources but valuable as queryable tools:
-- Digitized Indexes OBP: 314K documents
-- Generale Missiven overview: 950 letters
-- Places thesaurus: 4.4K variants
-- Commodities thesaurus: 3.6K concepts
+Two GLOBALISE datasets are valuable as queryable tools but too large for MCP resources:
+- Digitized Indexes OBP: 314K documents (finding aid with settlement, year, folio, description)
+- Generale Missiven overview: 950 letters (dates, RGP references, scan URLs)
 
-**Proposed Approach:**
-Bundle a SQLite database (~100MB) with the MCP server. For Railway deployment, the DB resides on a persistent volume. For local stdio users, lazy-download on first use.
+**Plan File:** `~/.claude/plans/sparkling-zooming-hinton.md`
 
-**Tool Example:**
+**Tool:** `globalise_find_archival_documents`
+
+**Key Design Decisions (2025-12-31):**
+- CSVs committed to `data/sources/` (~75MB) for Railway build access
+- Database rebuilt on each Railway deploy (~2-3 min build time)
+- SQLite with FTS5 for full-text search in descriptions
+- Uses `better-sqlite3` (synchronous, Railway-compatible)
+
+**Input Parameters:**
 ```
-globalise_find_documents:
-  - inventory?: number
-  - settlement?: string
-  - yearFrom/To?: number
-  - keyword?: string (full-text search)
+source: 'obp' | 'gm' | 'all'     # Data source filter
+query: string                    # FTS5 search in descriptions
+inventoryNumber: string | string[]
+settlement: string               # OBP only
+yearFrom/To: number
+folioFrom/To: number             # OBP only, proximity search
+chamber: string                  # GM only (Amsterdam, Zeeland)
+htrAvailable: boolean            # GM only
+from/size: pagination
+includeAggregations: boolean     # Settlement/year/inventory counts
 ```
 
-**Cost Considerations (Railway):**
-- Persistent volume: ~$0.25/GB/month → ~$0.03/month for 100MB
-- Compute: Minimal (SQLite queries are fast)
-- Bandwidth: Negligible (small text responses)
+**Output:**
+- Discriminated union results (OBP vs GM have different fields)
+- GM results include scan URLs, RGP references, HTR status
+- Aggregations for scoping (settlement distribution, year range, top inventories)
 
-**Libraries:** `better-sqlite3` (fast, synchronous, Railway-compatible)
+**Usage Scenarios:**
+See `offline/resources/scenarios-combined-index-use.md` for 6 detailed scenarios showing bidirectional workflow between index and transcriptions search.
 
-**Related:** See `offline/resources/_RESOURCE_CONNECTIONS.md` for full dataset survey and MCP integration recommendations.
+**Source Data:**
+- `offline/resources/GLOBALISE - Digitized Indexes.../...csv` (314K rows, 16 cols)
+- `offline/resources/Overzicht van Generale Missiven.../...csv` (950 rows, 25 cols)
 
-**Decision:** Deferred pending Railway pricing review.
+**SQLite Schema Highlights:**
+- `obp_documents` table with indexes on inventory, settlement, year, folio
+- `generale_missiven` table with indexes on inventory, date, chamber
+- FTS5 virtual tables for description search
+- Shared key: `inventory_number` links to transcriptions API URNs
+
+**Files to Create:**
+- `src/utils/database.ts` - SQLite wrapper with lazy init
+- `src/tools/archival-index.ts` - Tool implementation
+- `scripts/build-archival-db.ts` - CSV-to-SQLite build script
+- `data/sources/*.csv` - Source CSVs (committed)
+- `data/archival-index.sqlite` - Generated DB (gitignored)
+
+**Version:** Will be 1.14.0
+
+**Related:**
+- `offline/resources/_RESOURCE_CONNECTIONS.md` - Dataset survey
+- `offline/resources/tanap-resource-options-discussion.txt` - Earlier design discussion
 
 ---
 

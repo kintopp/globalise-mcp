@@ -29,3 +29,6 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+
+# Generated database (source CSVs are committed)
+data/*.sqlite

@@ -1,11 +1,12 @@
 {
   "name": "globalise-mcp-server",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && cp src/resources/*.json dist/resources/",
+    "build": "tsc && cp src/resources/*.json dist/resources/ && npm run build:db",
+    "build:db": "npx tsx scripts/build-archival-db.ts",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "inspector": "npm run build && npx @modelcontextprotocol/inspector dist/index.js"
@@ -21,12 +22,15 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",
+    "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
+    "csv-parse": "^5.6.0",
     "express": "^5.1.0",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
