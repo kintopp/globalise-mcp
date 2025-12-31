@@ -10,9 +10,11 @@
 
 import { Resource, TextResourceContents } from '@modelcontextprotocol/sdk/types.js';
 import weightsAndMeasures from './weights-measures.json' with { type: 'json' };
+import commodities from './commodities.json' with { type: 'json' };
 
 // Pre-stringify for resource response
 const WEIGHTS_MEASURES_DATA = JSON.stringify(weightsAndMeasures, null, 2);
+const COMMODITIES_DATA = JSON.stringify(commodities, null, 2);
 
 /**
  * Resource definitions
@@ -45,6 +47,20 @@ export const RESOURCES: Resource[] = [
       '(3) interpret historical quantities with scholarly citations. Note: Values varied by location, ' +
       'commodity, and time period. Source: GLOBALISE Project (CC-BY-SA-4.0). ' +
       'Full dataset: https://hdl.handle.net/10622/MDNVH5',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'globalise://reference/commodities',
+    name: 'VOC Commodities Thesaurus',
+    description:
+      'Trade goods from Dutch East India Company (VOC) archives. A SKOS thesaurus of 1,359 commodities ' +
+      'shipped in the early modern Indian Ocean World, with 2,481 spelling variants for query expansion. ' +
+      'Structure: "concepts" contains commodity entries with Dutch/English labels, alternative spellings, ' +
+      'hierarchical relationships (broader parent, narrower children), and definitions; "lookup" maps ' +
+      'spelling variants to concept IDs; "topConcepts" lists root categories (Food, Beverages, Textiles, etc.). ' +
+      'Use this to: (1) expand search queries (e.g., "pepper" → "peper", "piper"), ' +
+      '(2) find related commodities via hierarchy (broader/narrower), (3) understand historical trade terminology. ' +
+      'Source: GLOBALISE Project (CC-BY-SA-4.0). Full dataset: https://hdl.handle.net/10622/YAWDOV',
     mimeType: 'application/json',
   },
 ];
@@ -165,6 +181,17 @@ export async function readResource(uri: string): Promise<TextResourceContents[]>
           uri,
           mimeType: 'application/json',
           text: WEIGHTS_MEASURES_DATA,
+        },
+      ];
+    }
+
+    case 'globalise://reference/commodities': {
+      console.error(`[${timestamp}] 📦 Resource READ: commodities (${COMMODITIES_DATA.length} bytes)`);
+      return [
+        {
+          uri,
+          mimeType: 'application/json',
+          text: COMMODITIES_DATA,
         },
       ];
     }

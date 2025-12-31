@@ -313,6 +313,503 @@ Should become something like:
 
 ---
 
+### Consider Merging `globalise_search_by_language` into `globalise_search_transcriptions`
+
+**Priority:** Low
+**Status:** Analysis complete (2025-12-31)
+
+**Background:**
+Both tools ultimately call the same `search()` function. Analysis shows ~80% overlap in functionality.
+
+**Current Overlap:**
+
+| Feature | `search_transcriptions` | `search_by_language` |
+|---------|------------------------|---------------------|
+| Filter by language ISO | ✅ `languages: ["nld"]` | ✅ `language: "nld"` |
+| Filter by language name | ❌ | ✅ `language: "Dutch"` |
+| Multiple languages (OR) | ✅ `languages: ["nld", "eng"]` | ✅ |
+| Multiple languages (AND) | ❌ | ✅ `matchAll: true` |
+| Search query | Required | Optional (default `*`) |
+| Inventory filter | ✅ | ❌ |
+| Sort options | ✅ | ❌ (fixed to `_score`) |
+
+**Unique `search_by_language` Features:**
+1. Human-readable language names (auto-detects ISO vs name by length ≤3)
+2. `matchAll` parameter for AND logic (bilingual/multilingual docs)
+3. Returns `inventoryCounts` aggregation
+
+**Proposed Merged Schema:**
+```typescript
+searchSimpleInputSchema = z.object({
+  query: z.string().optional().default('*'),  // Make optional
+  languages: z.union([
+    z.string(),
+    z.array(z.string())
+  ]).optional(),  // Accept single or array, ISO or name
+  languageMatchAll: z.boolean().optional().default(false),  // AND logic
+  inventoryNumber: z.union([z.string(), z.array(z.string())]).optional(),
+  // ... existing params
+});
+```
+
+**Pros:**
+- Fewer tools = simpler for LLM, less context consumption
+- Single entry point for all search functionality
+- Follows "resist adding specialized tools" philosophy (CLAUDE.md)
+
+**Cons:**
+- Longer description for one tool
+- Loss of specialized "language-first" framing in tool name
+- `matchAll` post-filtering adds implementation complexity
+
+**Implementation Notes:**
+- The `matchAll` logic requires over-fetching and post-filtering (API limitation)
+- Human-readable name detection uses length ≤3 heuristic
+- Could preserve specialized framing in expanded description
+
+**Decision:** Deferred. Current separation works and provides clear intent. Consider merging if tool count becomes a problem or if description length can be managed.
+
+**Related:**
+- `src/tools/search.ts` - `searchSimple()` implementation
+- `src/tools/convenience.ts` - `searchByLanguage()` implementation
+- CLAUDE.md "Design Philosophy" section
+
+---
+
+### Investigate Archival Index → Transcription Workflow Integration
+
+**Priority:** Medium
+**Status:** Analysis complete (2025-12-31)
+
+**Background:**
+`globalise_find_archival_documents` and `globalise_retrieve_document` are completely independent tools with no integration. The archival index provides rich metadata (settlement, folio ranges, document types, years) that could guide transcription retrieval, but there's no bridge between them.
+
+**Current State:**
+- Tools share no code paths and don't reference each other
+- Shared key: `inventory_number` (but different granularities)
+- Archival index uses **folio numbers** (physical pages)
+- Transcriptions API uses **scan numbers** (digitized images)
+- Folio ≠ scan (blank pages, inserts, recto/verso create mismatches)
+
+**Recommended Workflow (not enforced):**
+1. Use `find_archival_documents` to identify relevant inventories/folio ranges
+2. Use `search_by_inventory` with text queries to find specific transcribed pages
+3. Use `retrieve_document` for full text of specific pages
+
+**Problem:** LLMs don't automatically follow this workflow. They may:
+- Jump directly to `search_transcriptions` without scoping
+- Use `retrieve_document` without knowing which scans to request
+- Miss the archival context that would help narrow searches
+
+**Investigation Questions:**
+1. Can tool descriptions be enhanced to suggest the workflow?
+2. Should tools cross-reference each other more explicitly?
+3. Would a combined "smart search" tool that chains these steps be better?
+4. Could `find_archival_documents` return estimated scan ranges or URNs?
+
+**Potential Solutions:**
+
+*Option A: Enhanced tool descriptions*
+Add workflow hints to descriptions:
+```
+globalise_find_archival_documents:
+"...WORKFLOW: Use results to scope subsequent searches.
+Pass inventoryNumber to globalise_search_by_inventory to find transcribed pages."
+
+globalise_search_by_inventory:
+"...TIP: First use globalise_find_archival_documents to identify
+which inventories contain documents about your topic."
+```
+
+*Option B: Return actionable suggestions*
+Have `find_archival_documents` return a `suggestedNextStep` field:
+```json
+{
+  "results": [...],
+  "suggestedNextStep": {
+    "tool": "globalise_search_by_inventory",
+    "params": { "inventoryNumber": "1068", "query": "Ceylon" }
+  }
+}
+```
+
+*Option C: Folio→scan estimation*
+Add estimated scan ranges to OBP results:
+```json
+{
+  "folioStart": 13, "folioEnd": 20,
+  "estimatedScanRange": { "from": "0025", "to": "0040" },
+  "estimatedDocumentIds": ["NL-HaNA_1.04.02_1068_0025", ...]
+}
+```
+Caveat: Imprecise without a proper folio↔scan mapping table.
+
+*Option D: Composite tool*
+Create `globalise_smart_search` that:
+1. Searches archival index for matching inventories
+2. Automatically searches transcriptions in those inventories
+3. Returns combined results with archival context
+
+Cons: Adds another tool, may be too "magic", reduces user control.
+
+**Risks:**
+- Cross-references between tools can cause Claude Desktop filtering (see CLAUDE.md)
+- Too much workflow guidance in descriptions may bloat context
+- Composite tools may hide useful intermediate steps from user
+
+---
+
+*Option E: MCP Prompts (added 2025-12-31)*
+
+MCP Prompts are user-initiated templated workflows exposed via slash commands or UI menus.
+See: https://modelcontextprotocol.io/specification/2025-11-25/server/prompts
+
+**Prompt definition:**
+```json
+{
+  "name": "archival_research",
+  "title": "Research VOC Documents",
+  "description": "Guided workflow: archival index → transcription search",
+  "arguments": [
+    { "name": "topic", "required": true, "description": "Research topic" },
+    { "name": "settlement", "required": false, "description": "Settlement filter" },
+    { "name": "yearFrom", "required": false, "description": "Start year" },
+    { "name": "yearTo", "required": false, "description": "End year" }
+  ]
+}
+```
+
+**Prompt message would inject workflow:**
+```
+I want to research: {{topic}}
+
+Follow this workflow:
+1. First use globalise_find_archival_documents to identify relevant inventories
+   (filter by settlement={{settlement}}, years={{yearFrom}}-{{yearTo}} if provided)
+2. Review the inventory numbers and folio ranges returned
+3. Use globalise_search_by_inventory for each promising inventory to find transcribed pages
+4. Use globalise_retrieve_document to get full text of specific pages
+
+Start with step 1.
+```
+
+**Client support:**
+
+| Client | Prompt Support | How It Works |
+|--------|---------------|--------------|
+| Claude Code | ✅ Full | Slash commands (`/mcp__globalise__archival_research`) |
+| Claude Desktop | ⚠️ Limited | Via `+` menu as attachment, awkward UX |
+| ChatGPT, MSTY | ❓ Unknown | Needs testing |
+
+**Implementation:**
+```typescript
+// Add to capabilities in src/index.ts:
+capabilities: {
+  tools: {},
+  resources: {},
+  prompts: {}  // Add prompt support
+}
+
+// Add prompts/list and prompts/get handlers
+```
+
+**Comparison of all options:**
+
+| Option | Effort | UX | Works Everywhere |
+|--------|--------|-----|------------------|
+| A: Tool descriptions | Low | Implicit (may be ignored) | Yes |
+| B: Output suggestions | Low | Subtle | Yes |
+| C: Folio→scan estimation | Medium | Seamless | Yes |
+| D: Composite tool | High | Seamless but hidden | Yes |
+| E: MCP Prompts | Medium | Good (Code), OK (Desktop) | No |
+
+**Recommendation:**
+Use multiple approaches together:
+1. **Prompts** - For users who explicitly want guided research
+2. **Tool description hints** - For implicit guidance (Option A, light touch)
+3. **Output suggestions** - Include `suggestedNextStep` in `find_archival_documents` results (Option B)
+
+---
+
+**Related:**
+- `src/tools/archival-index.ts` - Archival index implementation
+- `src/tools/document.ts` - Document retrieval implementation
+- `offline/resources/scenarios-combined-index-use.md` - Usage scenarios (if exists)
+- CLAUDE.md "Design Philosophy" - Resist adding specialized tools
+- MCP Prompts spec: https://modelcontextprotocol.io/specification/2025-11-25/server/prompts
+
+---
+
+### Extend `globalise_navigate` for Large Jumps and Direct Scan Access
+
+**Priority:** Medium
+**Status:** Analysis complete (2025-12-31)
+
+**Background:**
+Currently `globalise_navigate` only supports single-step prev/next navigation using the API's `prevPageId`/`nextPageId` from document metadata. Users may want to:
+1. Jump N pages forward/backward
+2. Navigate directly to a specific scan number
+3. Jump to first/last page of an inventory
+4. Navigate based on folio numbers from archival index
+
+**Document ID Format:**
+```
+NL-HaNA_{archive}_{inventory}_{scan}
+         1.04.02   9966       0106
+```
+
+**Modification Options:**
+
+*Option 1: Steps parameter (multi-step)*
+```typescript
+steps: z.number().int().min(1).max(100).default(1)
+```
+- Pro: Simple extension
+- Con: Requires N sequential API calls (inefficient)
+
+*Option 2: Direct scan jump*
+```typescript
+targetScan: z.string()  // e.g., "0150"
+inventoryNumber: z.string()
+```
+- Pro: Single API call, efficient
+- Con: May fail if scan doesn't exist; overlaps with `retrieve_document`
+
+*Option 3: Offset (relative jump)*
+```typescript
+offset: z.number().int()  // +50 or -20
+```
+Implementation:
+```typescript
+const currentScan = parseInt(scanNumber);
+const targetScan = (currentScan + offset).toString().padStart(4, '0');
+const targetId = `NL-HaNA_1.04.02_${inventory}_${targetScan}`;
+```
+- Pro: Intuitive for large jumps
+- Con: Scan numbers may have gaps
+
+*Option 4: Inventory boundaries*
+```typescript
+direction: z.enum(['next', 'previous', 'first', 'last'])
+```
+- Pro: Useful for exploring inventories
+- Con: Finding boundaries requires search with sort
+
+*Option 5: Folio-based (OBP integration)*
+```typescript
+targetFolio: z.number().int()
+inventoryNumber: z.string()
+```
+- Query archival index for folio → estimate scan range
+- Pro: Uses archival metadata
+- Con: Folio≠scan mismatch; unreliable
+
+**Feasibility:**
+
+| Option | Effort | Reliability | Use Case |
+|--------|--------|-------------|----------|
+| Steps | Low | High | Browse nearby |
+| Direct scan | Low | Medium | Known target |
+| Offset | Low | Medium | Jump ±N pages |
+| First/last | Medium | High | Explore inventory |
+| Folio-based | High | Low | OBP integration |
+
+**Recommended Implementation:**
+
+Combine options 2, 3, and 4:
+
+```typescript
+navigateInputSchema = z.object({
+  // Existing
+  currentDocumentId: z.string().optional(),
+  direction: z.enum(['next', 'previous', 'prev', 'first', 'last']).optional(),
+  includeText: z.boolean().optional().default(true),
+
+  // New: relative jump
+  offset: z.number().int().optional()
+    .describe('Jump N scans forward (+) or backward (-) from current'),
+
+  // New: direct jump
+  targetScan: z.string().optional()
+    .describe('Jump directly to scan number (e.g., "0150")'),
+  inventoryNumber: z.string().optional()
+    .describe('Inventory for targetScan or first/last navigation'),
+});
+```
+
+**Logic flow:**
+1. If `targetScan` + `inventoryNumber` → construct URN, retrieve directly
+2. If `offset` → calculate target scan from current, retrieve
+3. If `direction` = first/last → search inventory with size=1, sorted
+4. If `direction` = next/prev → existing behavior
+
+**Edge cases:**
+- Gaps in scan numbers: Return error with suggestion
+- Out of bounds: Indicate inventory start/end reached
+- Invalid inventory: Validate before constructing URN
+
+**Version:** Would be minor version bump (new optional parameters, backwards compatible)
+
+**Related:**
+- `src/tools/convenience.ts` - Current navigate implementation
+- `src/tools/document.ts` - Document retrieval and ID parsing
+
+---
+
+### Visual Representation of OBP Corpus Structure
+
+**Priority:** Low
+**Status:** Idea (2025-12-31)
+
+**Background:**
+Users exploring the VOC transcriptions may benefit from visual representations of the corpus structure. Currently, the only way to understand the collection is through tool responses (aggregations, counts). A visual overview could help users:
+- Understand the scope and coverage of the corpus
+- Identify where to focus research
+- Grasp temporal and geographical distributions
+
+**Two Approaches:**
+
+*Option A: ASCII Art in Tool Responses*
+
+Simple text-based visualizations embedded in tool outputs:
+
+```
+GLOBALISE Corpus Overview (4.8M pages)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Languages:
+  Dutch     ████████████████████████████████████ 97.2%
+  Unknown   ██                                    2.1%
+  Persian   ▏                                     0.3%
+  Other     ▏                                     0.4%
+
+Inventories by Century:
+  1600s     ████████████                         28%
+  1700s     ████████████████████████████         72%
+
+Top Settlements (OBP):
+  Batavia      ████████████████████              45K docs
+  Ceylon       ██████████                        22K docs
+  Malacca      ████                               9K docs
+```
+
+- Pro: Works everywhere, no external dependencies
+- Con: Limited expressiveness, clutters responses
+
+*Option B: Static HTML Dashboard*
+
+Single HTML page with modern visualizations (Chart.js, D3.js, or similar):
+
+```
+/dashboard.html or globalise://dashboard resource
+
+Sections:
+├── Corpus Overview (total pages, inventories, date range)
+├── Language Distribution (pie/bar chart)
+├── Temporal Coverage (timeline/heatmap)
+├── Geographical Coverage (settlement treemap or map)
+├── OBP vs GM comparison
+├── Inventory Size Distribution (histogram)
+└── Reference Resources
+    ├── Weights & Measures (interactive table)
+    └── Query Syntax Guide
+```
+
+- Pro: Rich visualizations, interactive, comprehensive
+- Con: Requires hosting, maintenance, separate from MCP flow
+
+**Implementation Options for Dashboard:**
+
+1. **Static file in repo** (`docs/dashboard.html`)
+   - Generated from database aggregations at build time
+   - Hosted via GitHub Pages or alongside Railway deployment
+   - Tools link to it: `"See corpus overview: https://globalise-mcp.../dashboard.html"`
+
+2. **MCP Resource** (`globalise://dashboard`)
+   - Returns HTML that client could render
+   - Pro: Integrated with MCP
+   - Con: Most clients won't render HTML resources
+
+3. **Generated on demand via `globalise_visualization` tool**
+   - Returns both structured data AND ASCII rendering
+   - Client can use either representation
+   - Could support multiple visualization types
+
+   ```typescript
+   globalise_visualization({
+     type: 'languages' | 'settlements' | 'timeline' | 'overview' | 'inventory',
+     inventoryNumber?: string,  // For inventory-specific viz
+     format: 'ascii' | 'data' | 'both',  // Output format
+   })
+   ```
+
+   **Example output (format: 'both'):**
+   ```json
+   {
+     "type": "languages",
+     "ascii": "Languages:\n  Dutch  ████████████████ 97.2%\n  ...",
+     "data": {
+       "labels": ["Dutch", "Unknown", "Persian"],
+       "values": [97.2, 2.1, 0.3],
+       "counts": [4660000, 100800, 14400]
+     },
+     "generatedAt": "2025-12-31T12:00:00Z"
+   }
+   ```
+
+   - Pro: Flexible (ASCII for terminals, data for rich clients)
+   - Pro: Integrated with MCP flow
+   - Pro: Can scope to specific inventories/filters
+   - Con: Adds another tool (but replaces need for external dashboard)
+
+**What to Visualize:**
+
+| Metric | Source | Visualization |
+|--------|--------|---------------|
+| Language distribution | Search aggregations | Pie/bar chart |
+| Pages per inventory | Search aggregations | Histogram |
+| Temporal coverage | OBP year_earliest/latest | Timeline/heatmap |
+| Settlement distribution | OBP settlement field | Treemap or bar |
+| Chamber distribution | GM chamber field | Pie chart |
+| HTR availability | GM htr_available | Progress bar |
+| Inventory gaps | OBP coverage analysis | Range chart |
+| Weights & measures | Resource data | Searchable table |
+
+**Data Sources:**
+
+```typescript
+// Corpus-wide stats (could cache at build time)
+const stats = {
+  totalPages: 4_800_000,
+  totalInventories: 3987 - 1053 + 1, // OBP range
+  dateRange: { from: 1610, to: 1794 },
+  languages: await search({ query: '*', size: 1 }).aggregations.languages,
+  settlements: await findArchivalDocuments({ source: 'obp', size: 1 }).aggregations.settlements,
+};
+```
+
+**Potential Extensions:**
+
+- **Interactive filters**: Click on a settlement → shows inventories for that settlement
+- **Deep links**: Each visualization element links to relevant tool call
+- **Comparison views**: Side-by-side OBP vs GM coverage
+- **Search integration**: Dashboard includes search box that calls tools
+
+**Questions to Explore:**
+
+1. What's the right balance between static (fast, simple) and dynamic (current, interactive)?
+2. Should this be part of the MCP server or a separate documentation site?
+3. Would ASCII art in responses be useful, or just noise?
+4. Could this become a "corpus explorer" UI that wraps MCP tools?
+
+**Related:**
+- `src/tools/archival-index.ts` - OBP/GM aggregations
+- `src/tools/search.ts` - Language aggregations
+- `src/resources/index.ts` - Weights & measures resource
+- Railway deployment - Could host static files
+
+---
+
 ### Investigate MSTY SSE Stream Behavior
 
 **Priority:** Low
@@ -333,6 +830,169 @@ Railway logs show frequent "SSE stream requested for session" messages when MSTY
 4. Compare behavior with Claude Code client (which uses same transport)
 
 **Note:** This may be completely normal behavior - just worth understanding better.
+
+---
+
+### Optimize Weights & Measures Resource JSON
+
+**Priority:** Low
+**Status:** Not started
+
+**Background:**
+The `globalise://reference/weights-measures` resource returns a JSON dictionary with ~213 measurement units and ~385 spelling variants. It's unclear whether this dictionary includes metadata fields (e.g., ID numbers linking to OBP or GM indices) that aren't useful to end users consuming the resource.
+
+**Questions to Investigate:**
+1. What fields are currently in the JSON structure?
+2. Are there ID fields or other metadata that don't link to anything useful?
+3. Could the JSON be optimized by removing unused fields?
+4. What's the current payload size, and could it be meaningfully reduced?
+
+**Action:**
+Review `src/resources/index.ts` and the source data to identify all fields in the weights-measures JSON, determine which are user-facing vs internal metadata, and optimize if beneficial.
+
+---
+
+### Add Commodities Thesaurus Resource
+
+**Priority:** High
+**Status:** Planning (2025-12-31)
+
+**Background:**
+The GLOBALISE Commodities Thesaurus is a SKOS vocabulary of ~3,787 trade goods from VOC archives. It complements the existing weights-measures resource and is the next logical resource for query expansion. Source: `offline/resources/GLOBALISE - Thesaurus - Commodities/`.
+
+**Source Data:**
+- Format: RDF/SKOS (TriG) in `commodities.trig` (3.8 MB)
+- Concepts: 3,787 total (1,493 classified, 2,294 "NOT YET CLASSIFIED")
+- Bilingual: Dutch (primary) + English labels
+- Hierarchical: `skos:broader` / `skos:narrower` relationships
+- External links: AAT, SITC, RCE-CHT vocabularies
+- Sources: BGB (Boekhouder Generaal Batavia), Monsoon Traders dataset
+- License: CC BY-SA 4.0
+- DOI: hdl:10622/YAWDOV
+
+**SKOS Fields in Source:**
+| Field | Purpose | Include in MCP? |
+|-------|---------|-----------------|
+| Concept URI | PoolParty UUID | Maybe (as key, but opaque) |
+| `skos:prefLabel` (nl/en) | Preferred term | Yes |
+| `skos:altLabel` (nl/en) | Alternative spellings | Yes (core for query expansion) |
+| `skos:broader` | Parent category | Yes (enables "find all spices") |
+| `skos:narrower` | Child concepts | Maybe (inverse of broader) |
+| `skos:definition` | Scholarly definition | Yes (helps LLM understand context) |
+| `skos:closeMatch` | Links to AAT/SITC/RCE | Maybe (external, may not resolve) |
+| `dcterms:source` | Zotero URI | No (internal, not user-useful) |
+| `dcterms:references` | Citation text | Maybe (scholarly attribution) |
+| `dcterms:created/modified` | Timestamps | No |
+
+**Proposed JSON Structure:**
+```json
+{
+  "_meta": {
+    "name": "VOC Commodities Thesaurus",
+    "version": "1.0",
+    "description": "Trade goods from VOC archives (1700s)",
+    "concepts_count": 3787,
+    "classified_count": 1493,
+    "source": "GLOBALISE Project",
+    "source_url": "https://hdl.handle.net/10622/YAWDOV",
+    "license": "CC-BY-SA-4.0",
+    "sparql_endpoint": "https://digitaalerfgoed.poolparty.biz/PoolParty/sparql/globalise"
+  },
+  "concepts": {
+    "<short-id>": {
+      "prefLabel_nl": "Peper",
+      "prefLabel_en": "Pepper",
+      "altLabels": ["piper", "peeper", "poivre"],
+      "broader": "<parent-id>",
+      "definition": "...",
+      "source": "BGB"
+    }
+  },
+  "lookup": {
+    "peper": "<id>",
+    "pepper": "<id>",
+    "piper": "<id>"
+  },
+  "topConcepts": ["<id1>", "<id2>"]
+}
+```
+
+**Design Decisions Needed:**
+
+1. **ID format**: Use full PoolParty UUIDs or short sequential IDs?
+   - UUIDs are stable but verbose
+   - Short IDs are readable but need mapping table
+
+2. **Include unclassified concepts?** (2,294 of 3,787)
+   - Pro: Complete vocabulary for query expansion
+   - Con: No definitions, limited usefulness, bloats size
+
+3. **Hierarchy depth**: Include full `narrower` arrays or just `broader`?
+   - `broader` alone is enough to reconstruct hierarchy
+   - `narrower` is redundant but enables top-down browsal
+
+4. **External links**: Include AAT/SITC/RCE closeMatch URIs?
+   - Pro: Scholarly, enables linked data
+   - Con: External URIs may break, adds complexity
+
+5. **Definitions**: Include full scholarly definitions?
+   - Pro: Rich context for LLM
+   - Con: Verbose, bloats size (some definitions are multi-paragraph)
+
+6. **Sensitive content**: Some concepts involve enslaved persons
+   - Include note in `_meta` about historical context
+   - Follow datasheet guidance on ethical considerations
+
+**Size Estimate:**
+- Weights-measures: 213 units, ~40KB JSON
+- Commodities: ~18x more concepts
+- Rough estimate: 200-500KB depending on field selection
+- May need to optimize by excluding definitions or unclassified concepts
+
+**Implementation Steps:**
+1. Write RDF→JSON conversion script (parse .trig, output .json)
+2. Decide on field selection (start minimal, expand if needed)
+3. Generate `lookup` map from all prefLabel + altLabel variants
+4. Test with Claude Desktop (verify size doesn't cause issues)
+5. Add resource definition to `src/resources/index.ts`
+6. Update CHANGELOG and version bump
+
+**Conversion Approach:**
+- Option A: Write Node.js script using `n3` or `rdf-parse` library
+- ~~Option B: Use SPARQL query against PoolParty endpoint (query in readme.txt)~~
+- Option C: Parse .trig as text (simpler but fragile)
+
+**⚠️ SPARQL Endpoint No Longer Public (tested 2025-12-31):**
+The PoolParty SPARQL endpoint (`https://digitaalerfgoed.poolparty.biz/PoolParty/sparql/globalise`) now requires authentication (returns 302 → login page). The public HTML interface (`/globalise.html`) also returns 401 Access Denied.
+
+**Recommendation:** Use Option A (parse local .trig file with `n3` library). The RDF file is complete and already in the repo. Example:
+```typescript
+import { Parser } from 'n3';
+const parser = new Parser();
+const quads = parser.parse(fs.readFileSync('commodities.trig', 'utf-8'));
+```
+
+The `n3` package is well-maintained and handles TriG format natively.
+
+**Query Expansion Examples:**
+```
+User: "pepper trade"
+→ Expand: "peper", "piper", "peeper", "poivre"
+
+User: "find all spices"
+→ Use hierarchy: get concepts where broader = "Spices" category
+
+User: "coffee"
+→ Expand: "koffie", "coffie", "kofij", "coffy"
+```
+
+**Related:**
+- `_RESOURCE_CONNECTIONS.md` - Dataset survey, tier 1 priority
+- `_OVERVIEW.md` - Basic info and sample concepts
+- Weights-measures implementation: `src/resources/weights-measures.json`
+- Resource handler: `src/resources/index.ts`
+
+**Version:** Will be 1.15.0
 
 ---
 

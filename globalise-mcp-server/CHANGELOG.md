@@ -2,6 +2,35 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.15.0] - 2025-12-31
+
+### Added
+- **VOC Commodities Thesaurus Resource**: New `globalise://reference/commodities` resource
+  - 1,359 trade goods from VOC archives
+  - 2,481 spelling variants for query expansion (e.g., "pepper" → "peper", "piper")
+  - Bidirectional hierarchy: `broader` (parent) and `narrower` (children) relationships
+  - Dutch and English labels where available (586 English translations)
+  - Clean definitions stripped of verbose citation metadata
+  - Full UUIDs as concept IDs (future-proof for PoolParty links)
+  - 569 KB JSON
+
+### Technical
+- New dependency: `n3` (RDF/SKOS parsing library)
+- Conversion script: `scripts/parse-commodities.js`
+  - Parses TriG format from GLOBALISE Commodities dataset
+  - Full UUIDs as keys for traceability to source PoolParty URIs
+- Source: GLOBALISE Project (CC-BY-SA-4.0), hdl:10622/YAWDOV
+
+### Design Decisions
+- Excluded "NOT YET CLASSIFIED" concepts UNLESS they have alt labels or definitions (rescued 14 of 2,275)
+- Full UUIDs as IDs instead of short IDs (future-proof if PoolParty becomes public)
+- Included `narrower` arrays for bidirectional hierarchy navigation (+50KB for O(1) child lookup)
+- Dropped all external links (Getty AAT, RCE-CHT, SITC) - not essential for query expansion
+- Stripped citation suffixes from definitions ("Geciteerd uit: Bron: ...")
+- Added datasheet link to sensitive content note
+
+---
+
 ## [1.14.0] - 2025-12-31
 
 ### Added
