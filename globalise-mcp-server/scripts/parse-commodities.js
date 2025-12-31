@@ -334,6 +334,7 @@ async function parseCommodities() {
       source: "GLOBALISE Project, Huygens Institute",
       source_url: "https://hdl.handle.net/10622/YAWDOV",
       license: "CC-BY-SA-4.0",
+      citation: "Pepping, K.; Vellinga, H.; Kuruppath, M.; Van Wissen, L.; Van Rossum, M., 2023, 'GLOBALISE Thesaurus - Commodities', IISH Data Collection, V1",
       concepts_count: includedCount,
       variants_count: Object.keys(sortedLookup).length,
       note: "Some concepts involve enslaved persons recorded as 'people treated as commodities'. This reflects historical violence documented in VOC records. See datasheet: https://hdl.handle.net/10622/YAWDOV",
