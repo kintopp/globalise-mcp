@@ -836,163 +836,46 @@ Railway logs show frequent "SSE stream requested for session" messages when MSTY
 ### Optimize Weights & Measures Resource JSON
 
 **Priority:** Low
-**Status:** Not started
+**Status:** ✅ Completed (v1.16.0, 2025-12-31)
 
-**Background:**
-The `globalise://reference/weights-measures` resource returns a JSON dictionary with ~213 measurement units and ~385 spelling variants. It's unclear whether this dictionary includes metadata fields (e.g., ID numbers linking to OBP or GM indices) that aren't useful to end users consuming the resource.
+**Resolution:**
+Redesigned the resource for LLM use (search + conversion assistance):
+- Added 731 unit conversion records with human-readable ratios and context
+- Kept bilingual definitions (nl/en), dropped scholarly source citations
+- Kept SU_xxxx unit IDs for traceability to source dataset
+- Added conversions with commodity and location context
+- File size: 114 KB (was 57 KB, increase due to conversions)
 
-**Questions to Investigate:**
-1. What fields are currently in the JSON structure?
-2. Are there ID fields or other metadata that don't link to anything useful?
-3. Could the JSON be optimized by removing unused fields?
-4. What's the current payload size, and could it be meaningfully reduced?
-
-**Action:**
-Review `src/resources/index.ts` and the source data to identify all fields in the weights-measures JSON, determine which are user-facing vs internal metadata, and optimize if beneficial.
+For scholarly use, users should refer to the Dataverse source: hdl:10622/MDNVH5
 
 ---
 
 ### Add Commodities Thesaurus Resource
 
 **Priority:** High
-**Status:** Planning (2025-12-31)
+**Status:** ✅ Completed (v1.15.0, 2025-12-31)
 
-**Background:**
-The GLOBALISE Commodities Thesaurus is a SKOS vocabulary of ~3,787 trade goods from VOC archives. It complements the existing weights-measures resource and is the next logical resource for query expansion. Source: `offline/resources/GLOBALISE - Thesaurus - Commodities/`.
+**Resolution:**
+Implemented `globalise://reference/commodities` resource with:
+- 1,359 trade goods (excluded 2,275 "NOT YET CLASSIFIED" unless they had alt labels or definitions)
+- 2,481 spelling variants for query expansion
+- Bidirectional hierarchy: `broader` (parent) and `narrower` (children)
+- Full UUIDs as concept IDs (future-proof for PoolParty)
+- Clean definitions (stripped citation metadata)
+- Sensitive content note with datasheet link
+- 569 KB JSON
 
-**Source Data:**
-- Format: RDF/SKOS (TriG) in `commodities.trig` (3.8 MB)
-- Concepts: 3,787 total (1,493 classified, 2,294 "NOT YET CLASSIFIED")
-- Bilingual: Dutch (primary) + English labels
-- Hierarchical: `skos:broader` / `skos:narrower` relationships
-- External links: AAT, SITC, RCE-CHT vocabularies
-- Sources: BGB (Boekhouder Generaal Batavia), Monsoon Traders dataset
-- License: CC BY-SA 4.0
-- DOI: hdl:10622/YAWDOV
+**Design Decisions Made:**
+1. Full UUIDs as IDs (future-proof if PoolParty becomes public)
+2. Exclude unclassified EXCEPT those with alt labels or definitions (rescued 14)
+3. Include `narrower` arrays for bidirectional navigation
+4. Drop all external links (Getty AAT, RCE-CHT, SITC)
+5. Strip citation suffixes from definitions
+6. Add datasheet link to sensitive content note
 
-**SKOS Fields in Source:**
-| Field | Purpose | Include in MCP? |
-|-------|---------|-----------------|
-| Concept URI | PoolParty UUID | Maybe (as key, but opaque) |
-| `skos:prefLabel` (nl/en) | Preferred term | Yes |
-| `skos:altLabel` (nl/en) | Alternative spellings | Yes (core for query expansion) |
-| `skos:broader` | Parent category | Yes (enables "find all spices") |
-| `skos:narrower` | Child concepts | Maybe (inverse of broader) |
-| `skos:definition` | Scholarly definition | Yes (helps LLM understand context) |
-| `skos:closeMatch` | Links to AAT/SITC/RCE | Maybe (external, may not resolve) |
-| `dcterms:source` | Zotero URI | No (internal, not user-useful) |
-| `dcterms:references` | Citation text | Maybe (scholarly attribution) |
-| `dcterms:created/modified` | Timestamps | No |
-
-**Proposed JSON Structure:**
-```json
-{
-  "_meta": {
-    "name": "VOC Commodities Thesaurus",
-    "version": "1.0",
-    "description": "Trade goods from VOC archives (1700s)",
-    "concepts_count": 3787,
-    "classified_count": 1493,
-    "source": "GLOBALISE Project",
-    "source_url": "https://hdl.handle.net/10622/YAWDOV",
-    "license": "CC-BY-SA-4.0",
-    "sparql_endpoint": "https://digitaalerfgoed.poolparty.biz/PoolParty/sparql/globalise"
-  },
-  "concepts": {
-    "<short-id>": {
-      "prefLabel_nl": "Peper",
-      "prefLabel_en": "Pepper",
-      "altLabels": ["piper", "peeper", "poivre"],
-      "broader": "<parent-id>",
-      "definition": "...",
-      "source": "BGB"
-    }
-  },
-  "lookup": {
-    "peper": "<id>",
-    "pepper": "<id>",
-    "piper": "<id>"
-  },
-  "topConcepts": ["<id1>", "<id2>"]
-}
-```
-
-**Design Decisions Needed:**
-
-1. **ID format**: Use full PoolParty UUIDs or short sequential IDs?
-   - UUIDs are stable but verbose
-   - Short IDs are readable but need mapping table
-
-2. **Include unclassified concepts?** (2,294 of 3,787)
-   - Pro: Complete vocabulary for query expansion
-   - Con: No definitions, limited usefulness, bloats size
-
-3. **Hierarchy depth**: Include full `narrower` arrays or just `broader`?
-   - `broader` alone is enough to reconstruct hierarchy
-   - `narrower` is redundant but enables top-down browsal
-
-4. **External links**: Include AAT/SITC/RCE closeMatch URIs?
-   - Pro: Scholarly, enables linked data
-   - Con: External URIs may break, adds complexity
-
-5. **Definitions**: Include full scholarly definitions?
-   - Pro: Rich context for LLM
-   - Con: Verbose, bloats size (some definitions are multi-paragraph)
-
-6. **Sensitive content**: Some concepts involve enslaved persons
-   - Include note in `_meta` about historical context
-   - Follow datasheet guidance on ethical considerations
-
-**Size Estimate:**
-- Weights-measures: 213 units, ~40KB JSON
-- Commodities: ~18x more concepts
-- Rough estimate: 200-500KB depending on field selection
-- May need to optimize by excluding definitions or unclassified concepts
-
-**Implementation Steps:**
-1. Write RDF→JSON conversion script (parse .trig, output .json)
-2. Decide on field selection (start minimal, expand if needed)
-3. Generate `lookup` map from all prefLabel + altLabel variants
-4. Test with Claude Desktop (verify size doesn't cause issues)
-5. Add resource definition to `src/resources/index.ts`
-6. Update CHANGELOG and version bump
-
-**Conversion Approach:**
-- Option A: Write Node.js script using `n3` or `rdf-parse` library
-- ~~Option B: Use SPARQL query against PoolParty endpoint (query in readme.txt)~~
-- Option C: Parse .trig as text (simpler but fragile)
-
-**⚠️ SPARQL Endpoint No Longer Public (tested 2025-12-31):**
-The PoolParty SPARQL endpoint (`https://digitaalerfgoed.poolparty.biz/PoolParty/sparql/globalise`) now requires authentication (returns 302 → login page). The public HTML interface (`/globalise.html`) also returns 401 Access Denied.
-
-**Recommendation:** Use Option A (parse local .trig file with `n3` library). The RDF file is complete and already in the repo. Example:
-```typescript
-import { Parser } from 'n3';
-const parser = new Parser();
-const quads = parser.parse(fs.readFileSync('commodities.trig', 'utf-8'));
-```
-
-The `n3` package is well-maintained and handles TriG format natively.
-
-**Query Expansion Examples:**
-```
-User: "pepper trade"
-→ Expand: "peper", "piper", "peeper", "poivre"
-
-User: "find all spices"
-→ Use hierarchy: get concepts where broader = "Spices" category
-
-User: "coffee"
-→ Expand: "koffie", "coffie", "kofij", "coffy"
-```
-
-**Related:**
-- `_RESOURCE_CONNECTIONS.md` - Dataset survey, tier 1 priority
-- `_OVERVIEW.md` - Basic info and sample concepts
-- Weights-measures implementation: `src/resources/weights-measures.json`
-- Resource handler: `src/resources/index.ts`
-
-**Version:** Will be 1.15.0
+**Implementation:**
+- Parser: `scripts/parse-commodities.js` using `n3` library
+- Source: hdl:10622/YAWDOV (CC-BY-SA-4.0)
 
 ---
 
