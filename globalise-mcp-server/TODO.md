@@ -49,6 +49,43 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
+### SQLite Database for Large Reference Datasets
+
+**Priority:** Medium
+**Status:** Under consideration (pending cost analysis)
+
+**Background:**
+Several GLOBALISE datasets are too large for MCP resources but valuable as queryable tools:
+- Digitized Indexes OBP: 314K documents
+- Generale Missiven overview: 950 letters
+- Places thesaurus: 4.4K variants
+- Commodities thesaurus: 3.6K concepts
+
+**Proposed Approach:**
+Bundle a SQLite database (~100MB) with the MCP server. For Railway deployment, the DB resides on a persistent volume. For local stdio users, lazy-download on first use.
+
+**Tool Example:**
+```
+globalise_find_documents:
+  - inventory?: number
+  - settlement?: string
+  - yearFrom/To?: number
+  - keyword?: string (full-text search)
+```
+
+**Cost Considerations (Railway):**
+- Persistent volume: ~$0.25/GB/month → ~$0.03/month for 100MB
+- Compute: Minimal (SQLite queries are fast)
+- Bandwidth: Negligible (small text responses)
+
+**Libraries:** `better-sqlite3` (fast, synchronous, Railway-compatible)
+
+**Related:** See `offline/resources/_RESOURCE_CONNECTIONS.md` for full dataset survey and MCP integration recommendations.
+
+**Decision:** Deferred pending Railway pricing review.
+
+---
+
 ### Explore Adding `globalise_help` Tool for Resource Discovery
 
 **Priority:** Low
