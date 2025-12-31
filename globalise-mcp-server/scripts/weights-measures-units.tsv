@@ -1,0 +1,214 @@
+unit_id	label	type
+SU_0003	Mutsje	volume
+SU_0007	Bahar	weight
+SU_0011	Pond (VOC)	weight
+SU_0012	Pond (Engels)	weight
+SU_0014	Kan	volume
+SU_0015	Compagnies Kan	volume
+SU_0017	Kit	volume
+SU_0020	Cojang	volume
+SU_0021	Bos	volume
+SU_0022	Heemraade-Bos	volume
+SU_0023	Tjajang	volume
+SU_0024	Kati	weight
+SU_0026	Rijnlandse Roede	length
+SU_0027	Rijnlandse Voet	length
+SU_0028	Duim	length
+SU_0029	Toembak	area
+SU_0030	Roede	area
+SU_0031	Voet	area
+SU_0032	Taille	length
+SU_0033	Ons	weight
+SU_0034	Loot	weight
+SU_0035	Reaal	weight
+SU_0036	Mark trois	weight
+SU_0037	Stuivers	weight
+SU_0040	Waterloot	weight
+SU_0041	Mangely	weight
+SU_0042	Karaat	weight
+SU_0048	Ammanam	quantities
+SU_0060	Calange	weight
+SU_0067	Ceer	weight
+SU_0069	Cobido	length
+SU_0072	Corge	quantities
+SU_0082	Amsterdamse el	length
+SU_0083	Elle	length
+SU_0084	Engels	weight
+SU_0095	Gantang	weight
+SU_0098	Ges	length
+SU_0106	Kandijl	weight
+SU_0116	Last	weight
+SU_0124	Man	weight
+SU_0126	Mark	weight
+SU_0127	Markal	weight
+SU_0149	Parra	volume
+SU_0155	Pikol	weight
+SU_0157	Pint	volume
+SU_0172	Roede	length
+SU_0187	Taël	weight
+SU_0199	Vadem	length
+SU_0278	Maat	volume
+SU_0289	Pak	quantities
+SU_0292	pees	quantities
+SU_0343	Tacker	volume
+SU_0344	Vaam	area
+SU_0345	Halve kan	volume
+SU_0346	Halve pint	volume
+SU_0347	Quart Kan	volume
+SU_0348	Halve Kit	volume
+SU_0349	Java's Last	volume
+SU_0350	Sanga	volume
+SU_0352	Boschmaat	length
+SU_0353	Bamboes	weight
+SU_0354	Clapperdop	weight
+SU_0356	Goelak	weight
+SU_0357	Rijnlandsche duim	length
+SU_0358	Fust	volume
+SU_0359	Chioep	misc
+SU_0360	Voet	length
+SU_0361	Coebang	weight
+SU_0362	Boesoe	weight
+SU_0363	Ropia	weight
+SU_0364	Tampang	weight
+SU_0365	Bidoor	weight
+SU_0366	Kipping	weight
+SU_0367	Mediet	weight
+SU_0368	Chioendoe	weight
+SU_0369	Ammonam	volume
+SU_0370	Coerni	area
+SU_0371	Cotty	weight
+SU_0372	Ammonam	area
+SU_0373	Pelle	area
+SU_0374	Halve parra	volume
+SU_0375	Dubbele Parra	volume
+SU_0376	Halve mediet	volume
+SU_0377	Halve markal	weight
+SU_0378	Quart Markal	weight
+SU_0379	Alak	volume
+SU_0380	Chimmekit	volume
+SU_0382	Cote	volume
+SU_0383	Pallam	weight
+SU_0384	Toelang	weight
+SU_0387	Dubbele mediet	volume
+SU_0389	Quart Parra	volume
+SU_0390	Compagnies maon	weight
+SU_0391	Bazaars Maon	weight
+SU_0392	Maon Pakka	weight
+SU_0393	Ceer Katja	weight
+SU_0394	Bazaars Ceer	weight
+SU_0395	Paens Ceerie	weight
+SU_0396	Sjatak	weight
+SU_0397	Thola Pakka	weight
+SU_0398	Massa	weight
+SU_0399	Anas Sikka	weight
+SU_0400	Retti	weight
+SU_0401	Neli	weight
+SU_0402	Thola Katja	weight
+SU_0403	Aas	weight
+SU_0404	Pakka Retti	weight
+SU_0405	Pouw	weight
+SU_0406	Settak	weight
+SU_0407	Tjitthur Maon	weight
+SU_0408	Munts Maon	weight
+SU_0409	Sikka Ropij	weight
+SU_0410	Compagnies Cobido	length
+SU_0411	Bazaars Cobido	length
+SU_0412	Puntos	length
+SU_0413	Thola	weight
+SU_0414	Ana	weight
+SU_0415	Grijn	weight
+SU_0416	Pantseras	weight
+SU_0417	Sikka	weight
+SU_0418	Ordinaire gos	length
+SU_0419	Alcatief gos	area
+SU_0420	Siccandrie	length
+SU_0421	Bazarie	length
+SU_0422	Koetika	length
+SU_0424	Maon Ketsja	weight
+SU_0425	Ceer Pakka	weight
+SU_0426	Harria	weight
+SU_0427	Waal	weight
+SU_0428	Tang	weight
+SU_0429	Chouw	weight
+SU_0430	Wassa	weight
+SU_0431	Yard	length
+SU_0432	Tessoe	length
+SU_0433	Geeikte ges	length
+SU_0434	Basaarsges	length
+SU_0435	Kalsies	weight
+SU_0436	Peis	weight
+SU_0437	Once trois	weight
+SU_0438	Pherra	volume
+SU_0439	Souratsch Candyl	volume
+SU_0440	Palie	volume
+SU_0441	Souratsche Ceer	weight
+SU_0442	Ges Souratsch	length
+SU_0443	Maon Suratsch	weight
+SU_0444	Patti	volume
+SU_0445	Frasila	weight
+SU_0446	Wackeya	weight
+SU_0447	Cafla	weight
+SU_0449	Kel	volume
+SU_0450	Thoman	misc
+SU_0451	Maas	weight
+SU_0452	Groote balie	volume
+SU_0453	Pond (Frans)	weight
+SU_0454	Conderyn	weight
+SU_0455	Manderijns Cobido	length
+SU_0456	Winkeliers Cobido	length
+SU_0457	Timmermans Cobido	length
+SU_0458	Half musje	volume
+SU_0459	Brootchiasche Ceer	weight
+SU_0460	Ceer Bombaysch	weight
+SU_0461	Maon (Engels)	weight
+SU_0462	Casje	weight
+SU_0463	Catjes Chinasch	weight
+SU_0464	El	area
+SU_0465	Canaat	volume
+SU_0466	Zork	misc
+SU_0467	Mookje	weight
+SU_0468	Avossi	weight
+SU_0469	Hebreutie	weight
+SU_0470	Ikje	length
+SU_0471	Voet (Japans)	length
+SU_0474	Baal	volume
+SU_0475	Gok	volume
+SU_0476	Sigok	volume
+SU_0477	Fiackgok	volume
+SU_0478	Cingok	volume
+SU_0479	Pagood	weight
+SU_0480	Fanum	weight
+SU_0482	Tok	weight
+SU_0483	Garst	volume
+SU_0484	Callang	volume
+SU_0485	Bhaar (Engels)	weight
+SU_0486	Bhaar (Frans)	weight
+SU_0487	Bhaar (Hollands)	weight
+SU_0488	Wiese	weight
+SU_0489	Quart mediet	volume
+SU_0490	El (Engels)	length
+SU_0491	El (Frans)	length
+SU_0492	Nagapatnamse Maat	volume
+SU_0493	Madrasse Garst	volume
+SU_0494	Madrasse Markal	volume
+SU_0495	Groote Candyl	volume
+SU_0496	Kleine Candyl	volume
+SU_0497	Groote Bhaar	weight
+SU_0498	Kleine Bhaar	weight
+SU_0499	Compagnies Pawa	volume
+SU_0500	Tankan	weight
+SU_0501	Dabboes	weight
+SU_0502	Mauw	weight
+SU_0503	Wisse	weight
+SU_0504	Cotta nevel	weight
+SU_0505	Patta nefel	weight
+SU_0506	Qattie nevel	weight
+SU_0507	Grote Wiese	weight
+SU_0508	Kleine Wiese	weight
+SU_0509	Manicom	weight
+SU_0510	Tomb	weight
+SU_0511	Garsje	volume
+SU_0512	Yze	weight
+SU_0513	Kleine Duim (Japans)	length
+SU_0514	Grote Duim (Japans)	length
+SU_0515	Kleine Voet (Japans)	length

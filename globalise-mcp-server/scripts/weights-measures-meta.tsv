@@ -1,0 +1,15 @@
+key	value
+name	VOC Weights & Measures Reference
+version	2.0
+description	Historical units of weight, volume, length, and quantity used in Dutch East India Company (VOC) trade records. Based on the Memoriën van Munten, Maaten, en Gewigten (1764-1771), administrative reports documenting local measurement systems across VOC settlements in Asia.
+source	GLOBALISE Project, Huygens Institute
+source_url	https://hdl.handle.net/10622/MDNVH5
+license	CC-BY-SA-4.0
+citation	Vellinga, Henrike; Nijman, Brecht; Kuruppath, Manjusha, 2024, 'GLOBALISE - Weights and Measures in the 18th Century Indian Ocean World', IISH Data Collection, V1
+units_count	213
+variants_count	385
+structure	{
+  "units": "Each unit has label, type, and optional definitions array",
+  "definitions": "Each definition has text_nl (Dutch), text_en (English), and source citation - fields only present when data exists",
+  "lookup": "Maps spelling variants (lowercase) to unit IDs. For ambiguous terms (same spelling for different units), prefers the unit where this spelling is the preferred label"
+}
