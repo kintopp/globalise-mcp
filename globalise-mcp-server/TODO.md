@@ -243,6 +243,111 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
+### Retroboeken Mapping for Generale Missiven (Complete)
+
+**Priority:** N/A
+**Status:** ✅ Completed (2026-01-01)
+
+**Achievement:**
+Complete mapping of GLOBALISE archival index database to Retroboeken website's full-text OCR transcriptions of the published RGP (Rijks Geschiedkundige Publicatiën) volumes. All 14 volumes have been systematically verified with accurate page offsets.
+
+**Coverage:**
+- 558 of 950 Generale Missiven (59%) have Retroboeken transcriptions
+- All 14 RGP volumes (Deel 1-14, covering 1610-1767) mapped and verified
+- Page offset formula documented for each volume (ranges from +11 to +23)
+
+**Key Deliverables:**
+1. **Complete offset table** for all 14 volumes enabling URL generation
+2. **Verification testing** - Each volume tested with sample pages to confirm accuracy
+3. **Implementation pseudocode** - Ready-to-use TypeScript function for URL generation
+4. **Comprehensive documentation** - Limitations, use cases, and data quality notes
+
+**Documentation:**
+- `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/RETROBOEKEN_MAPPING.md`
+
+**Key Findings:**
+- `rgp_page` field accurately references the **starting page** of each missive in Retroboeken
+- Page offsets vary by volume due to different front matter lengths (11-23 pages)
+- RGP editions are scholarly compilations (selected transcriptions + summaries), not complete verbatim manuscripts
+- No page-level mapping possible (RGP pages ≠ manuscript scan numbers)
+
+**Next Step:**
+See "Add RGP Published Edition Links (Retroboeken + GitHub)" below for implementation plan.
+
+---
+
+### Add RGP Published Edition Links (Retroboeken + GitHub)
+
+**Priority:** Medium
+**Status:** Ready to implement (mapping complete, implementation pending)
+
+**Background:**
+558 of 950 Generale Missiven (59%) in the archival index have corresponding full-text transcriptions available in the published RGP (Rijks Geschiedkundige Publicatiën) editions. These are accessible via:
+1. **Retroboeken website** - Interactive OCR viewer with page scans and navigation
+2. **GitHub repository** - Plain text transcriptions (letters only, no editorial content)
+
+**Documentation:**
+- `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/RETROBOEKEN_MAPPING.md` - Complete mapping of all 14 RGP volumes to Retroboeken with verified page offsets
+- `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/GITHUB_RGP_TRANSCRIPTIONS.md` - GitHub repo structure and integration options
+
+**Recommended Implementation (Hybrid Approach):**
+
+Add both Retroboeken and GitHub links to `globalise_find_archival_documents` output when `rgp_volume` and `rgp_page` exist:
+
+```markdown
+**Published Edition Access:**
+- [Interactive Viewer (Retroboeken)](https://resources.huygens.knaw.nl/retroboeken/generalemissiven/#source=3&page=14&view=htmlPane) - OCR text + page scans
+- [Download Volume 3 (TXT)](https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main/full_volumes/GM_3.txt) - Full volume transcription
+- [Download Volume 3 (TSV)](https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main/TSV_files/GM3.tsv) - Tabular format
+
+**Note:** Published editions contain selected letters from 1610-1767. Full manuscript transcriptions available via HTR data.
+```
+
+**Implementation Details:**
+
+1. **Add Retroboeken URL generator** with verified offsets for all 14 volumes:
+   ```typescript
+   const offsets: Record<string, number> = {
+     '1': 23, '2': 13, '3': 13, '4': 15, '5': 15, '6': 15, '7': 11,
+     '8': 11, '9': 13, '10': 11, '11': 11, '12': 11, '13': 11, '14': 13
+   };
+   ```
+
+2. **Add GitHub URL templates**:
+   - Full volume TXT: `https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main/full_volumes/GM_{volume}.txt`
+   - TSV format: `https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main/TSV_files/GM{volume}.tsv`
+
+3. **Update tool output** in `src/tools/archival-index.ts` to include formatted links
+
+**Rationale for Hybrid Approach:**
+
+| Source | Provides | Use Case |
+|--------|----------|----------|
+| **Retroboeken** | Interactive viewer, page scans, navigation, editorial content | Reading in context, citation verification |
+| **GitHub TXT** | Plain text, downloadable, letters only | Text analysis, bulk download, search |
+| **GitHub TSV** | Structured data | Programmatic access, data processing |
+
+**Benefits:**
+- Provides multiple access points for different user needs
+- No complex page-level mapping needed (links to full volumes)
+- Leverages existing, maintained resources
+- Simple implementation (URL generation only)
+
+**Limitations:**
+- GitHub links point to full volumes, not individual letters (page-level mapping not feasible)
+- 392 missives (41%) have no RGP mapping and won't get these links
+- License consideration: GitHub repo is CC BY-NC-SA 4.0 (linking OK, redistribution restricted)
+
+**Version:** Would be minor version bump (adds output fields, backwards compatible)
+
+**Related:**
+- `src/tools/archival-index.ts` - Where implementation goes
+- `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/RETROBOEKEN_MAPPING.md` - All 14 volume offsets verified
+- `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/GITHUB_RGP_TRANSCRIPTIONS.md` - GitHub structure and pseudocode
+- GitHub repo: https://github.com/globalise-huygens/globalise-generale-missiven-rgp
+
+---
+
 ### Review Resource _meta Section Content
 
 **Priority:** Low

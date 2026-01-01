@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server for searching and retrieving historical transcriptions from the Dutch East India Company (VOC) provided by the GLOBALISE project.
 
-**Version:** 1.13.0
+**Version:** 1.16.5
 **MCP Specification:** 2025-11-25
 
 ## Overview
@@ -11,7 +11,7 @@ This MCP server provides access to ~4.8 million transcribed pages from the so-ca
 
 ## Features
 
-### 5 Tools + 2 Resources
+### 6 Tools + 3 Resources
 
 All tools include:
 - **Input validation** with clear error messages
@@ -79,6 +79,17 @@ Features:
 - Returns inventory distribution counts
 - For filtering by a document's language
 
+#### 6. globalise_find_archival_documents
+**Archival index query** - Search 228K+ VOC archival document indexes
+
+Features:
+- **Two datasets**: Digitized Indexes OBP (~227K documents) and Generale Missiven (~950 letters)
+- Full-text search in document descriptions (FTS5-powered)
+- Rich filtering: settlement, year ranges, folio ranges, inventory numbers, chamber
+- For Generale Missiven: includes RGP references, scan URLs, HTR availability
+- Returns aggregations (settlement, year, inventory, chamber distribution)
+- Helps identify relevant inventories and document locations before searching transcriptions
+
 ### Resources
 
 Resources provide application-controlled context that clients can read before making tool calls.
@@ -87,6 +98,7 @@ Resources provide application-controlled context that clients can read before ma
 |--------------|-------------|
 | `globalise://help/query-syntax` | Transcriptions Viewer query reference guide |
 | `globalise://reference/weights-measures` | VOC weights & measures glossary (~213 units with spelling variants) |
+| `globalise://reference/commodities` | VOC commodities thesaurus (~1,359 concepts with ~2,481 spelling variants) |
 
 **Reading a resource:**
 ```bash
