@@ -2,6 +2,25 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.16.1] - 2025-01-01
+
+### Changed
+- **Commodities Resource**: Compacted concept IDs for Claude Desktop compatibility
+  - UUID identifiers (36 chars) replaced with namespaced hashes (9 chars, e.g., `CO_ZLuY1J`)
+  - File size reduced from 676 KB to 497 KB (26.5% reduction)
+  - Minified size reduced from 582 KB to 403 KB (30.7% reduction)
+  - Resource now works as Claude Desktop attachment (was rejected due to size limit)
+
+### Technical
+- New conversion script: `scripts/compact_thesaurus_ids.py`
+  - Deterministic SHA-256 based hashing (same UUID always produces same short ID)
+  - Namespace prefix (CO_) prevents collisions across future thesauri
+  - Includes validation for internal reference consistency
+  - Reusable for other UUID-based resources (Places, Ethnicities)
+- Original file preserved at `offline/resources/commodities-original.json`
+
+---
+
 ## [1.16.0] - 2025-12-31
 
 ### Changed

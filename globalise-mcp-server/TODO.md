@@ -6,6 +6,161 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ## Potential Improvements
 
+### Reduce Commodities Resource Size for Claude Desktop Compatibility
+
+**Priority:** High
+**Status:** ✅ Resolved via ID compaction (v1.16.1, 2025-01-01)
+
+**Resolution:**
+Implemented Option 6 (Compact UUIDs) from the options below. UUID identifiers (36 chars) were replaced with namespaced hashes (9 chars, e.g., `CO_ZLuY1J`). File size reduced from 676 KB to 497 KB (26.5%), minified from 582 KB to 403 KB (30.7%). Resource now works as Claude Desktop attachment.
+
+Options 5 (Strip Lookup Table) and 6 (Compact UUIDs) remain documented below for future reference if applied to other resources.
+
+**Original Problem:**
+The `globalise://reference/commodities` resource (676 KB raw, 582 KB minified) exceeds Claude Desktop's undocumented size limit for MCP resources added as attachments. The resource cannot be manually attached to a chat—Claude Desktop rejects it without specifying the limit.
+
+**Reference:**
+- `weights-measures.json` (159 KB) works fine as an attachment
+- The limit appears to be somewhere between 159 KB and 582 KB
+
+**Workaround Discovery:**
+If the commodities JSON is added as a **zipped archive** instead, Claude Desktop accepts it. After unpacking in a fresh chat:
+- Total context window: 190,000 tokens
+- Used by resource: 41,275 tokens
+- Remaining: 148,725 tokens
+
+This suggests the limit is on *attachment size*, not context consumption.
+
+**Options Explored:**
+
+| Option | Description | Trade-off |
+|--------|-------------|-----------|
+| Flatten to variant map | Strip hierarchy/definitions, keep only term→variants | Loses too much information |
+| Split by category | 11 top-level SITC categories | Uneven sizes (4 KB to 194 KB) |
+| Serve as ZIP | Return compressed binary | Unknown MCP client support |
+| Convert to tool | `lookup_commodity()` on demand | Zero upfront cost, different UX |
+| Strip lookup table | Keep hierarchy in resource, move variant→ID mappings to tool | Best of both worlds (see below) |
+| Compact UUIDs | Replace 36-char UUIDs with 9-char namespaced hashes (`CO_a1b2c3`) | ~30% reduction, may not be sufficient alone |
+
+**Category Size Analysis:**
+
+| Category | Concepts | Est. Size |
+|----------|----------|-----------|
+| Manufactured goods (by material) | 571 | 194 KB |
+| Manufactured goods (by use) | 505 | 181 KB |
+| Crude Materials | 156 | 62 KB |
+| Food and live animals | 119 | 53 KB |
+| Chemicals | 77 | 32 KB |
+| Commodities n.e.s. | 45 | 17 KB |
+| Beverages and Tobacco | 26 | 12 KB |
+| Oils, fats, waxes | 24 | 11 KB |
+| Machinery/transport | 11 | 5 KB |
+| Mineral fuels | 11 | 5 KB |
+| Persons as commodities | 7 | 4 KB |
+
+The two "Manufactured goods" categories contain 80% of the data and are each larger than weights-measures, but likely still under the limit individually.
+
+**Decision Needed:**
+Choose between:
+1. **Split into 11 resources** (most granular, cluttered UI)
+2. **Split into 3 resources** (Manufactured-by-material, Manufactured-by-use, Everything else)
+3. **Convert to a queryable tool** (zero upfront cost, different interaction model)
+4. **Investigate ZIP/binary resource** (may not be broadly supported)
+5. **Strip lookup table + query expansion tool** (hybrid approach, see below)
+6. **Compact UUIDs** (~30% reduction, combinable with other options)
+
+---
+
+### Option 5: Strip Lookup Table (Hybrid Approach)
+
+**Analysis (2025-01-01):**
+
+Current file breakdown:
+```
+commodities.json (582 KB minified):
+├── concepts:    450 KB (77%)  ← hierarchy + labels
+├── lookup:      131 KB (22%)  ← 2,481 variant→ID mappings
+└── meta/top:      2 KB (1%)
+```
+
+**Proposal:**
+- **Slim resource**: Keep concepts (hierarchy, labels) for domain understanding
+- **Query expansion tool**: Move lookup functionality to `globalise_expand_query` tool
+
+**Architecture:**
+```
+globalise://reference/commodities   → slim hierarchy (~350 KB after ID compaction)
+globalise_expand_query("pepper")    → tool returns variants on demand (0 KB context)
+```
+
+**Implementation path:**
+1. Create unified SQLite database with all thesauri:
+   ```sql
+   CREATE TABLE variants (
+     term TEXT,
+     normalized TEXT,
+     concept_id TEXT,
+     thesaurus TEXT,  -- 'commodity', 'place', 'ethnicity', 'measure'
+     PRIMARY KEY (term, thesaurus)
+   );
+   ```
+2. Add `globalise_expand_query` tool that queries this database
+3. Slim down concept resources—keep hierarchy for browsing, strip lookup tables
+
+**Why this works:**
+- Query expansion (the primary use case) rarely needs all 2,481 variants at once
+- Works uniformly for all thesauri (commodities, places, ethnicities, measures)
+- Scales to larger resources (Places has 4,443 variants)
+- Follows proven pattern from `globalise_find_archival_documents`
+
+**Tradeoffs:**
+- Adds a tool (but consolidates lookup across all thesauri)
+- Requires tool call per lookup (minor latency)
+- Claude can't "browse" all variants to understand the domain (but can browse hierarchy)
+
+**Applicability to other resources:**
+| Resource | Hierarchy Resource | Lookup via Tool | Notes |
+|----------|-------------------|-----------------|-------|
+| Commodities | Yes (slim) | Yes | Main candidate |
+| Places | Maybe | Yes | 4.4K variants better as tool |
+| Ethnicities | Yes (small enough) | Optional | 1.1K might fit in one resource |
+| Weights/Measures | Already works | Could add | 385 variants, current approach fine |
+
+---
+
+### Option 6: Compact UUIDs
+
+**Plan file:** `offline/resources/thesaurus-id-compaction-plan.md`
+
+Convert 36-character UUIDs to 9-character namespaced hashes:
+```
+e990e5db-88f1-49ab-b49c-609644eed6ab → CO_a1b2c3
+```
+
+**Expected savings:**
+- ~7,000 UUID occurrences × 27 characters saved = ~189 KB
+- 582 KB → ~393 KB (33% reduction)
+
+**Pros:**
+- Deterministic (same UUID → same short ID)
+- Namespace prefixes prevent cross-resource collisions
+- Maintains internal consistency
+
+**Cons:**
+- ~400 KB may still exceed Claude Desktop's limit
+- Makes tracing back to PoolParty source slightly harder (but name-based search works)
+
+**Recommendation:** Combine ID compaction with Option 5 (strip lookup) for maximum reduction.
+
+**Related:**
+- `src/resources/commodities.json` - Current 676 KB file
+- `src/resources/index.ts` - Resource handler
+- Session transcript: `offline/resources/commodities-dict-oversize.txt`
+- `offline/resources/thesaurus-id-compaction-plan.md` - UUID compaction implementation plan
+- `offline/resources/_RESOURCE_CONNECTIONS.md` - Overview of all potential resources
+
+---
+
 ### Add Root Path Handlers for Broader Client Compatibility
 
 **Priority:** Low
