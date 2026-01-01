@@ -6,22 +6,6 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ## Potential Improvements
 
-### Reduce Commodities Resource Size for Claude Desktop Compatibility
-
-**Priority:** High
-**Status:** ❌ Unresolved - all approaches hit Claude Desktop limits (2025-01-01)
-
-**Original Problem:**
-The `globalise://reference/commodities` resource exceeds Claude Desktop's undocumented size limit for MCP resources. The limit is not documented by Anthropic and manifests differently depending on size:
-- Small overages: Immediate rejection on attachment
-- Moderate overages: Triggers compaction cascade, then "exceeds limit of compactions per block" error
-
-**Reference sizes:**
-- `weights-measures.json` (117 KB minified): ✅ Works
-- Commodities (various attempts): ❌ All failed
-
----
-
 ### Prepare Feedback for Anthropic: MCP Resource Size Limits
 
 **Priority:** Medium
@@ -1276,6 +1260,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **v1.16.4** - **Commodities Resource Size Reduced for Claude Desktop Compatibility**: Resolved size limit issue by stripping lookup table (64 KB) while preserving hierarchy, labels, and altLabels. Final size: 138 KB minified (down from 582 KB original). Successfully loads in Claude Desktop. Lookup functionality can be added as a separate tool if needed (see Option 5 in TODO history).
 - **2025-12-28** - **API docs reviewed for v1.9.0 language fields**: Confirmed `globalise-transcriptions-api/` documentation accurately describes `langIso` and `langLabel` in aggregations, search results, filtering, and TypeScript types. No changes needed—documentation was already complete.
 - **v1.10.0** - **Language format unified**: All search tools now return `languages` as `{code, label}[]` instead of `string[]`. This is a breaking change but provides consistency with `globalise_retrieve_document` and includes ISO codes for programmatic use.
 - **v1.10.0** - **Multi-language filtering with AND logic**: `globalise_search_by_language` now accepts arrays and supports `matchAll` parameter. When `matchAll=true`, returns only documents containing ALL specified languages (bilingual/multilingual). Uses post-filtering since API only supports OR.
