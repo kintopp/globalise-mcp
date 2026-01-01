@@ -2,6 +2,22 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.16.3] - 2025-01-01
+
+### Changed
+- **Commodities Resource**: Serve as gzip-compressed blob to bypass size limits
+  - Original JSON: 203 KB → Gzip: 59 KB → Base64: 78 KB
+  - Uses MCP BlobResourceContents with `application/gzip` mime type
+  - Full content preserved: labels, altLabels, lookup table, hierarchy
+  - Clients must decompress gzip to use
+
+### Technical
+- Import `BlobResourceContents` type from MCP SDK
+- Use Node.js `zlib.gzipSync` for compression at startup
+- Pre-compute base64 encoding for efficient serving
+
+---
+
 ## [1.16.2] - 2025-01-01
 
 ### Changed

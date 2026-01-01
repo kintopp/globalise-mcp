@@ -8,13 +8,17 @@
  * See: https://modelcontextprotocol.io/specification/2025-11-25/server/resources
  */
 
-import { Resource, TextResourceContents } from '@modelcontextprotocol/sdk/types.js';
+import { Resource, TextResourceContents, BlobResourceContents } from '@modelcontextprotocol/sdk/types.js';
+import { gzipSync } from 'zlib';
 import weightsAndMeasures from './weights-measures.json' with { type: 'json' };
 import commodities from './commodities.json' with { type: 'json' };
 
 // Pre-stringify for resource response
 const WEIGHTS_MEASURES_DATA = JSON.stringify(weightsAndMeasures, null, 2);
-const COMMODITIES_DATA = JSON.stringify(commodities, null, 2);
+const COMMODITIES_JSON = JSON.stringify(commodities);
+
+// Pre-compress commodities as gzip for size-constrained clients
+const COMMODITIES_GZIP = gzipSync(Buffer.from(COMMODITIES_JSON)).toString('base64');
 
 /**
  * Resource definitions
@@ -51,17 +55,18 @@ export const RESOURCES: Resource[] = [
   },
   {
     uri: 'globalise://reference/commodities',
-    name: 'VOC Commodities Thesaurus',
+    name: 'VOC Commodities Thesaurus (gzip)',
     description:
       'Trade goods from Dutch East India Company (VOC) archives. A SKOS thesaurus of 1,359 commodities ' +
       'shipped in the early modern Indian Ocean World, with 2,481 spelling variants for query expansion. ' +
+      'GZIP-compressed JSON (decompress to use). ' +
       'Structure: "concepts" contains commodity entries with Dutch/English labels, alternative spellings, ' +
-      'hierarchical relationships (broader parent, narrower children), and definitions; "lookup" maps ' +
+      'hierarchical relationships (broader parent, narrower children); "lookup" maps ' +
       'spelling variants to concept IDs; "topConcepts" lists root categories (Food, Beverages, Textiles, etc.). ' +
       'Use this to: (1) expand search queries (e.g., "pepper" → "peper", "piper"), ' +
       '(2) find related commodities via hierarchy (broader/narrower), (3) understand historical trade terminology. ' +
       'Source: GLOBALISE Project (CC-BY-SA-4.0). Full dataset: https://hdl.handle.net/10622/YAWDOV',
-    mimeType: 'application/json',
+    mimeType: 'application/gzip',
   },
 ];
 
@@ -159,7 +164,7 @@ query: "\"Verenigde Oost-Indische Compagnie\""
  * @returns Resource contents in the appropriate format
  * @throws Error if resource not found
  */
-export async function readResource(uri: string): Promise<TextResourceContents[]> {
+export async function readResource(uri: string): Promise<(TextResourceContents | BlobResourceContents)[]> {
   const timestamp = new Date().toISOString();
 
   switch (uri) {
@@ -186,12 +191,12 @@ export async function readResource(uri: string): Promise<TextResourceContents[]>
     }
 
     case 'globalise://reference/commodities': {
-      console.error(`[${timestamp}] 📦 Resource READ: commodities (${COMMODITIES_DATA.length} bytes)`);
+      console.error(`[${timestamp}] 📦 Resource READ: commodities (gzip, ${COMMODITIES_GZIP.length} bytes base64)`);
       return [
         {
           uri,
-          mimeType: 'application/json',
-          text: COMMODITIES_DATA,
+          mimeType: 'application/gzip',
+          blob: COMMODITIES_GZIP,
         },
       ];
     }
