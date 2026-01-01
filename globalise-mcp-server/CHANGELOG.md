@@ -2,6 +2,21 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.16.2] - 2025-01-01
+
+### Changed
+- **Commodities Resource**: Removed definitions to meet Claude Desktop size limit
+  - Definitions (180 KB) stripped from resource - full text available in source TriG file
+  - Preserves: labels, altLabels, lookup table, hierarchy (broader/narrower)
+  - File size: 286 KB raw, **203 KB minified** (confirmed working in Claude Desktop)
+
+### Design Decisions
+- Definitions were scholarly Dutch WNT dictionary entries, valuable but not essential for query expansion
+- Lookup table and altLabels preserved as they enable variant spelling searches
+- Source data with full definitions: hdl:10622/YAWDOV (commodities.trig)
+
+---
+
 ## [1.16.1] - 2025-01-01
 
 ### Changed
@@ -9,7 +24,7 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
   - UUID identifiers (36 chars) replaced with namespaced hashes (9 chars, e.g., `CO_ZLuY1J`)
   - File size reduced from 676 KB to 497 KB (26.5% reduction)
   - Minified size reduced from 582 KB to 403 KB (30.7% reduction)
-  - Resource now works as Claude Desktop attachment (was rejected due to size limit)
+  - Still exceeded Claude Desktop limit (required further reduction in v1.16.2)
 
 ### Technical
 - New conversion script: `scripts/compact_thesaurus_ids.py`
@@ -64,6 +79,7 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 - Included `narrower` arrays for bidirectional hierarchy navigation (+50KB for O(1) child lookup)
 - Dropped all external links (Getty AAT, RCE-CHT, SITC) - not essential for query expansion
 - Stripped citation suffixes from definitions ("Geciteerd uit: Bron: ...")
+- **Truncated definitions to 500 characters** - full WNT dictionary entries can be 1,500+ chars; originals preserved in source TriG file
 - Added datasheet link to sensitive content note
 
 ---
