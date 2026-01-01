@@ -295,10 +295,26 @@ In v1.16.5, we added an `llm_instruction` field to the commodities JSON `_meta` 
 - Does ChatGPT (via HTTP transport) behave differently?
 - Would moving the instruction to the resource description be more effective?
 
+**Additional instructions to consider (2025-01-01):**
+
+Testing showed that thesaurus analysis is not fully deterministic. On the same prompt about "aromatic spices", Claude:
+- Missed asafoetida entirely
+- Incorrectly categorized star anise and aniseed as spices (they're under "Vegetable material")
+- Didn't trace the full hierarchy
+
+Consider adding instructions like:
+- "When answering questions about this thesaurus, trace the full hierarchical path from topConcepts"
+- "Check all narrower concepts recursively, don't stop at the first level"
+- "Verify category placement before making claims about classification"
+- "Cross-reference altLabels to find all variants"
+
+These would encourage more thorough and accurate analysis, though they add to file size.
+
 **Related:**
 - v1.16.5 CHANGELOG entry
 - `src/resources/commodities.json` - Current implementation
 - `src/resources/index.ts` - Resource descriptions
+- `offline/resources/thesaurus-id-compaction-plan.md` - Size constraints documentation
 
 ---
 
