@@ -243,6 +243,65 @@ The handlers in `src/transports/http-server.ts` would need to be refactored:
 
 ---
 
+### Review Resource _meta Section Content
+
+**Priority:** Low
+**Status:** Not started
+
+**Task:**
+Review the `_meta` section text for all MCP resources:
+- `globalise://help/query-syntax` (inline markdown)
+- `globalise://reference/weights-measures` (JSON with _meta)
+- `globalise://reference/commodities` (JSON with _meta)
+
+**Questions to address:**
+1. Is the metadata accurate and up-to-date?
+2. Are the descriptions clear and helpful for LLMs?
+3. Is the source attribution and licensing correct?
+4. Should we standardize the fields across all JSON resources?
+
+**Related:**
+- `src/resources/index.ts` - Resource definitions and inline content
+- `src/resources/weights-measures.json`
+- `src/resources/commodities.json`
+
+---
+
+### Determine Best Location for LLM Instructions in Resources
+
+**Priority:** Low
+**Status:** Not started
+
+**Background:**
+In v1.16.5, we added an `llm_instruction` field to the commodities JSON `_meta` section to tell Claude to suppress internal IDs (CO_xxx) when presenting information to users. This raises a design question about where such instructions belong.
+
+**Options:**
+
+| Location | Pros | Cons |
+|----------|------|------|
+| JSON `_meta.llm_instruction` | Travels with data, visible in raw JSON | Adds to file size, may not be read by all clients |
+| Resource `description` field | Part of MCP protocol, shown in resource list | Limited space, mixes user-facing and LLM-facing text |
+| Separate instructions resource | Clean separation | Adds complexity, may not be auto-read |
+| Tool description (if tool exists) | Natural place for usage guidance | Only works if resource has companion tool |
+
+**Questions to explore:**
+1. Do LLMs reliably read and follow `_meta` instructions in JSON resources?
+2. Should the resource `description` include LLM-specific guidance?
+3. Is there a convention emerging in the MCP ecosystem for this?
+4. Should instructions be duplicated in multiple places for reliability?
+
+**Testing needed:**
+- Does Claude Desktop follow the `llm_instruction` in commodities.json?
+- Does ChatGPT (via HTTP transport) behave differently?
+- Would moving the instruction to the resource description be more effective?
+
+**Related:**
+- v1.16.5 CHANGELOG entry
+- `src/resources/commodities.json` - Current implementation
+- `src/resources/index.ts` - Resource descriptions
+
+---
+
 ### SQLite Database for Large Reference Datasets
 
 **Priority:** High

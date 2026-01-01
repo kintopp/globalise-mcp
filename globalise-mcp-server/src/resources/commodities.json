@@ -7,7 +7,8 @@
     "source_url": "https://hdl.handle.net/10622/YAWDOV",
     "license": "CC-BY-SA-4.0",
     "concepts_count": 1359,
-    "note": "Lookup table stripped for size. For variant→concept lookups, search the transcriptions directly."
+    "note": "Lookup table stripped for size. For variant→concept lookups, search the transcriptions directly.",
+    "llm_instruction": "When presenting information from this thesaurus to users, use the Dutch and English labels (prefLabel_nl, prefLabel_en) and spelling variants (altLabels). Do NOT include the internal concept IDs (CO_xxx) in responses unless the user explicitly requests them."
   },
   "concepts": {
     "CO_ZLuY1J": {

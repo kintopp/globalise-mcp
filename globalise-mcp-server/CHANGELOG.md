@@ -2,6 +2,15 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.16.5] - 2025-01-01
+
+### Changed
+- **Commodities Resource**: Added LLM instruction in metadata
+  - `llm_instruction` field tells Claude to show labels, not internal IDs (CO_xxx)
+  - Improves user-facing output when discussing thesaurus hierarchy
+
+---
+
 ## [1.16.4] - 2025-01-01
 
 ### Changed
