@@ -8,17 +8,13 @@
  * See: https://modelcontextprotocol.io/specification/2025-11-25/server/resources
  */
 
-import { Resource, TextResourceContents, BlobResourceContents } from '@modelcontextprotocol/sdk/types.js';
-import { gzipSync } from 'zlib';
+import { Resource, TextResourceContents } from '@modelcontextprotocol/sdk/types.js';
 import weightsAndMeasures from './weights-measures.json' with { type: 'json' };
 import commodities from './commodities.json' with { type: 'json' };
 
 // Pre-stringify for resource response
 const WEIGHTS_MEASURES_DATA = JSON.stringify(weightsAndMeasures, null, 2);
-const COMMODITIES_JSON = JSON.stringify(commodities);
-
-// Pre-compress commodities as gzip for size-constrained clients
-const COMMODITIES_GZIP = gzipSync(Buffer.from(COMMODITIES_JSON)).toString('base64');
+const COMMODITIES_DATA = JSON.stringify(commodities, null, 2);
 
 /**
  * Resource definitions
@@ -55,18 +51,15 @@ export const RESOURCES: Resource[] = [
   },
   {
     uri: 'globalise://reference/commodities',
-    name: 'VOC Commodities Thesaurus (gzip)',
+    name: 'VOC Commodities Thesaurus (Minimal)',
     description:
       'Trade goods from Dutch East India Company (VOC) archives. A SKOS thesaurus of 1,359 commodities ' +
-      'shipped in the early modern Indian Ocean World, with 2,481 spelling variants for query expansion. ' +
-      'GZIP-compressed JSON (decompress to use). ' +
-      'Structure: "concepts" contains commodity entries with Dutch/English labels, alternative spellings, ' +
-      'hierarchical relationships (broader parent, narrower children); "lookup" maps ' +
-      'spelling variants to concept IDs; "topConcepts" lists root categories (Food, Beverages, Textiles, etc.). ' +
-      'Use this to: (1) expand search queries (e.g., "pepper" → "peper", "piper"), ' +
-      '(2) find related commodities via hierarchy (broader/narrower), (3) understand historical trade terminology. ' +
+      'shipped in the early modern Indian Ocean World. MINIMAL VERSION: contains labels (Dutch/English), ' +
+      'altLabels (spelling variants), and hierarchy (broader/narrower). Lookup table stripped for size. ' +
+      'Use this to: (1) browse commodity categories via topConcepts, (2) find related commodities via hierarchy, ' +
+      '(3) see spelling variants in altLabels. For variant→concept lookups, search transcriptions directly. ' +
       'Source: GLOBALISE Project (CC-BY-SA-4.0). Full dataset: https://hdl.handle.net/10622/YAWDOV',
-    mimeType: 'application/gzip',
+    mimeType: 'application/json',
   },
 ];
 
@@ -164,7 +157,7 @@ query: "\"Verenigde Oost-Indische Compagnie\""
  * @returns Resource contents in the appropriate format
  * @throws Error if resource not found
  */
-export async function readResource(uri: string): Promise<(TextResourceContents | BlobResourceContents)[]> {
+export async function readResource(uri: string): Promise<TextResourceContents[]> {
   const timestamp = new Date().toISOString();
 
   switch (uri) {
@@ -191,12 +184,12 @@ export async function readResource(uri: string): Promise<(TextResourceContents |
     }
 
     case 'globalise://reference/commodities': {
-      console.error(`[${timestamp}] 📦 Resource READ: commodities (gzip, ${COMMODITIES_GZIP.length} bytes base64)`);
+      console.error(`[${timestamp}] 📦 Resource READ: commodities (${COMMODITIES_DATA.length} bytes)`);
       return [
         {
           uri,
-          mimeType: 'application/gzip',
-          blob: COMMODITIES_GZIP,
+          mimeType: 'application/json',
+          text: COMMODITIES_DATA,
         },
       ];
     }

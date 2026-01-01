@@ -9,22 +9,61 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 ### Reduce Commodities Resource Size for Claude Desktop Compatibility
 
 **Priority:** High
-**Status:** ✅ Resolved via ID compaction (v1.16.1, 2025-01-01)
-
-**Resolution:**
-Implemented Option 6 (Compact UUIDs) from the options below. UUID identifiers (36 chars) were replaced with namespaced hashes (9 chars, e.g., `CO_ZLuY1J`). File size reduced from 676 KB to 497 KB (26.5%), minified from 582 KB to 403 KB (30.7%). Resource now works as Claude Desktop attachment.
-
-Options 5 (Strip Lookup Table) and 6 (Compact UUIDs) remain documented below for future reference if applied to other resources.
+**Status:** ❌ Unresolved - all approaches hit Claude Desktop limits (2025-01-01)
 
 **Original Problem:**
-The `globalise://reference/commodities` resource (676 KB raw, 582 KB minified) exceeds Claude Desktop's undocumented size limit for MCP resources added as attachments. The resource cannot be manually attached to a chat—Claude Desktop rejects it without specifying the limit.
+The `globalise://reference/commodities` resource exceeds Claude Desktop's undocumented size limit for MCP resources. The limit is not documented by Anthropic and manifests differently depending on size:
+- Small overages: Immediate rejection on attachment
+- Moderate overages: Triggers compaction cascade, then "exceeds limit of compactions per block" error
 
-**Reference:**
-- `weights-measures.json` (159 KB) works fine as an attachment
-- The limit appears to be somewhere between 159 KB and 582 KB
+**Reference sizes:**
+- `weights-measures.json` (117 KB minified): ✅ Works
+- Commodities (various attempts): ❌ All failed
 
-**Workaround Discovery:**
-If the commodities JSON is added as a **zipped archive** instead, Claude Desktop accepts it. After unpacking in a fresh chat:
+---
+
+### Prepare Feedback for Anthropic: MCP Resource Size Limits
+
+**Priority:** Medium
+**Status:** Pending
+
+**Purpose:** Document our attempts to work around Claude Desktop's undocumented MCP resource size limits and request clearer documentation or higher limits.
+
+**Attempts Made (all failed):**
+
+| Version | Approach | Size (minified) | Result |
+|---------|----------|-----------------|--------|
+| v1.15.0 | Original with UUIDs | 582 KB | ❌ Rejected immediately |
+| v1.16.1 | Compact IDs (UUID→CO_xxx) | 403 KB | ❌ Rejected immediately |
+| v1.16.2 | Remove definitions | 203 KB | ❌ Triggered compaction cascade |
+| v1.16.3 | Gzip blob resource | 78 KB base64 | ❌ Claude tried `zcat` but couldn't find file |
+
+**Gzip failure details:**
+Claude Desktop received the gzip blob resource but the file wasn't passed through at all:
+```bash
+ls -la /mnt/user-data/uploads/
+# total 4
+# dr-xr-xr-x 1  999 root    0 Jan  1 08:49 .
+# drwxr-xr-x 5 root root 4096 Jan  1 08:49 ..
+```
+The uploads directory is empty. Claude Desktop doesn't transfer `BlobResourceContents` to the sandboxed environment.
+
+When Claude tried to decompress:
+```bash
+cd /mnt/user-data/uploads && zcat VOC_Commodities_Thesaurus_gzip | head -200
+```
+Error: `gzip: VOC_Commodities_Thesaurus_gzip.gz: No such file or directory`
+
+**Conclusion:** Claude Desktop does NOT support `BlobResourceContents` for MCP resources. Only `TextResourceContents` works.
+
+**Feedback points for Anthropic:**
+1. **Document the size limit** - What is the actual attachment size limit?
+2. **Document compaction limits** - What triggers "exceeds limit of compactions per block"?
+3. **Support compressed resources** - Either auto-decompress gzip blobs or allow larger uncompressed resources
+4. **Clarify blob resource handling** - Does Claude Desktop support `BlobResourceContents` at all?
+
+**Working workaround (for manual use):**
+Uploading the JSON as a **zipped file attachment** (not MCP resource) works. After unpacking:
 - Total context window: 190,000 tokens
 - Used by resource: 41,275 tokens
 - Remaining: 148,725 tokens

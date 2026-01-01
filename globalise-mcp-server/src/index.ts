@@ -253,7 +253,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.16.3',
+    version: '1.16.4',
   },
   {
     capabilities: {
@@ -300,10 +300,8 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
   try {
     const contents = await readResource(uri);
-    const firstContent = contents[0];
-    const contentLength = 'text' in firstContent ? firstContent.text?.length : ('blob' in firstContent ? firstContent.blob?.length : 0);
-    const contentType = 'blob' in firstContent ? 'blob' : 'text';
-    console.error(`[RESOURCE] Success: ${uri} (${contentLength} ${contentType} chars, ${firstContent?.mimeType})`);
+    const contentLength = contents[0]?.text?.length || 0;
+    console.error(`[RESOURCE] Success: ${uri} (${contentLength} chars, ${contents[0]?.mimeType})`);
     return { contents };
   } catch (error) {
     // Return error in MCP format
