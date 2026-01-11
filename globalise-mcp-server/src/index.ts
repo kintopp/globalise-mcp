@@ -119,7 +119,6 @@ const TOOLS: Tool[] = [
       'Note: Large result sets consume more context window. ' +
       '\n\n**GETTING STATISTICS:** To get language distribution or metadata for an inventory without retrieving full documents, use query="*" with size=1. ' +
       'Example: For inventory 4293 language breakdown, use query="*", inventoryNumber="4293", size=1. Returns aggregations with language counts while minimizing result payload. ' +
-      '\n\n**REFERENCE:** Query syntax guide available at globalise://help/query-syntax resource. ' +
       '\n\n**DO NOT USE FOR:** (1) Retrieving a known document by ID → use globalise_retrieve_document instead. ' +
       '(2) Sequential page browsing → use globalise_navigate instead.',
     inputSchema: zodToJsonSchema(searchSimpleInputSchema) as Tool['inputSchema'],
