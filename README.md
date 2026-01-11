@@ -10,7 +10,7 @@ Health check: https://globalise-mcp-production.up.railway.app/health
 
 ## Repository Contents
 
-### [`globalise-mcp-server/`](./globalise-mcp-server/)
+#### [`globalise-mcp-server/`](./globalise-mcp-server/)
 
 A production-ready Model Context Protocol (MCP) server providing 5 tools for searching and retrieving VOC transcriptions.
 
@@ -33,7 +33,7 @@ A production-ready Model Context Protocol (MCP) server providing 5 tools for sea
 
 See the [MCP server README](./globalise-mcp-server/README.md) for installation and configuration.
 
-### [`globalise-transcriptions-api/`](./globalise-transcriptions-api/)
+#### [`globalise-transcriptions-api/`](./globalise-transcriptions-api/)
 
 Complete documentation of the GLOBALISE Transcriptions Viewer REST API, including:
 
