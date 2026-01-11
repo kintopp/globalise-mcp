@@ -6,6 +6,13 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ## Potential Improvements
 
+### Remove Unnecessary Translations from Weight and Measures JSON dictionary
+
+**Priority:** Medium
+**Status:** Pending
+
+Since an LLM can translate an entry by itself, there's no need to provide multilingual descriptions in the JSON dictionary. 
+
 ### Prepare Feedback for Anthropic: MCP Resource Size Limits
 
 **Priority:** Medium
