@@ -4,15 +4,9 @@ MCP server and API documentation for accessing the [GLOBALISE Transcriptions Vie
 
 ## Quickstart
 
-A public instance is available at:
+A public instance is available at: `https://globalise-mcp-production.up.railway.app/mcp`. Use this URL directly in any MCP client that supports HTTP transport. No authentication is required. 
 
-```
-https://globalise-mcp-production.up.railway.app/mcp
-```
-
-Use this URL directly in any MCP client that supports HTTP transport. No authentication is required.
-
-**Health check:** https://globalise-mcp-production.up.railway.app/health
+Health check: https://globalise-mcp-production.up.railway.app/health
 
 ## Repository Contents
 
