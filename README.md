@@ -2,6 +2,18 @@
 
 MCP server and API documentation for accessing the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/) - a corpus of approximately 4.8 million machine-generated transcriptions of Dutch East India Company (VOC) historical documents.
 
+## Quickstart
+
+A public instance is available at:
+
+```
+https://globalise-mcp-production.up.railway.app/mcp
+```
+
+Use this URL directly in any MCP client that supports HTTP transport. No authentication is required.
+
+**Health check:** https://globalise-mcp-production.up.railway.app/health
+
 ## Repository Contents
 
 ### [`globalise-mcp-server/`](./globalise-mcp-server/)
@@ -35,24 +47,6 @@ Complete documentation of the GLOBALISE Transcriptions Viewer REST API, includin
 - [Query Syntax](./globalise-transcriptions-api/QUERY_SYNTAX.md) - Boolean operators, wildcards, fuzzy matching
 - [Data Models](./globalise-transcriptions-api/DATA_MODELS.md) - Response structures and field definitions
 - [OpenAPI Specification](./globalise-transcriptions-api/openapi.yaml) - Machine-readable API spec
-
-## Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/kintopp/globalise-mcp.git
-cd globalise-mcp/globalise-mcp-server
-
-# Install dependencies and build
-npm install
-npm run build
-
-# Run with stdio (for Claude Desktop)
-node dist/index.js
-
-# Or run with HTTP transport (for ChatGPT/remote access)
-TRANSPORT=http PORT=3000 node dist/index.js
-```
 
 ## About GLOBALISE
 
