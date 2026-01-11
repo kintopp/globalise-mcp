@@ -18,8 +18,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -45,9 +43,6 @@ import {
   findArchivalDocuments,
   findArchivalDocumentsInputSchema,
 } from './tools/archival-index.js';
-
-// Import resource definitions
-import { RESOURCES, readResource } from './resources/index.js';
 
 /**
  * Extract viewer URLs from tool results and format as markdown links
@@ -253,15 +248,11 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.16.5',
+    version: '1.17.0',
   },
   {
     capabilities: {
       tools: {},
-      resources: {
-        subscribe: false,   // No real-time update notifications
-        listChanged: false, // Resource list is static
-      },
     },
   }
 );
@@ -273,44 +264,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: TOOLS,
   };
-});
-
-/**
- * Handler for listing available resources
- *
- * Resources provide context data that clients can read to understand
- * the corpus before making tool calls.
- */
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: RESOURCES,
-  };
-});
-
-/**
- * Handler for reading a specific resource
- *
- * Returns the resource content in the appropriate format (JSON or Markdown).
- */
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const { uri } = request.params;
-
-  // Log resource access
-  console.error(`[RESOURCE] Reading: ${uri}`);
-
-  try {
-    const contents = await readResource(uri);
-    const contentLength = contents[0]?.text?.length || 0;
-    console.error(`[RESOURCE] Success: ${uri} (${contentLength} chars, ${contents[0]?.mimeType})`);
-    return { contents };
-  } catch (error) {
-    // Return error in MCP format
-    console.error(`[RESOURCE] Error: ${uri}`, error instanceof Error ? error.message : error);
-    if (error instanceof Error) {
-      throw new Error(`Resource not found: ${uri}. ${error.message}`);
-    }
-    throw error;
-  }
 });
 
 /**
@@ -437,7 +390,6 @@ async function main() {
     createHttpServer(server, { port, allowedOrigins });
 
     console.error(`[HTTP] ${TOOLS.length} tools available:`, TOOLS.map(t => t.name).join(', '));
-    console.error(`[HTTP] ${RESOURCES.length} resources available:`, RESOURCES.map(r => r.uri).join(', '));
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const transport = new StdioServerTransport();
@@ -446,7 +398,6 @@ async function main() {
     // Log to stderr since stdout is used for MCP communication
     console.error('GLOBALISE MCP Server running on stdio');
     console.error(`${TOOLS.length} tools available:`, TOOLS.map(t => t.name).join(', '));
-    console.error(`${RESOURCES.length} resources available:`, RESOURCES.map(r => r.uri).join(', '));
   }
 }
 

@@ -2,6 +2,37 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.17.0] - 2026-01-11
+
+### Removed
+- **All MCP Resources**: Removed resources capability to reduce context window consumption
+  - Query syntax reference (`globalise://help/query-syntax`)
+  - Weights & measures glossary (`globalise://reference/weights-measures`)
+  - Commodities thesaurus (`globalise://reference/commodities`)
+  - Total reduction: ~359 KB of reference data removed from user context window
+
+### Changed
+- **Server capabilities**: Removed `resources` capability from MCP server configuration
+- **Build script**: Removed JSON resource copy step (no longer needed)
+
+### Archived
+- All resource content preserved in `archived-resources/` directory:
+  - `query-syntax/` - Query syntax markdown reference
+  - `weights-measures/` - Weights & measures JSON data (155 KB)
+  - `commodities/` - Commodities thesaurus JSON data (202 KB)
+  - `original-source/` - Original TypeScript implementation
+  - `README.md` - Explains removal rationale and future plans
+
+### Design Decisions
+- **Why removed**: MCP resources consume excessive context window even when optimized. Not well-supported by Claude Desktop. Users benefit more from having context available for actual transcription data.
+- **Future plan**: Reimplement as SQLite-backed lookup tools (see TODO.md "Reimplement Removed Resources as MCP Tools")
+  - Query syntax: Integrate into search tool descriptions or add simple help tool
+  - Weights & measures: Lookup tool for variants and conversions (zero upfront cost)
+  - Commodities: Search/browse tool for hierarchy and variants (on-demand loading)
+- **Precedent**: Similar pattern to successful `globalise_find_archival_documents` tool (v1.14.0)
+
+---
+
 ## [1.16.5] - 2025-01-01
 
 ### Changed

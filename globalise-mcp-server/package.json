@@ -1,11 +1,11 @@
 {
   "name": "globalise-mcp-server",
-  "version": "1.16.5",
+  "version": "1.17.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && cp src/resources/*.json dist/resources/ && npm run build:db",
+    "build": "tsc && npm run build:db",
     "build:db": "npx tsx scripts/build-archival-db.ts",
     "dev": "tsc --watch",
     "start": "node dist/index.js",

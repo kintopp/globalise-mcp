@@ -414,10 +414,97 @@ These would encourage more thorough and accurate analysis, though they add to fi
 
 ---
 
+### Reimplement Removed Resources as MCP Tools (v1.17+)
+
+**Priority:** Medium
+**Status:** Planned (resources removed in v1.17.0)
+
+**Background:**
+MCP resources were removed in v1.17.0 because they:
+- Consume excessive context window even when optimized
+- Are not well-supported by Claude Desktop
+- Reduce available context for actual transcription data
+
+**Archived Content Location:**
+- `archived-resources/query-syntax/` - Query syntax reference (2 KB)
+- `archived-resources/weights-measures/` - Weights & measures glossary (155 KB)
+- `archived-resources/commodities/` - Commodities thesaurus (202 KB)
+- `archived-resources/original-source/` - Original TypeScript implementation
+
+**Future Reimplementation Plan:**
+
+1. **Query Syntax** - Integrate directly into search tool descriptions
+   - Content is already partially in tool descriptions
+   - May add a simple `globalise_help` tool for reference if needed
+
+2. **Weights & Measures** - Lookup tool backed by SQLite database
+   ```typescript
+   globalise_lookup_measure({
+     term: "gantang",           // Find variants and conversions
+     type: "weight|volume|length|quantity|all"
+   })
+   ```
+   - Returns: unit definition, spelling variants, conversion ratios
+   - Zero upfront context cost
+   - Efficient variant→unit mapping via indexed lookups
+
+3. **Commodities** - Search/browse tool backed by SQLite database
+   ```typescript
+   globalise_lookup_commodity({
+     term: "pepper",             // Find concepts and variants
+     includeHierarchy: boolean,  // Return broader/narrower
+     includeVariants: boolean    // Return all spelling variants
+   })
+   ```
+   - Returns: concept definition, hierarchy, related terms, variants
+   - On-demand loading instead of full 202 KB JSON
+   - Supports both term lookup and hierarchical browsing
+
+**Implementation Notes:**
+- All three could share a single SQLite database: `data/reference.sqlite`
+- Use FTS5 for full-text search in definitions
+- Consider unified `globalise_lookup_reference` tool covering all three
+- Preserve original UUIDs/IDs for traceability to source datasets
+
+**Database Schema (Draft):**
+```sql
+CREATE TABLE weights_measures (
+  unit_id TEXT PRIMARY KEY,
+  text_nl TEXT,
+  text_en TEXT
+);
+
+CREATE TABLE measure_variants (
+  variant TEXT PRIMARY KEY,
+  unit_id TEXT REFERENCES weights_measures(unit_id)
+);
+
+CREATE TABLE commodities (
+  concept_id TEXT PRIMARY KEY,
+  pref_label_nl TEXT,
+  pref_label_en TEXT,
+  broader TEXT,  -- Parent concept ID
+  narrower TEXT  -- JSON array of child IDs
+);
+
+CREATE TABLE commodity_variants (
+  variant TEXT PRIMARY KEY,
+  concept_id TEXT REFERENCES commodities(concept_id)
+);
+```
+
+**Version:** Will be 1.18.0+ (new tools = minor version)
+
+**Related:**
+- `archived-resources/README.md` - Explains why resources were removed
+- Similar pattern: `globalise_find_archival_documents` (successful SQLite-backed tool)
+
+---
+
 ### SQLite Database for Large Reference Datasets
 
 **Priority:** High
-**Status:** Ready to implement (plan complete)
+**Status:** ✅ Completed (v1.14.0, archival index database implemented)
 
 **Background:**
 Two GLOBALISE datasets are valuable as queryable tools but too large for MCP resources:
