@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server for searching and retrieving historical transcriptions from the Dutch East India Company (VOC) provided by the GLOBALISE project.
 
-**Version:** 1.16.5
+**Version:** 1.17.1
 **MCP Specification:** 2025-11-25
 
 ## Overview

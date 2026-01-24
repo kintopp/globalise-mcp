@@ -122,7 +122,7 @@ export async function searchByInventory(input: SearchByInventoryInput): Promise<
     query: input.query || '*', // Match all if no query provided
     from: input.from,
     size: input.size,
-    fragmentSize: 100, // Default fragment size
+    fragmentSize: 500, // Default fragment size
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
     includeAggregations: false, // Don't need aggregations for this focused search
@@ -340,7 +340,7 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
     query: input.query || '*', // Match all if no query provided
     from: input.matchAll && languages.length > 1 ? 0 : input.from, // Start from 0 for post-filtering
     size: requestSize,
-    fragmentSize: 100,
+    fragmentSize: 500,
     sortBy: '_score',
     sortOrder: 'desc',
     includeAggregations: input.includeInventoryCounts,

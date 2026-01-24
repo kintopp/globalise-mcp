@@ -41,7 +41,7 @@ export const searchInputSchema = z.object({
   query: z.string().describe('Search query text. Supports Boolean operators (AND, OR, NOT), wildcards (* and ?), fuzzy matching (~N for edit distance), and exact phrases in quotes. Example: "peper AND koffie", "schip*", "voorschreven~1"'),
   from: z.number().min(0).optional().default(0).describe('Pagination offset - starting result index (default: 0)'),
   size: z.number().min(1).max(1000).optional().default(10).describe('Number of results per page (1-1000, default: 10). Use pagination for larger result sets.'),
-  fragmentSize: z.number().min(50).max(500).optional().default(100).describe('Size of text fragments with highlights (default: 100)'),
+  fragmentSize: z.number().min(50).max(1000).optional().default(500).describe('Size of text fragments with highlights (default: 500)'),
   sortBy: z.string().optional().default('_score').describe('Field to sort by. Valid options: "_score" (relevance, default), "document" (document ID alphabetically), "invNr" (inventory number), "langLabel" (language name)'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc').describe('Sort order: "asc" (ascending) or "desc" (descending, default)'),
   includeAggregations: z.boolean().optional().default(true).describe('Include aggregation counts for inventory numbers, documents, and languages (default: true)'),
@@ -251,7 +251,7 @@ export async function searchSimple(input: SearchSimpleInput): Promise<SearchOutp
     query: input.query,
     from: input.from,
     size: input.size,
-    fragmentSize: 100, // Fixed default
+    fragmentSize: 500, // Fixed default
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
     includeAggregations: true, // Fixed default

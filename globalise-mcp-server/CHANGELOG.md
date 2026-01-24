@@ -2,6 +2,16 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.17.1] - 2026-01-24
+
+### Changed
+- **Fragment size**: Increased default `fragmentSize` from 100 to 500 characters for all search tools
+  - Provides more context around matched keywords in search results
+  - Affects `globalise_search_transcriptions`, `globalise_search_by_inventory`, and `globalise_search_by_language`
+  - Maximum allowed value increased from 500 to 1000
+
+---
+
 ## [1.17.0] - 2026-01-11
 
 ### Removed
