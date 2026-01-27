@@ -11,6 +11,7 @@
  * - Retrieve detailed document information
  * - Navigate between document pages
  * - Filter by inventory numbers
+ * - View documents with interactive UI (MCP Apps)
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -18,9 +19,17 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// MCP Apps resource MIME type
+const RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 
 // Import tool implementations
 import {
@@ -43,6 +52,14 @@ import {
   findArchivalDocuments,
   findArchivalDocumentsInputSchema,
 } from './tools/archival-index.js';
+import {
+  viewDocumentUi,
+  viewDocumentUiInputSchema,
+} from './tools/document-viewer.js';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Extract viewer URLs from tool results and format as markdown links
@@ -247,21 +264,110 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.17.1',
+    version: '1.18.0',
   },
   {
     capabilities: {
       tools: {},
+      resources: {},
     },
   }
 );
+
+// UI Resource URI for Document Viewer
+const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
+
+/**
+ * Document Viewer UI Tool definition
+ *
+ * This tool displays an interactive viewer with IIIF images and transcriptions.
+ * The UI resource is linked via _meta.ui.resourceUri.
+ */
+const DOCUMENT_VIEWER_TOOL: Tool = {
+  name: 'globalise_view_document_ui',
+  description:
+    '**INTERACTIVE DOCUMENT VIEWER** - Display a VOC document with scanned page image and transcription side-by-side. ' +
+    '\n\n**USE WHEN:** User wants to see a document visually with the page scan and transcription together. ' +
+    'Examples: "show me document NL-HaNA_1.04.02_9966_0106", "view this page with the image", "display the scan and text". ' +
+    '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN. ' +
+    '\n\n**FEATURES:** IIIF image viewer with zoom/pan, transcribed text with line numbers, page navigation (prev/next), search term highlighting. ' +
+    '\n\n**RETURNS:** Interactive UI with split view showing scanned page and transcription.',
+  inputSchema: zodToJsonSchema(viewDocumentUiInputSchema) as Tool['inputSchema'],
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+  },
+};
+
+/**
+ * Load the Document Viewer UI HTML
+ */
+function loadDocumentViewerHtml(): string {
+  const htmlPath = path.join(__dirname, '..', 'dist', 'apps', 'index.html');
+
+  try {
+    return fs.readFileSync(htmlPath, 'utf-8');
+  } catch {
+    // Fallback error message if UI hasn't been built
+    return `<!DOCTYPE html>
+<html>
+<head><title>GLOBALISE Document Viewer</title></head>
+<body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+  <div style="text-align:center;color:#666;">
+    <h1>Document Viewer Not Built</h1>
+    <p>Run <code>npm run build:ui</code> to build the viewer.</p>
+  </div>
+</body>
+</html>`;
+  }
+}
+
+/**
+ * Handler for listing available resources (MCP Apps UI resources)
+ */
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  return {
+    resources: [
+      {
+        uri: DOCUMENT_VIEWER_RESOURCE_URI,
+        name: 'GLOBALISE Document Viewer',
+        description: 'Interactive document viewer for VOC transcriptions with IIIF images',
+        mimeType: RESOURCE_MIME_TYPE,
+      },
+    ],
+  };
+});
+
+/**
+ * Handler for reading resources (serves the bundled UI HTML)
+ */
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+
+  if (uri === DOCUMENT_VIEWER_RESOURCE_URI) {
+    const html = loadDocumentViewerHtml();
+
+    return {
+      contents: [
+        {
+          uri: DOCUMENT_VIEWER_RESOURCE_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: html,
+        },
+      ],
+    };
+  }
+
+  throw new Error(`Resource not found: ${uri}`);
+});
 
 /**
  * Handler for listing available tools
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
-    tools: TOOLS,
+    tools: [...TOOLS, DOCUMENT_VIEWER_TOOL],
   };
 });
 
@@ -308,6 +414,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'globalise_find_archival_documents': {
         const input = findArchivalDocumentsInputSchema.parse(args);
         result = await findArchivalDocuments(input);
+        break;
+      }
+
+      case 'globalise_view_document_ui': {
+        const input = viewDocumentUiInputSchema.parse(args);
+        result = await viewDocumentUi(input);
         break;
       }
 
@@ -388,7 +500,8 @@ async function main() {
 
     createHttpServer(server, { port, allowedOrigins });
 
-    console.error(`[HTTP] ${TOOLS.length} tools available:`, TOOLS.map(t => t.name).join(', '));
+    const allTools = [...TOOLS, DOCUMENT_VIEWER_TOOL];
+    console.error(`[HTTP] ${allTools.length} tools available:`, allTools.map(t => t.name).join(', '));
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const transport = new StdioServerTransport();
@@ -396,7 +509,8 @@ async function main() {
 
     // Log to stderr since stdout is used for MCP communication
     console.error('GLOBALISE MCP Server running on stdio');
-    console.error(`${TOOLS.length} tools available:`, TOOLS.map(t => t.name).join(', '));
+    const allTools = [...TOOLS, DOCUMENT_VIEWER_TOOL];
+    console.error(`${allTools.length} tools available:`, allTools.map(t => t.name).join(', '));
   }
 }
 

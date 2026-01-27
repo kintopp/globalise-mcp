@@ -2,6 +2,40 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.18.0] - 2026-01-27
+
+### Added
+- **Document Viewer MCP App**: New interactive UI tool for viewing VOC documents
+  - `globalise_view_document_ui` tool displays scanned page images with transcriptions side-by-side
+  - Uses OpenSeadragon for IIIF image viewing with zoom, pan, and reset controls
+  - Transcription panel with line numbers and search term highlighting
+  - Page navigation (prev/next) with seamless data loading
+  - Resizable split-view layout (drag the divider to adjust panel sizes)
+  - Links to GLOBALISE Viewer and National Archives
+
+### Technical
+- **MCP Apps Protocol**: Implemented MCP Apps specification for interactive UI
+  - Tool returns data with `_meta.ui.resourceUri` linking to the UI resource
+  - Resource handler serves bundled HTML/JS/CSS for the interactive viewer
+  - Uses MIME type `text/html;profile=mcp-app` for MCP Apps resources
+- **IIIF URL Extraction**: New `src/utils/iiif.ts` helper extracts image URLs from API responses
+  - National Archives uses GUID-based paths (not document IDs) for IIIF images
+  - URLs found at `anno[0].target[0].source` in API response
+- **Vite Build System**: Added UI bundling with `vite-plugin-singlefile`
+  - `npm run build:ui` compiles `apps/document-viewer/` to single HTML file
+  - Output at `dist/apps/index.html`, loaded by resource handler
+  - Separate tsconfig exclusion for apps directory
+
+### Dependencies
+- Added (dev): `vite` (^5.4.0), `vite-plugin-singlefile` (^2.0.0)
+
+### Files Added
+- `src/tools/document-viewer.ts` - UI tool implementation
+- `src/utils/iiif.ts` - IIIF URL extraction utilities
+- `apps/document-viewer/` - Viewer UI source (index.html, viewer.ts, viewer.css, vite.config.ts)
+
+---
+
 ## [1.17.1] - 2026-01-24
 
 ### Changed
