@@ -298,6 +298,12 @@ const DOCUMENT_VIEWER_TOOL: Tool = {
     destructiveHint: false,
     idempotentHint: true,
   },
+  // CRITICAL: Links this tool to its UI resource for MCP Apps hosts to render
+  _meta: {
+    ui: {
+      resourceUri: DOCUMENT_VIEWER_RESOURCE_URI,
+    },
+  },
 };
 
 /**
