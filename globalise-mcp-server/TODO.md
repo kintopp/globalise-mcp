@@ -6,6 +6,50 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ## Potential Improvements
 
+### MCP Apps: Claude Desktop UI Rendering Not Yet Working
+
+**Priority:** High
+**Status:** Blocked (awaiting host support, 2026-01-27)
+
+**Background:**
+The Document Viewer MCP App (`globalise_view_document_ui`) was implemented in v1.18.0 with correct MCP Apps SDK patterns:
+- Tool includes `_meta.ui.resourceUri` pointing to `ui://globalise/document-viewer.html`
+- Resource handler returns `{ contents: [{ uri, mimeType, text }] }` with proper MIME type
+- Tool executes successfully and returns document data (IIIF URL, transcription, metadata)
+
+**Current Behavior:**
+- Claude Desktop calls the tool and receives the JSON response
+- Instead of rendering the interactive UI, it displays the JSON data with a "Show Image" button
+- The host does NOT fetch the UI resource (`resources/read` never called)
+
+**What Was Verified:**
+1. ✅ Local server returns 7 tools with correct metadata
+2. ✅ `_meta.ui.resourceUri` present in tool definition
+3. ✅ Resource handler properly registered and functional
+4. ✅ Tool executes and returns valid document data
+5. ❌ Claude Desktop does not render custom UI resources
+
+**Possible Causes:**
+1. Claude Desktop may not yet support `_meta.ui.resourceUri` for custom UI rendering
+2. MCP Apps support may be in preview/limited to specific server types
+3. Additional metadata or configuration may be required
+
+**Next Steps:**
+- [ ] Check Claude Desktop version and MCP Apps support status
+- [ ] Test with other MCP Apps-compatible hosts (VS Code Copilot, Goose, ChatGPT)
+- [ ] Review MCP Apps specification for any missing requirements
+- [ ] Monitor Anthropic announcements for MCP Apps GA
+
+**Branch:** `feature/mcp-apps-document-viewer`
+
+**Related:**
+- `src/index.ts:286-307` - DOCUMENT_VIEWER_TOOL definition with `_meta`
+- `src/index.ts:329-359` - Resource handlers (ListResources, ReadResource)
+- `apps/document-viewer/` - UI source code
+- MCP Apps Spec: `@modelcontextprotocol/ext-apps`
+
+---
+
 ### Remove Unnecessary Translations from Weight and Measures JSON dictionary
 
 **Priority:** Medium

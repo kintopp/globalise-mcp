@@ -13,6 +13,11 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
   - Resizable split-view layout (drag the divider to adjust panel sizes)
   - Links to GLOBALISE Viewer and National Archives
 
+### Fixed
+- **MCP Apps metadata**: Added `_meta.ui.resourceUri` to `DOCUMENT_VIEWER_TOOL` definition
+  - Required for MCP Apps hosts to know which UI resource to render
+  - Without this metadata, hosts receive tool result but don't fetch/display the UI
+
 ### Technical
 - **MCP Apps Protocol**: Implemented MCP Apps specification for interactive UI
   - Tool returns data with `_meta.ui.resourceUri` linking to the UI resource
