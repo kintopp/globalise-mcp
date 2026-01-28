@@ -40,10 +40,12 @@ export interface ArchivalContext {
   chamber?: string;
   /** Whether HTR transcriptions are available (GM only) */
   htrAvailable?: boolean;
-  /** Sample description from first matching entry */
-  sampleDescription?: string;
-  /** Document type from first OBP entry */
-  documentType?: string;
+  /** Specific location from TANAP (e.g., "Colombo", "Madurese") */
+  locationTanap?: string;
+  /** Geographic coverage/scope */
+  geographicalCoverage?: string;
+  /** Finding aid description text */
+  description?: string;
 }
 
 /**
@@ -57,6 +59,7 @@ export interface ViewDocumentUiOutput {
     inventory: string;
     scan: string;
     languages: Array<{ code: string; label: string }>;
+    license?: string;
   };
   navigation: {
     prev: string | null;
@@ -148,6 +151,7 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
         code: l.iso,
         label: l.label,
       })) || [],
+      license: metadata?.comment?.replace('license: ', '') || undefined,
     },
     navigation: {
       prev: metadata?.prevPageId || null,
@@ -214,12 +218,21 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
         archivalContext.htrAvailable = gmResult.htrAvailable;
       }
 
-      // Extract sample description and document type from first result
-      const firstResult = archivalResult.results[0];
-      if (firstResult) {
-        archivalContext.sampleDescription = firstResult.description;
-        if (firstResult.type === 'obp' && firstResult.documentType) {
-          archivalContext.documentType = firstResult.documentType;
+      // Extract location and description from first OBP result
+      const obpResult = archivalResult.results.find(r => r.type === 'obp');
+      if (obpResult && obpResult.type === 'obp') {
+        if (obpResult.locationTanap) {
+          archivalContext.locationTanap = obpResult.locationTanap;
+        }
+        if (obpResult.geographicalCoverage) {
+          archivalContext.geographicalCoverage = obpResult.geographicalCoverage;
+        }
+        archivalContext.description = obpResult.description;
+      } else {
+        // Fallback to first result's description (for GM)
+        const firstResult = archivalResult.results[0];
+        if (firstResult) {
+          archivalContext.description = firstResult.description;
         }
       }
 

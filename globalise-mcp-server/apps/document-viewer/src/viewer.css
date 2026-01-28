@@ -414,21 +414,36 @@ html, body {
 /* Archival context section */
 .archival-context {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.35rem;
   font-size: 0.8rem;
   color: var(--color-text-secondary);
-  padding: 0.25rem 0;
   border-top: 1px solid var(--color-border-primary);
   margin-top: 0.5rem;
   padding-top: 0.5rem;
 }
 
-.archival-context span {
+.archival-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.archival-row span {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   white-space: nowrap;
+}
+
+.archival-description {
+  font-style: italic;
+  line-height: 1.4;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  color: var(--color-text-secondary);
 }
 
 .archival-badge {

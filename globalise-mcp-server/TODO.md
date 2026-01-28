@@ -22,14 +22,15 @@ The Document Viewer MCP App now renders correctly in Claude Desktop. The fixes w
 
 While UI rendering works, several MCP Apps SDK features are **not supported**:
 
-| Feature | Status | Workaround |
-|---------|--------|------------|
-| `app.callServerTool()` | ❌ JSON-RPC validation error | None - model must call tools |
-| `app.sendMessage()` | ❌ Fails silently | None - user must type messages |
-| `app.updateModelContext()` | ❌ Context not received by model | None - user must copy/paste |
-| `app.sendSizeChanged()` | ✅ Works | — |
-| `app.sendLog()` | ✅ Works | — |
-| `onhostcontextchanged` | ⚠️ Partial (theme works) | — |
+| Feature | Status | Workaround | Issue |
+|---------|--------|------------|-------|
+| `app.callServerTool()` | ❌ JSON-RPC validation error | None - model must call tools | [#32](https://github.com/anthropics/claude-ai-mcp/issues/32) |
+| `app.sendMessage()` | ❌ Fails silently | None - user must type messages | [#33](https://github.com/anthropics/claude-ai-mcp/issues/33) |
+| `app.updateModelContext()` | ❌ Context not received by model | None - user must copy/paste | [#34](https://github.com/anthropics/claude-ai-mcp/issues/34) |
+| `window.open()` / `<a href>` | ❌ External links don't open | None - user must copy URL manually | [#31](https://github.com/anthropics/claude-ai-mcp/issues/31) |
+| `app.sendSizeChanged()` | ✅ Works | — | — |
+| `app.sendLog()` | ✅ Works | — | — |
+| `onhostcontextchanged` | ⚠️ Partial (theme works) | — | — |
 
 **Implication:** MCP Apps in Claude Desktop are best suited for **display-only** use cases. Interactive features requiring UI→model communication need user intervention (copying text, typing requests).
 

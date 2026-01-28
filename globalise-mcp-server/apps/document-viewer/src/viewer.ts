@@ -28,8 +28,9 @@ interface ArchivalContext {
   yearRange?: { from: number; to: number };
   chamber?: string;
   htrAvailable?: boolean;
-  sampleDescription?: string;
-  documentType?: string;
+  locationTanap?: string;
+  geographicalCoverage?: string;
+  description?: string;
 }
 
 // Document data structure from tool result
@@ -41,6 +42,7 @@ interface DocumentData {
     inventory: string;
     scan: string;
     languages: Array<{ code: string; label: string }>;
+    license?: string;
   };
   navigation: {
     prev: string | null;
@@ -218,51 +220,54 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
     return '';
   }
 
-  const parts: string[] = [];
+  const rows: string[] = [];
 
-  // Source badge
-  const sourceLabel = ctx.source === 'obp' ? 'OBP Index'
-    : ctx.source === 'gm' ? 'Generale Missiven'
-    : 'OBP + GM';
-  parts.push(`<span class="archival-badge" title="Archival index source">${sourceLabel}</span>`);
-
-  // Settlement(s)
+  // Row 1: Settlement, Year range (+ chamber for GM, HTR for GM)
+  const row1Parts: string[] = [];
   if (ctx.settlements && ctx.settlements.length > 0) {
-    const settlementText = ctx.settlements.length <= 3
-      ? ctx.settlements.join(', ')
-      : `${ctx.settlements.slice(0, 3).join(', ')} +${ctx.settlements.length - 3} more`;
-    parts.push(`<span title="Settlement(s)">📍 ${escapeHtml(settlementText)}</span>`);
+    const settlementText = ctx.settlements.join(', ');
+    row1Parts.push(`<span title="Settlement">📍 ${escapeHtml(settlementText)}</span>`);
   }
-
-  // Year range
   if (ctx.yearRange) {
     const yearText = ctx.yearRange.from === ctx.yearRange.to
       ? `${ctx.yearRange.from}`
       : `${ctx.yearRange.from}–${ctx.yearRange.to}`;
-    parts.push(`<span title="Date range">📅 ${yearText}</span>`);
+    row1Parts.push(`<span title="Date range">📅 ${yearText}</span>`);
   }
-
-  // Chamber (GM)
   if (ctx.chamber) {
-    parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
+    row1Parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
   }
-
-  // HTR availability (GM)
   if (ctx.htrAvailable !== undefined) {
     const htrText = ctx.htrAvailable ? 'HTR available' : 'No HTR';
     const htrIcon = ctx.htrAvailable ? '✓' : '✗';
-    parts.push(`<span title="${htrText}" class="${ctx.htrAvailable ? 'htr-available' : 'htr-unavailable'}">${htrIcon} HTR</span>`);
+    row1Parts.push(`<span title="${htrText}" class="${ctx.htrAvailable ? 'htr-available' : 'htr-unavailable'}">${htrIcon} HTR</span>`);
+  }
+  if (row1Parts.length > 0) {
+    rows.push(`<div class="archival-row">${row1Parts.join('')}</div>`);
   }
 
-  // Document type (OBP)
-  if (ctx.documentType) {
-    parts.push(`<span title="Document type">📄 ${escapeHtml(ctx.documentType)}</span>`);
+  // Row 2: Location and geographic coverage
+  const row2Parts: string[] = [];
+  if (ctx.locationTanap) {
+    row2Parts.push(`<span title="Location (TANAP)">📌 ${escapeHtml(ctx.locationTanap)}</span>`);
+  }
+  if (ctx.geographicalCoverage) {
+    row2Parts.push(`<span title="Geographic coverage">🌍 ${escapeHtml(ctx.geographicalCoverage)}</span>`);
+  }
+  if (row2Parts.length > 0) {
+    rows.push(`<div class="archival-row">${row2Parts.join('')}</div>`);
   }
 
-  // Entry count
-  parts.push(`<span title="Entries in archival index for this inventory">${ctx.inventoryTotal} index entries</span>`);
+  // Row 3: Description (full width, wrapping)
+  if (ctx.description) {
+    rows.push(`<div class="archival-description" title="${escapeHtml(ctx.description)}">${escapeHtml(ctx.description)}</div>`);
+  }
 
-  return `<div class="archival-context">${parts.join('')}</div>`;
+  if (rows.length === 0) {
+    return '';
+  }
+
+  return `<div class="archival-context">${rows.join('')}</div>`;
 }
 
 /**
@@ -298,6 +303,7 @@ function renderDocument(doc: DocumentData): void {
           <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
           <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
           <span>Language: ${languageBadges}</span>
+          ${doc.metadata.license ? `<span>License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
         </div>
         ${archivalHtml}
         <div class="external-links">${externalLinks}</div>
