@@ -39,23 +39,76 @@ While UI rendering works, several MCP Apps SDK features are **not supported**:
 - Keyboard navigation (arrow keys for panning)
 - Text selection in transcription
 - Theme integration via CSS variables
-- External links to GLOBALISE Viewer and National Archives
+- Search term highlighting in transcription text
+- Archival context from OBP/GM database (v1.20.0)
+
+**Removed Features (due to Claude Desktop limitations):**
+- External link buttons (GLOBALISE Viewer, National Archives) - Claude Desktop can't open external URLs
 
 **Branch:** `feature/mcp-apps-document-viewer` (ready to merge to main)
+
+---
+
+### Investigate GLOBALISE API Annotation Coordinate Data
+
+**Priority:** High
+**Status:** Not started
+**Prerequisite for:** Image Overlays, Text-Image Linking
+
+**Background:**
+The Document Viewer features (image overlays, text-image linking) require coordinate data mapping text regions to positions on the scanned image. The GLOBALISE API returns W3C Web Annotations that may contain this data.
+
+**Investigation Tasks:**
+1. Fetch a sample document with full annotations: `GET /projects/globalise/{urn}?includeResults=anno`
+2. Examine the `target` field structure in annotations
+3. Determine coordinate granularity: word-level? line-level? region-level?
+4. Identify coordinate system: IIIF normalized (0-1), pixels, or other
+5. Document the annotation structure for implementation reference
+
+**Expected Structure (to verify):**
+```json
+{
+  "anno": [{
+    "target": [{
+      "source": "https://service.archief.nl/iip/...",
+      "selector": {
+        "type": "FragmentSelector",
+        "value": "xywh=100,200,300,50"  // x, y, width, height in pixels?
+      }
+    }],
+    "body": {
+      "value": "transcribed text for this region"
+    }
+  }]
+}
+```
+
+**Questions to Answer:**
+- Are coordinates available for every line? Every word?
+- Do coordinates align with the transcription lines array?
+- What's the mapping between `views.self.lines[]` and annotation coordinates?
+- Are there different annotation types (px:Page, px:Line, px:Word)?
+
+**Output:**
+Document findings in `offline/research/annotation-coordinates.md` with:
+- Sample annotation JSON
+- Coordinate system explanation
+- Mapping strategy for line numbers → image regions
+- Feasibility assessment for overlay/linking features
 
 ---
 
 ### Document Viewer: Image Overlays for Highlighted Terms
 
 **Priority:** High
-**Status:** Planned
+**Status:** Planned (pending coordinate data investigation)
 **Branch:** `feature/document-viewer-image-overlays`
 
 **Background:**
 The Document Viewer currently highlights search terms in the transcription text panel. OpenSeadragon supports overlays that could highlight the same terms directly on the scanned image, providing visual correspondence between text and image.
 
 **Prerequisites:**
-- Investigate whether GLOBALISE API annotations include word/line bounding box coordinates
+- ✅ Complete "Investigate GLOBALISE API Annotation Coordinate Data" first
 - The W3C annotations in API responses include `target` fields with IIIF selectors - need to examine structure
 
 **OpenSeadragon Overlay API:**
@@ -88,7 +141,7 @@ viewer.addOverlay({
 ### Document Viewer: Text-Image Bidirectional Linking
 
 **Priority:** High
-**Status:** Planned
+**Status:** Planned (pending coordinate data investigation)
 **Branch:** `feature/document-viewer-text-image-linking`
 
 **Background:**
@@ -99,7 +152,7 @@ Enable bidirectional navigation between transcription text and scan image:
 This significantly improves usability for researchers comparing transcription to source.
 
 **Prerequisites:**
-- Same as Image Overlays: need coordinate data from API
+- ✅ Complete "Investigate GLOBALISE API Annotation Coordinate Data" first
 - Understand line-level vs word-level coordinate granularity
 
 **Implementation - Text to Image:**
@@ -1530,6 +1583,7 @@ Unlike ChatGPT/MSTY which auto-detect transport type, AnythingLLM will default t
 
 *Move items here once implemented, with version number and date.*
 
+- **v1.20.0** (2026-01-28) - **Document Viewer: Archival Context & UI Polish**: Added archival metadata from OBP/GM SQLite database to Document Viewer (settlement, year range, location, geographic coverage, description). Removed external link buttons (Claude Desktop limitation). Consolidated metadata layout. Fixed font size consistency. License moved to title row.
 - **v1.16.4** - **Commodities Resource Size Reduced for Claude Desktop Compatibility**: Resolved size limit issue by stripping lookup table (64 KB) while preserving hierarchy, labels, and altLabels. Final size: 138 KB minified (down from 582 KB original). Successfully loads in Claude Desktop. Lookup functionality can be added as a separate tool if needed (see Option 5 in TODO history).
 - **2025-12-28** - **API docs reviewed for v1.9.0 language fields**: Confirmed `globalise-transcriptions-api/` documentation accurately describes `langIso` and `langLabel` in aggregations, search results, filtering, and TypeScript types. No changes needed—documentation was already complete.
 - **v1.10.0** - **Language format unified**: All search tools now return `languages` as `{code, label}[]` instead of `string[]`. This is a breaking change but provides consistency with `globalise_retrieve_document` and includes ISO codes for programmatic use.
