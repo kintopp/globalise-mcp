@@ -380,6 +380,13 @@ function initializeImageViewer(imageUrl: string): void {
     visibilityRatio: 0.5,
   });
 
+  // Fit to page width on load
+  viewer.addHandler('open', () => {
+    // Fit horizontally: zoom so image width fills viewport width
+    // Use fitBounds with a rect spanning full width
+    viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, 0.001), true);
+  });
+
   // Handle image load error
   viewer.addHandler('open-failed', () => {
     const viewerContainer = document.getElementById('openseadragon-viewer');
