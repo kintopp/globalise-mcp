@@ -5,13 +5,16 @@
  * - IIIF scanned images via OpenSeadragon
  * - Transcribed text with search term highlighting
  * - Page navigation (prev/next)
+ * - Theme integration with host
+ *
+ * Follows MCP Apps SDK patterns with all lifecycle handlers.
  */
 
-// Import from CDN-bundled version for browser use
 import {
   App,
   applyDocumentTheme,
   applyHostStyleVariables,
+  applyHostFonts,
 } from 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps';
 
 // OpenSeadragon is loaded globally via CDN
@@ -41,8 +44,9 @@ interface DocumentData {
 // App state
 let currentDocument: DocumentData | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
+let isFullscreen = false;
 
-// Initialize the MCP App
+// Initialize the MCP App with capabilities
 const app = new App(
   { name: 'GLOBALISE Document Viewer', version: '1.0.0' },
   { tools: { listChanged: false } },
@@ -50,10 +54,37 @@ const app = new App(
 );
 
 /**
+ * Handle streaming partial input during LLM generation
+ * Shows loading state with partial document ID as it streams in
+ */
+app.ontoolinputpartial = (params) => {
+  const args = params.arguments as { documentId?: string } | undefined;
+  const docId = args?.documentId || '...';
+
+  showLoading(`Loading document: ${docId}`);
+
+  app.sendLog({ level: 'info', data: `Partial input: ${docId}` });
+};
+
+/**
+ * Handle full tool input (tool execution about to start)
+ * Update loading state with complete document ID
+ */
+app.ontoolinput = (params) => {
+  const args = params.arguments as { documentId?: string } | undefined;
+  const docId = args?.documentId || 'unknown';
+
+  showLoading(`Fetching document: ${docId}`);
+
+  app.sendLog({ level: 'info', data: `Full input received: ${docId}` });
+};
+
+/**
  * Handle tool result from the server
+ * Parse JSON and render the document viewer
  */
 app.ontoolresult = (result) => {
-  console.log('Tool result received:', result);
+  app.sendLog({ level: 'info', data: 'Tool result received' });
 
   // Check for error
   if (result.isError) {
@@ -61,17 +92,31 @@ app.ontoolresult = (result) => {
     return;
   }
 
-  // Parse structured content or text content
+  // Parse document data from JSON in content
+  // The tool returns [human-readable text, JSON data]
   let data: DocumentData | null = null;
 
-  if (result.structuredContent) {
-    data = result.structuredContent as DocumentData;
-  } else if (result.content?.[0]?.type === 'text') {
-    try {
-      data = JSON.parse(result.content[0].text) as DocumentData;
-    } catch (e) {
-      showError('Error parsing document', 'Invalid response format');
-      return;
+  if (result.content && result.content.length >= 2) {
+    // Second content item should be the JSON data
+    const jsonContent = result.content[1];
+    if (jsonContent?.type === 'text') {
+      try {
+        data = JSON.parse(jsonContent.text) as DocumentData;
+      } catch (e) {
+        app.sendLog({ level: 'error', data: `JSON parse error: ${e}` });
+      }
+    }
+  }
+
+  // Fallback: try first content item if it looks like JSON
+  if (!data && result.content?.[0]?.type === 'text') {
+    const text = result.content[0].text;
+    if (text.startsWith('{')) {
+      try {
+        data = JSON.parse(text) as DocumentData;
+      } catch {
+        // Not JSON, ignore
+      }
     }
   }
 
@@ -79,20 +124,78 @@ app.ontoolresult = (result) => {
     currentDocument = data;
     renderDocument(data);
     updateModelContext(data);
+  } else {
+    showError('Error parsing document', 'Could not parse document data from tool result');
   }
 };
 
 /**
- * Handle host context changes (theme, etc.)
+ * Handle host context changes (theme, safe areas, display mode)
  */
 app.onhostcontextchanged = (params) => {
+  // Apply theme
   if (params.theme) {
     applyDocumentTheme(params.theme);
   }
+
+  // Apply CSS variables from host
   if (params.styles?.variables) {
     applyHostStyleVariables(params.styles.variables);
   }
+
+  // Apply fonts from host
+  if (params.styles?.css?.fonts) {
+    applyHostFonts(params.styles.css.fonts);
+  }
+
+  // Handle safe area insets
+  if (params.safeAreaInsets) {
+    const { top, right, bottom, left } = params.safeAreaInsets;
+    document.body.style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
+  }
+
+  // Handle display mode changes
+  if (params.displayMode) {
+    isFullscreen = params.displayMode === 'fullscreen';
+    document.querySelector('.main')?.classList.toggle('fullscreen', isFullscreen);
+  }
 };
+
+/**
+ * Handle app teardown - return viewer state
+ */
+app.onteardown = async () => {
+  // Return current viewer state for potential restoration
+  const state: Record<string, unknown> = {};
+
+  if (currentDocument) {
+    state.documentId = currentDocument.id;
+    state.highlightTerms = currentDocument.highlight;
+  }
+
+  if (viewer) {
+    const viewport = viewer.viewport;
+    state.zoom = viewport.getZoom();
+    state.center = viewport.getCenter();
+  }
+
+  return state;
+};
+
+/**
+ * Show loading state
+ */
+function showLoading(message: string): void {
+  const appEl = document.getElementById('app');
+  if (!appEl) return;
+
+  appEl.innerHTML = `
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
 
 /**
  * Render the document viewer UI
@@ -117,45 +220,43 @@ function renderDocument(doc: DocumentData): void {
     .join('');
 
   appEl.innerHTML = `
-    <header class="header">
-      <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
-      <div class="metadata">
-        <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
-        <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
-        <span>Language: ${languageBadges}</span>
-      </div>
-      <div class="external-links">${externalLinks}</div>
-    </header>
+    <div class="main${isFullscreen ? ' fullscreen' : ''}">
+      <header class="header">
+        <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
+        <div class="metadata">
+          <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
+          <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
+          <span>Language: ${languageBadges}</span>
+        </div>
+        <div class="external-links">${externalLinks}</div>
+      </header>
 
-    <div class="content">
-      <div class="image-panel">
-        <div id="openseadragon-viewer"></div>
-        <div class="image-controls">
-          <button id="zoom-in" title="Zoom In">+</button>
-          <button id="zoom-out" title="Zoom Out">-</button>
-          <button id="reset-view" title="Reset View">Reset</button>
+      <div class="content">
+        <div class="image-panel">
+          <div id="openseadragon-viewer"></div>
+          <div class="image-controls">
+            <button id="zoom-in" title="Zoom In">+</button>
+            <button id="zoom-out" title="Zoom Out">−</button>
+            <button id="reset-view" title="Reset View">Reset</button>
+          </div>
+        </div>
+
+        <div class="splitter"></div>
+
+        <div class="text-panel">
+          <div class="text-panel-header">Transcription</div>
+          <div class="transcription" id="transcription">
+            ${renderTranscription(doc.transcription, doc.highlight)}
+          </div>
         </div>
       </div>
 
-      <div class="splitter"></div>
-
-      <div class="text-panel">
-        <div class="text-panel-header">Transcription</div>
-        <div class="transcription" id="transcription">
-          ${renderTranscription(doc.transcription, doc.highlight)}
-        </div>
-      </div>
+      <footer class="footer">
+        <span class="page-info">Page ${escapeHtml(doc.metadata.scan)} of inventory ${escapeHtml(doc.metadata.inventory)}</span>
+        ${doc.navigation.prev ? `<span class="nav-hint">Previous: ${doc.navigation.prev.replace('urn:globalise:', '')}</span>` : ''}
+        ${doc.navigation.next ? `<span class="nav-hint">Next: ${doc.navigation.next.replace('urn:globalise:', '')}</span>` : ''}
+      </footer>
     </div>
-
-    <nav class="navigation">
-      <button id="nav-prev" ${!doc.navigation.prev ? 'disabled' : ''}>
-        ← Previous
-      </button>
-      <span class="page-info">Page ${escapeHtml(doc.metadata.scan)}</span>
-      <button id="nav-next" ${!doc.navigation.next ? 'disabled' : ''}>
-        Next →
-      </button>
-    </nav>
   `;
 
   // Initialize OpenSeadragon viewer
@@ -163,6 +264,20 @@ function renderDocument(doc: DocumentData): void {
 
   // Attach event listeners
   attachEventListeners(doc);
+
+  // Set up visibility-based pause/play for OpenSeadragon
+  setupVisibilityObserver();
+
+  // Explicitly report size to host after rendering
+  // Use requestAnimationFrame to ensure DOM has updated
+  requestAnimationFrame(() => {
+    const mainEl = document.querySelector('.main');
+    if (mainEl) {
+      const rect = mainEl.getBoundingClientRect();
+      app.sendSizeChanged({ width: rect.width, height: rect.height });
+      app.sendLog({ level: 'info', data: `Size reported: ${rect.width}x${rect.height}` });
+    }
+  });
 }
 
 /**
@@ -202,16 +317,12 @@ function initializeImageViewer(imageUrl: string): void {
 
   // Handle image load error
   viewer.addHandler('open-failed', () => {
-    const container = document.getElementById('openseadragon-viewer');
-    if (container) {
-      container.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #888;">
-          <div style="text-align: center;">
-            <p>Image could not be loaded</p>
-            <p style="font-size: 0.8em; margin-top: 0.5rem;">
-              <a href="${imageUrl}" target="_blank" style="color: #4a9eff;">Open image directly</a>
-            </p>
-          </div>
+    const viewerContainer = document.getElementById('openseadragon-viewer');
+    if (viewerContainer) {
+      viewerContainer.innerHTML = `
+        <div class="image-error">
+          <p>Image could not be loaded</p>
+          <p><a href="${imageUrl}" target="_blank">Open image directly</a></p>
         </div>
       `;
     }
@@ -240,24 +351,29 @@ function renderTranscription(lines: string[], highlightTerms: string[]): string 
 }
 
 /**
- * Attach event listeners for navigation and controls
+ * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
-  // Navigation buttons
-  const prevBtn = document.getElementById('nav-prev');
-  const nextBtn = document.getElementById('nav-next');
+  // Text selection tracking - update model context when user selects text
+  const transcriptionEl = document.getElementById('transcription');
+  if (transcriptionEl) {
+    transcriptionEl.addEventListener('mouseup', () => {
+      const selection = window.getSelection();
+      const selectedText = selection?.toString().trim();
 
-  prevBtn?.addEventListener('click', () => {
-    if (doc.navigation.prev) {
-      navigateToDocument(doc.navigation.prev);
-    }
-  });
-
-  nextBtn?.addEventListener('click', () => {
-    if (doc.navigation.next) {
-      navigateToDocument(doc.navigation.next);
-    }
-  });
+      if (selectedText && selectedText.length > 0) {
+        // Update model context with selected text
+        app.updateModelContext({
+          structuredContent: {
+            documentId: doc.id,
+            selectedText: selectedText,
+            selectionContext: 'User selected text from transcription',
+          },
+        });
+        app.sendLog({ level: 'info', data: `Text selected: "${selectedText}"` });
+      }
+    });
+  }
 
   // Zoom controls
   document.getElementById('zoom-in')?.addEventListener('click', () => {
@@ -311,28 +427,30 @@ function attachEventListeners(doc: DocumentData): void {
 }
 
 /**
- * Navigate to a different document page
+ * Set up IntersectionObserver for visibility-based pause/play
  */
-async function navigateToDocument(documentId: string): Promise<void> {
-  // Show loading state
-  const transcription = document.getElementById('transcription');
-  if (transcription) {
-    transcription.innerHTML = '<div class="loading">Loading...</div>';
-  }
+function setupVisibilityObserver(): void {
+  const mainEl = document.querySelector('.main');
+  if (!mainEl) return;
 
-  try {
-    // Call the server tool to get the new document
-    const result = await app.callServerTool('globalise_view_document_ui', {
-      documentId,
-      highlightTerms: currentDocument?.highlight || [],
-    });
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!viewer) return;
 
-    // The result will be handled by ontoolresult callback
-    console.log('Navigation result:', result);
-  } catch (error) {
-    console.error('Navigation error:', error);
-    showError('Navigation failed', error instanceof Error ? error.message : 'Unknown error');
-  }
+        if (entry.isIntersecting) {
+          // Resume viewer updates when visible
+          viewer.setMouseNavEnabled(true);
+        } else {
+          // Pause viewer updates when not visible
+          viewer.setMouseNavEnabled(false);
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+
+  observer.observe(mainEl);
 }
 
 /**
@@ -363,9 +481,18 @@ function showError(title: string, message: string): void {
     <div class="error">
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(message)}</p>
-      <button onclick="location.reload()">Reload</button>
+      <button id="error-back-btn">← Back to Document</button>
     </div>
   `;
+
+  // Back button - return to current document if available
+  document.getElementById('error-back-btn')?.addEventListener('click', () => {
+    if (currentDocument) {
+      renderDocument(currentDocument);
+    } else {
+      showLoading('Waiting for document data...');
+    }
+  });
 }
 
 /**
@@ -384,16 +511,29 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// IMPORTANT: Register ALL handlers BEFORE calling app.connect()
+// Handlers are already registered above via app.ontoolinputpartial, etc.
+
 // Connect to the MCP host
 (async () => {
   try {
     await app.connect();
-    console.log('Connected to MCP host');
+    app.sendLog({ level: 'info', data: 'Connected to MCP host' });
 
     // Apply initial host context
     const context = app.getHostContext();
     if (context?.theme) {
       applyDocumentTheme(context.theme);
+    }
+    if (context?.styles?.variables) {
+      applyHostStyleVariables(context.styles.variables);
+    }
+    if (context?.styles?.css?.fonts) {
+      applyHostFonts(context.styles.css.fonts);
+    }
+    if (context?.safeAreaInsets) {
+      const { top, right, bottom, left } = context.safeAreaInsets;
+      document.body.style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
     }
   } catch (error) {
     console.error('Failed to connect:', error);

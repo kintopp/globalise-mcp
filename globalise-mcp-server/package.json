@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -23,6 +23,7 @@
   "author": "Arno Bosse with Claude Code",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",

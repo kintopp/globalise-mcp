@@ -6,16 +6,23 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ## Potential Improvements
 
-### MCP Apps: Claude Desktop UI Rendering Not Yet Working
+### MCP Apps: Document Viewer UI Not Rendering
 
 **Priority:** High
-**Status:** Blocked (awaiting host support, 2026-01-27)
+**Status:** Debugging (implementation issue, 2026-01-28)
 
 **Background:**
-The Document Viewer MCP App (`globalise_view_document_ui`) was implemented in v1.18.0 with correct MCP Apps SDK patterns:
+The Document Viewer MCP App (`globalise_view_document_ui`) was implemented in v1.18.0 with MCP Apps SDK patterns:
 - Tool includes `_meta.ui.resourceUri` pointing to `ui://globalise/document-viewer.html`
 - Resource handler returns `{ contents: [{ uri, mimeType, text }] }` with proper MIME type
 - Tool executes successfully and returns document data (IIIF URL, transcription, metadata)
+
+**Host Support Status (confirmed 2026-01-28):**
+Per the [MCP Apps announcement](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/):
+- ✅ **Claude** (web and desktop) — available now
+- ✅ **Goose** — available now
+- ✅ **VS Code Insiders** — available now
+- ✅ **ChatGPT** — rolling out this week
 
 **Current Behavior:**
 - Claude Desktop calls the tool and receives the JSON response
@@ -27,18 +34,20 @@ The Document Viewer MCP App (`globalise_view_document_ui`) was implemented in v1
 2. ✅ `_meta.ui.resourceUri` present in tool definition
 3. ✅ Resource handler properly registered and functional
 4. ✅ Tool executes and returns valid document data
-5. ❌ Claude Desktop does not render custom UI resources
+5. ❌ UI resource not being fetched/rendered (implementation bug, not host limitation)
 
-**Possible Causes:**
-1. Claude Desktop may not yet support `_meta.ui.resourceUri` for custom UI rendering
-2. MCP Apps support may be in preview/limited to specific server types
-3. Additional metadata or configuration may be required
+**Likely Causes (to investigate):**
+1. Resource URI mismatch between tool `_meta` and registered resource
+2. Missing or incorrect MIME type (`text/html;profile=mcp-app`)
+3. CSP configuration blocking required resources
+4. Build/bundling issue with the HTML output
 
 **Next Steps:**
-- [ ] Check Claude Desktop version and MCP Apps support status
-- [ ] Test with other MCP Apps-compatible hosts (VS Code Copilot, Goose, ChatGPT)
-- [ ] Review MCP Apps specification for any missing requirements
-- [ ] Monitor Anthropic announcements for MCP Apps GA
+- [ ] Verify exact URI match: `_meta.ui.resourceUri` === registered resource URI
+- [ ] Test with a minimal "Hello World" MCP App to isolate the issue
+- [ ] Enable MCP protocol logging to see if `resources/read` is attempted
+- [ ] Compare implementation against working MCP Apps examples
+- [ ] Test with Goose or VS Code Insiders as alternative hosts
 
 **Branch:** `feature/mcp-apps-document-viewer`
 

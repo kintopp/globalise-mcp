@@ -23,13 +23,11 @@ import {
   ReadResourceRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
+import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-// MCP Apps resource MIME type
-const RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 
 // Import tool implementations
 import {
@@ -264,7 +262,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.18.0',
+    version: '1.19.0',
   },
   {
     capabilities: {
@@ -277,34 +275,6 @@ const server = new Server(
 // UI Resource URI for Document Viewer
 const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
 
-/**
- * Document Viewer UI Tool definition
- *
- * This tool displays an interactive viewer with IIIF images and transcriptions.
- * The UI resource is linked via _meta.ui.resourceUri.
- */
-const DOCUMENT_VIEWER_TOOL: Tool = {
-  name: 'globalise_view_document_ui',
-  description:
-    '**INTERACTIVE DOCUMENT VIEWER** - Display a VOC document with scanned page image and transcription side-by-side. ' +
-    '\n\n**USE WHEN:** User wants to see a document visually with the page scan and transcription together. ' +
-    'Examples: "show me document NL-HaNA_1.04.02_9966_0106", "view this page with the image", "display the scan and text". ' +
-    '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN. ' +
-    '\n\n**FEATURES:** IIIF image viewer with zoom/pan, transcribed text with line numbers, page navigation (prev/next), search term highlighting. ' +
-    '\n\n**RETURNS:** Interactive UI with split view showing scanned page and transcription.',
-  inputSchema: zodToJsonSchema(viewDocumentUiInputSchema) as Tool['inputSchema'],
-  annotations: {
-    readOnlyHint: true,
-    destructiveHint: false,
-    idempotentHint: true,
-  },
-  // CRITICAL: Links this tool to its UI resource for MCP Apps hosts to render
-  _meta: {
-    ui: {
-      resourceUri: DOCUMENT_VIEWER_RESOURCE_URI,
-    },
-  },
-};
 
 /**
  * Load the Document Viewer UI HTML
@@ -330,7 +300,40 @@ function loadDocumentViewerHtml(): string {
 }
 
 /**
+ * Document Viewer MCP App Tool definition
+ *
+ * Links the tool to its UI resource via _meta.ui.resourceUri.
+ * Both nested and legacy flat key formats are included for host compatibility.
+ */
+const DOCUMENT_VIEWER_TOOL: Tool = {
+  name: 'globalise_view_document_ui',
+  description:
+    '**INTERACTIVE DOCUMENT VIEWER** - Display a VOC document with scanned page image and transcription side-by-side. ' +
+    '\n\n**USE WHEN:** User wants to see a document visually with the page scan and transcription together. ' +
+    'Examples: "show me document NL-HaNA_1.04.02_9966_0106", "view this page with the image", "display the scan and text". ' +
+    '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN. ' +
+    '\n\n**FEATURES:** IIIF image viewer with zoom/pan, transcribed text with line numbers, page navigation (prev/next), search term highlighting. ' +
+    '\n\n**RETURNS:** Interactive UI with split view showing scanned page and transcription.',
+  inputSchema: zodToJsonSchema(viewDocumentUiInputSchema) as Tool['inputSchema'],
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+  },
+  // MCP Apps metadata - both formats for host compatibility
+  _meta: {
+    ui: {
+      resourceUri: DOCUMENT_VIEWER_RESOURCE_URI,
+    },
+    // Legacy flat key format for older hosts
+    'ui/resourceUri': DOCUMENT_VIEWER_RESOURCE_URI,
+  },
+};
+
+/**
  * Handler for listing available resources (MCP Apps UI resources)
+ *
+ * Returns resource with _meta.ui containing CSP configuration for IIIF images.
  */
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
   return {
@@ -346,7 +349,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 });
 
 /**
- * Handler for reading resources (serves the bundled UI HTML)
+ * Handler for reading resources (serves the bundled UI HTML with CSP metadata)
  */
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
@@ -360,6 +363,25 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
           uri: DOCUMENT_VIEWER_RESOURCE_URI,
           mimeType: RESOURCE_MIME_TYPE,
           text: html,
+          // CSP configuration per MCP Apps spec (McpUiResourceCsp)
+          _meta: {
+            ui: {
+              csp: {
+                // Static resources: IIIF images, CDN scripts/styles
+                resourceDomains: [
+                  'https://service.archief.nl',      // IIIF images
+                  'https://cdn.jsdelivr.net',        // OpenSeadragon
+                  'https://unpkg.com',               // ext-apps SDK
+                ],
+                // Network requests: API endpoints
+                connectDomains: [
+                  'https://gloccoli.tt.di.huc.knaw.nl',
+                  'https://annorepo.globalise.huygens.knaw.nl',
+                  'https://globalise.tt.di.huc.knaw.nl',
+                ],
+              },
+            },
+          },
         },
       ],
     };
@@ -425,8 +447,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'globalise_view_document_ui': {
         const input = viewDocumentUiInputSchema.parse(args);
-        result = await viewDocumentUi(input);
-        break;
+        const docResult = await viewDocumentUi(input);
+
+        // Return human-readable summary + JSON data for MCP Apps UI
+        const humanReadable = [
+          `Document: ${docResult.id}`,
+          `Inventory: ${docResult.metadata.inventory}, Scan: ${docResult.metadata.scan}`,
+          `Languages: ${docResult.metadata.languages.map((l) => l.label).join(', ')}`,
+          `Lines: ${docResult.transcription.length}`,
+          docResult.navigation.prev ? `Previous: ${docResult.navigation.prev}` : 'No previous page',
+          docResult.navigation.next ? `Next: ${docResult.navigation.next}` : 'No next page',
+          '',
+          `View in GLOBALISE: ${docResult.urls.viewer}`,
+          docResult.urls.archive ? `National Archives: ${docResult.urls.archive}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        // Return both human-readable and JSON for compatibility
+        return {
+          content: [
+            { type: 'text', text: humanReadable },
+            { type: 'text', text: JSON.stringify(docResult, null, 2) },
+          ],
+        };
       }
 
       default:

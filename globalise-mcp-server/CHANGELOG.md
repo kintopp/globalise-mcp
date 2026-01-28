@@ -2,6 +2,48 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.19.0] - 2026-01-28
+
+### Changed
+- **MCP Apps SDK Integration**: Refactored Document Viewer to follow MCP Apps SDK patterns
+  - Added `@modelcontextprotocol/ext-apps` dependency for proper MIME type constant
+  - Tool now includes both `_meta.ui.resourceUri` and legacy `_meta["ui/resourceUri"]` for host compatibility
+  - Resource handler now returns `_meta.ui.csp` with Content Security Policy for IIIF images
+
+### Fixed
+- **Document Viewer CSP**: Fixed CSP configuration to use correct MCP Apps field names
+  - `resourceDomains`: IIIF images (service.archief.nl), CDN scripts (cdn.jsdelivr.net, unpkg.com)
+  - `connectDomains`: GLOBALISE API endpoints (gloccoli, annorepo, textrepo)
+  - Previous v1.18.0 implementation used wrong field names (`imgSrc`, `connectSrc`) which hosts wouldn't recognize
+
+### Improved
+- **UI Client lifecycle handlers**: Complete implementation of MCP Apps lifecycle
+  - `ontoolinputpartial`: Shows loading state during LLM streaming
+  - `ontoolinput`: Shows loading state when tool execution starts
+  - `ontoolresult`: Parses JSON and renders document viewer
+  - `onhostcontextchanged`: Applies theme, CSS variables, fonts, safe areas, display mode
+  - `onteardown`: Returns viewer state (zoom, position) for potential restoration
+  - All handlers registered BEFORE `app.connect()` per SDK requirements
+
+- **Theme integration**: CSS now uses host CSS variables
+  - Variables injected by `applyHostStyleVariables()` from ext-apps SDK
+  - Fallback values provided for standalone use
+  - Dark theme support via `[data-theme="dark"]` selector
+
+- **Fullscreen support**: `.fullscreen` class removes border-radius when in fullscreen mode
+
+- **Visibility optimization**: IntersectionObserver pauses OpenSeadragon when scrolled out of view
+
+- **Loading state**: Added animated spinner during document loading
+
+### Technical
+- Tool returns dual-format output: human-readable summary + JSON data
+- Navigation uses `app.callServerTool()` for prev/next page
+- `app.updateModelContext()` called after document load for model awareness
+- `app.sendLog()` used for debugging
+
+---
+
 ## [1.18.0] - 2026-01-27
 
 ### Added
