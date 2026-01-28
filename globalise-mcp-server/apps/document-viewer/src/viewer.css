@@ -411,6 +411,45 @@ html, body {
   color: var(--color-text-secondary);
 }
 
+/* Archival context section */
+.archival-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--color-border-primary);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.archival-context span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.archival-badge {
+  background: var(--color-accent-primary);
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.htr-available {
+  color: #27ae60;
+}
+
+.htr-unavailable {
+  color: var(--color-text-tertiary);
+}
+
 /* Selection highlight in transcription */
 .transcription ::selection {
   background: var(--color-highlight-bg);

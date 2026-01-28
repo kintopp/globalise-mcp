@@ -20,6 +20,18 @@ import {
 // OpenSeadragon is loaded globally via CDN
 declare const OpenSeadragon: typeof import('openseadragon');
 
+// Archival context from OBP/GM databases
+interface ArchivalContext {
+  source: 'obp' | 'gm' | 'both' | 'none';
+  inventoryTotal: number;
+  settlements?: string[];
+  yearRange?: { from: number; to: number };
+  chamber?: string;
+  htrAvailable?: boolean;
+  sampleDescription?: string;
+  documentType?: string;
+}
+
 // Document data structure from tool result
 interface DocumentData {
   id: string;
@@ -39,6 +51,7 @@ interface DocumentData {
     archive: string | null;
   };
   highlight: string[];
+  archivalContext?: ArchivalContext;
 }
 
 // App state
@@ -198,6 +211,61 @@ function showLoading(message: string): void {
 }
 
 /**
+ * Build HTML for archival context section
+ */
+function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
+  if (!ctx || ctx.source === 'none') {
+    return '';
+  }
+
+  const parts: string[] = [];
+
+  // Source badge
+  const sourceLabel = ctx.source === 'obp' ? 'OBP Index'
+    : ctx.source === 'gm' ? 'Generale Missiven'
+    : 'OBP + GM';
+  parts.push(`<span class="archival-badge" title="Archival index source">${sourceLabel}</span>`);
+
+  // Settlement(s)
+  if (ctx.settlements && ctx.settlements.length > 0) {
+    const settlementText = ctx.settlements.length <= 3
+      ? ctx.settlements.join(', ')
+      : `${ctx.settlements.slice(0, 3).join(', ')} +${ctx.settlements.length - 3} more`;
+    parts.push(`<span title="Settlement(s)">📍 ${escapeHtml(settlementText)}</span>`);
+  }
+
+  // Year range
+  if (ctx.yearRange) {
+    const yearText = ctx.yearRange.from === ctx.yearRange.to
+      ? `${ctx.yearRange.from}`
+      : `${ctx.yearRange.from}–${ctx.yearRange.to}`;
+    parts.push(`<span title="Date range">📅 ${yearText}</span>`);
+  }
+
+  // Chamber (GM)
+  if (ctx.chamber) {
+    parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
+  }
+
+  // HTR availability (GM)
+  if (ctx.htrAvailable !== undefined) {
+    const htrText = ctx.htrAvailable ? 'HTR available' : 'No HTR';
+    const htrIcon = ctx.htrAvailable ? '✓' : '✗';
+    parts.push(`<span title="${htrText}" class="${ctx.htrAvailable ? 'htr-available' : 'htr-unavailable'}">${htrIcon} HTR</span>`);
+  }
+
+  // Document type (OBP)
+  if (ctx.documentType) {
+    parts.push(`<span title="Document type">📄 ${escapeHtml(ctx.documentType)}</span>`);
+  }
+
+  // Entry count
+  parts.push(`<span title="Entries in archival index for this inventory">${ctx.inventoryTotal} index entries</span>`);
+
+  return `<div class="archival-context">${parts.join('')}</div>`;
+}
+
+/**
  * Render the document viewer UI
  */
 function renderDocument(doc: DocumentData): void {
@@ -219,6 +287,9 @@ function renderDocument(doc: DocumentData): void {
     .filter(Boolean)
     .join('');
 
+  // Build archival context section
+  const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
+
   appEl.innerHTML = `
     <div class="main${isFullscreen ? ' fullscreen' : ''}">
       <header class="header">
@@ -228,6 +299,7 @@ function renderDocument(doc: DocumentData): void {
           <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
           <span>Language: ${languageBadges}</span>
         </div>
+        ${archivalHtml}
         <div class="external-links">${externalLinks}</div>
       </header>
 
@@ -354,6 +426,18 @@ function renderTranscription(lines: string[], highlightTerms: string[]): string 
  * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
+  // External link buttons - use window.open() to ensure they work in iframe context
+  document.querySelectorAll('.external-links a').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const url = (link as HTMLAnchorElement).href;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        app.sendLog({ level: 'info', data: `Opening external link: ${url}` });
+      }
+    });
+  });
+
   // Text selection tracking - update model context when user selects text
   const transcriptionEl = document.getElementById('transcription');
   if (transcriptionEl) {
@@ -466,6 +550,7 @@ function updateModelContext(doc: DocumentData): void {
       transcriptionPreview: doc.transcription.slice(0, 10).join('\n'),
       hasNext: !!doc.navigation.next,
       hasPrev: !!doc.navigation.prev,
+      archivalContext: doc.archivalContext || null,
     },
   });
 }
