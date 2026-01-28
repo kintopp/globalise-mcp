@@ -45,6 +45,143 @@ While UI rendering works, several MCP Apps SDK features are **not supported**:
 
 ---
 
+### Document Viewer: Image Overlays for Highlighted Terms
+
+**Priority:** High
+**Status:** Planned
+**Branch:** `feature/document-viewer-image-overlays`
+
+**Background:**
+The Document Viewer currently highlights search terms in the transcription text panel. OpenSeadragon supports overlays that could highlight the same terms directly on the scanned image, providing visual correspondence between text and image.
+
+**Prerequisites:**
+- Investigate whether GLOBALISE API annotations include word/line bounding box coordinates
+- The W3C annotations in API responses include `target` fields with IIIF selectors - need to examine structure
+
+**OpenSeadragon Overlay API:**
+```javascript
+viewer.addOverlay({
+  element: highlightDiv,      // HTML element to overlay
+  location: new OpenSeadragon.Rect(x, y, width, height),
+  placement: 'TOP_LEFT'
+});
+```
+
+**Implementation Steps:**
+1. Extract coordinate data from API annotation response
+2. Map transcription line numbers to image regions
+3. For highlighted terms, find their coordinates
+4. Draw semi-transparent overlay rectangles on matching regions
+5. Style overlays to match text highlight color
+
+**Considerations:**
+- Coordinate system: IIIF uses normalized coordinates (0-1) or pixel coordinates
+- Performance: Many overlays may impact rendering
+- Accuracy: OCR/HTR coordinates may not perfectly align with visual text
+
+**Related:**
+- OpenSeadragon Overlays: https://openseadragon.github.io/examples/ui-overlays-and-டிranges/
+- IIIF Image API coordinates: https://iiif.io/api/image/3.0/#4-image-requests
+
+---
+
+### Document Viewer: Text-Image Bidirectional Linking
+
+**Priority:** High
+**Status:** Planned
+**Branch:** `feature/document-viewer-text-image-linking`
+
+**Background:**
+Enable bidirectional navigation between transcription text and scan image:
+- Click a line in transcription → pan/zoom image to that region
+- Click a region on image → scroll transcription to corresponding line
+
+This significantly improves usability for researchers comparing transcription to source.
+
+**Prerequisites:**
+- Same as Image Overlays: need coordinate data from API
+- Understand line-level vs word-level coordinate granularity
+
+**Implementation - Text to Image:**
+```javascript
+// When user clicks line number in transcription
+function scrollToImageRegion(lineNumber) {
+  const coords = lineCoordinates[lineNumber];
+  if (coords) {
+    viewer.viewport.fitBounds(
+      new OpenSeadragon.Rect(coords.x, coords.y, coords.width, coords.height)
+    );
+  }
+}
+```
+
+**Implementation - Image to Text:**
+```javascript
+// OpenSeadragon click handler
+viewer.addHandler('canvas-click', function(event) {
+  const viewportPoint = viewer.viewport.pointFromPixel(event.position);
+  const lineNumber = findLineAtCoordinate(viewportPoint);
+  if (lineNumber) {
+    scrollTranscriptionToLine(lineNumber);
+  }
+});
+```
+
+**UI Enhancements:**
+- Make line numbers clickable (cursor: pointer, hover effect)
+- Show tooltip "Click to view in scan"
+- Visual indicator on image showing clickable regions
+- Highlight corresponding text when hovering over image region
+
+**Considerations:**
+- May want to zoom to line with some padding/context
+- Animation for smooth transitions
+- Mobile/touch support for image clicks
+
+**Related Features:**
+- Could combine with Image Overlays to show clickable highlight regions
+- Navigator mini-map would complement this feature
+
+---
+
+### Document Viewer: Additional OpenSeadragon Enhancements
+
+**Priority:** Medium
+**Status:** Ideas for future consideration
+
+**Navigator Mini-map:**
+Small overview thumbnail showing current viewport position within full document.
+```javascript
+viewer = OpenSeadragon({
+  showNavigator: true,
+  navigatorPosition: 'TOP_RIGHT',
+  navigatorSizeRatio: 0.15
+});
+```
+
+**Image Filters:**
+Brightness, contrast, inversion for improved readability of faded manuscripts.
+```javascript
+// Using OpenSeadragon Filtering plugin
+viewer.setFilterOptions({
+  filters: [{
+    processors: OpenSeadragon.Filters.BRIGHTNESS(0.2)
+  }]
+});
+```
+
+**Rotation:**
+Allow 90°/180° rotation for documents scanned sideways.
+```javascript
+viewer.viewport.setRotation(90);
+```
+
+**Reference Strip:**
+Thumbnail strip showing adjacent pages for quick navigation.
+Requires fetching metadata for prev/next pages.
+
+---
+
 ### Remove Unnecessary Translations from Weight and Measures JSON dictionary
 
 **Priority:** Medium
