@@ -434,6 +434,7 @@ html, body {
   border-top: 1px solid var(--color-border-primary);
   margin-top: 0.5rem;
   padding-top: 0.5rem;
+  width: 100%;
 }
 
 .archival-row {
