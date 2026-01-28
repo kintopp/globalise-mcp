@@ -222,7 +222,7 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
 
   const rows: string[] = [];
 
-  // Row 1: Settlement, Year range (+ chamber for GM, HTR for GM)
+  // Row 1: Settlement, Year range, Location (+ chamber for GM, HTR for GM)
   const row1Parts: string[] = [];
   if (ctx.settlements && ctx.settlements.length > 0) {
     const settlementText = ctx.settlements.join(', ');
@@ -234,6 +234,14 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
       : `${ctx.yearRange.from}–${ctx.yearRange.to}`;
     row1Parts.push(`<span title="Date range">📅 ${yearText}</span>`);
   }
+  // Location and geographic coverage on same row
+  if (ctx.locationTanap) {
+    row1Parts.push(`<span title="Location (TANAP)">📌 ${escapeHtml(ctx.locationTanap)}</span>`);
+  }
+  if (ctx.geographicalCoverage && ctx.geographicalCoverage !== ctx.settlements?.[0]) {
+    // Only show if different from settlement
+    row1Parts.push(`<span title="Geographic coverage">🌍 ${escapeHtml(ctx.geographicalCoverage)}</span>`);
+  }
   if (ctx.chamber) {
     row1Parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
   }
@@ -244,18 +252,6 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
   }
   if (row1Parts.length > 0) {
     rows.push(`<div class="archival-row">${row1Parts.join('')}</div>`);
-  }
-
-  // Row 2: Location and geographic coverage
-  const row2Parts: string[] = [];
-  if (ctx.locationTanap) {
-    row2Parts.push(`<span title="Location (TANAP)">📌 ${escapeHtml(ctx.locationTanap)}</span>`);
-  }
-  if (ctx.geographicalCoverage) {
-    row2Parts.push(`<span title="Geographic coverage">🌍 ${escapeHtml(ctx.geographicalCoverage)}</span>`);
-  }
-  if (row2Parts.length > 0) {
-    rows.push(`<div class="archival-row">${row2Parts.join('')}</div>`);
   }
 
   // Row 3: Description (full width, wrapping)
@@ -282,16 +278,6 @@ function renderDocument(doc: DocumentData): void {
     .map((l) => `<span class="language-badge" title="${l.code}">${l.label}</span>`)
     .join('');
 
-  // Build external links
-  const externalLinks = [
-    `<a href="${doc.urls.viewer}" target="_blank" rel="noopener">GLOBALISE Viewer</a>`,
-    doc.urls.archive
-      ? `<a href="${doc.urls.archive}" target="_blank" rel="noopener">National Archives</a>`
-      : '',
-  ]
-    .filter(Boolean)
-    .join('');
-
   // Build archival context section
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
 
@@ -306,7 +292,6 @@ function renderDocument(doc: DocumentData): void {
           ${doc.metadata.license ? `<span>License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
         </div>
         ${archivalHtml}
-        <div class="external-links">${externalLinks}</div>
       </header>
 
       <div class="content">
