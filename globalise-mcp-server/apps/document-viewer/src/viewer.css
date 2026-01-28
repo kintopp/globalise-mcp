@@ -415,10 +415,7 @@ html, body {
 
 /* Language badges */
 .language-badge {
-  display: inline-block;
-  padding: 0.15rem 0.4rem;
-  background: var(--color-background-tertiary);
-  border-radius: 3px;
+  display: inline;
   font-size: inherit;
   color: var(--color-text-primary);
 }
