@@ -128,32 +128,33 @@ html, body {
   border-bottom: 1px solid var(--color-border-primary);
 }
 
+.header .header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
 .header h1 {
   font-size: 1rem;
   font-weight: 500;
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.header .metadata {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  width: 100%;
+.header .license {
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
 }
 
-.header .metadata-left {
+.header .metadata {
   display: flex;
   gap: 1rem;
   align-items: center;
-}
-
-.header .metadata-right {
-  color: var(--color-text-tertiary);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
 }
 
 .header .metadata span {

@@ -284,14 +284,14 @@ function renderDocument(doc: DocumentData): void {
   appEl.innerHTML = `
     <div class="main${isFullscreen ? ' fullscreen' : ''}">
       <header class="header">
-        <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
+        <div class="header-title-row">
+          <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
+          ${doc.metadata.license ? `<span class="license">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
+        </div>
         <div class="metadata">
-          <div class="metadata-left">
-            <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
-            <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
-            <span>Language: ${languageBadges}</span>
-          </div>
-          ${doc.metadata.license ? `<span class="metadata-right">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
+          <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
+          <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
+          <span>Language: ${languageBadges}</span>
         </div>
         ${archivalHtml}
       </header>
