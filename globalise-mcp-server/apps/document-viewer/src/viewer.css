@@ -139,9 +139,21 @@ html, body {
 
 .header .metadata {
   display: flex;
-  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
   font-size: 0.85rem;
   color: var(--color-text-secondary);
+  width: 100%;
+}
+
+.header .metadata-left {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.header .metadata-right {
+  color: var(--color-text-tertiary);
 }
 
 .header .metadata span {
@@ -406,9 +418,9 @@ html, body {
   padding: 0.15rem 0.4rem;
   background: var(--color-background-tertiary);
   border-radius: 3px;
-  font-size: 0.75rem;
+  font-size: inherit;
   margin-left: 0.25rem;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 /* Archival context section */

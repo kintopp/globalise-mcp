@@ -286,10 +286,12 @@ function renderDocument(doc: DocumentData): void {
       <header class="header">
         <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
         <div class="metadata">
-          <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
-          <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
-          <span>Language: ${languageBadges}</span>
-          ${doc.metadata.license ? `<span>License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
+          <div class="metadata-left">
+            <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
+            <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
+            <span>Language: ${languageBadges}</span>
+          </div>
+          ${doc.metadata.license ? `<span class="metadata-right">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
         </div>
         ${archivalHtml}
       </header>
