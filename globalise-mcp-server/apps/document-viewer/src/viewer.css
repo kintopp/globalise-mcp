@@ -420,7 +420,6 @@ html, body {
   background: var(--color-background-tertiary);
   border-radius: 3px;
   font-size: inherit;
-  margin-left: 0.25rem;
   color: var(--color-text-primary);
 }
 
