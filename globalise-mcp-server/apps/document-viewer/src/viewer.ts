@@ -380,11 +380,15 @@ function initializeImageViewer(imageUrl: string): void {
     visibilityRatio: 0.5,
   });
 
-  // Fit to page width on load
+  // Fit to page width on load, aligned to top
   viewer.addHandler('open', () => {
-    // Fit horizontally: zoom so image width fills viewport width
-    // Use fitBounds with a rect spanning full width
+    // Fit to width
     viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, 0.001), true);
+    // Get the current bounds after fit-to-width
+    const bounds = viewer.viewport.getBounds();
+    // Pan so top of image aligns with top of viewport
+    // The viewport center needs to be at y = half the viewport height
+    viewer.viewport.panTo(new OpenSeadragon.Point(0.5, bounds.height / 2), true);
   });
 
   // Handle image load error
