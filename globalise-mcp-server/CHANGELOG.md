@@ -2,6 +2,30 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.20.0] - 2026-01-28
+
+### Added
+- **Archival Context in Document Viewer**: The Document Viewer MCP App now displays metadata from the archival index (OBP/GM databases)
+  - Source badge showing data origin (OBP Index, Generale Missiven, or both)
+  - Settlement(s) from OBP records (e.g., "Batavia", "Ceylon")
+  - Year range across all entries for the inventory
+  - VOC Chamber for Generale Missiven (Amsterdam/Zeeland)
+  - HTR availability indicator for GM letters
+  - Document type from OBP entries
+  - Total index entry count for the inventory
+
+### Technical
+- **Option A Architecture**: The `globalise_view_document_ui` tool now internally fetches from both data sources
+  - Calls Transcriptions API for page data (image, text, navigation)
+  - Calls `findArchivalDocuments()` for archival context (settlements, years, chamber)
+  - Combines data before returning to UI
+  - Single tool call from model's perspective (no orchestration required)
+- Archival context fetch wrapped in try/catch - failures don't break the viewer
+- New `ArchivalContext` interface for type safety
+- Updated `updateModelContext()` to include archival data for model awareness
+
+---
+
 ## [1.19.0] - 2026-01-28
 
 ### Changed
