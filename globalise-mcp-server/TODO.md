@@ -6,56 +6,41 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ## Potential Improvements
 
-### MCP Apps: Document Viewer UI Not Rendering
+### MCP Apps: Document Viewer - Claude Desktop Limitations
 
-**Priority:** High
-**Status:** Debugging (implementation issue, 2026-01-28)
+**Priority:** Low (informational)
+**Status:** ✅ Resolved in v1.19.0 (2026-01-28)
 
-**Background:**
-The Document Viewer MCP App (`globalise_view_document_ui`) was implemented in v1.18.0 with MCP Apps SDK patterns:
-- Tool includes `_meta.ui.resourceUri` pointing to `ui://globalise/document-viewer.html`
-- Resource handler returns `{ contents: [{ uri, mimeType, text }] }` with proper MIME type
-- Tool executes successfully and returns document data (IIIF URL, transcription, metadata)
+**Resolution:**
+The Document Viewer MCP App now renders correctly in Claude Desktop. The fixes were:
 
-**Host Support Status (confirmed 2026-01-28):**
-Per the [MCP Apps announcement](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/):
-- ✅ **Claude** (web and desktop) — available now
-- ✅ **Goose** — available now
-- ✅ **VS Code Insiders** — available now
-- ✅ **ChatGPT** — rolling out this week
+1. **Wrong CSP field names** — Used `imgSrc`/`connectSrc` instead of `resourceDomains`/`connectDomains` per `McpUiResourceCsp` spec
+2. **Missing CDN domains** — External scripts (OpenSeadragon, ext-apps SDK) weren't in CSP
+3. **Percentage-based heights** — Iframe doesn't have explicit dimensions, so `height: 100%` collapsed to zero. Fixed with explicit pixel heights and `app.sendSizeChanged()`
 
-**Current Behavior:**
-- Claude Desktop calls the tool and receives the JSON response
-- Instead of rendering the interactive UI, it displays the JSON data with a "Show Image" button
-- The host does NOT fetch the UI resource (`resources/read` never called)
+**Claude Desktop MCP Apps Limitations (as of Jan 2026):**
 
-**What Was Verified:**
-1. ✅ Local server returns 7 tools with correct metadata
-2. ✅ `_meta.ui.resourceUri` present in tool definition
-3. ✅ Resource handler properly registered and functional
-4. ✅ Tool executes and returns valid document data
-5. ❌ UI resource not being fetched/rendered (implementation bug, not host limitation)
+While UI rendering works, several MCP Apps SDK features are **not supported**:
 
-**Likely Causes (to investigate):**
-1. Resource URI mismatch between tool `_meta` and registered resource
-2. Missing or incorrect MIME type (`text/html;profile=mcp-app`)
-3. CSP configuration blocking required resources
-4. Build/bundling issue with the HTML output
+| Feature | Status | Workaround |
+|---------|--------|------------|
+| `app.callServerTool()` | ❌ JSON-RPC validation error | None - model must call tools |
+| `app.sendMessage()` | ❌ Fails silently | None - user must type messages |
+| `app.updateModelContext()` | ❌ Context not received by model | None - user must copy/paste |
+| `app.sendSizeChanged()` | ✅ Works | — |
+| `app.sendLog()` | ✅ Works | — |
+| `onhostcontextchanged` | ⚠️ Partial (theme works) | — |
 
-**Next Steps:**
-- [ ] Verify exact URI match: `_meta.ui.resourceUri` === registered resource URI
-- [ ] Test with a minimal "Hello World" MCP App to isolate the issue
-- [ ] Enable MCP protocol logging to see if `resources/read` is attempted
-- [ ] Compare implementation against working MCP Apps examples
-- [ ] Test with Goose or VS Code Insiders as alternative hosts
+**Implication:** MCP Apps in Claude Desktop are best suited for **display-only** use cases. Interactive features requiring UI→model communication need user intervention (copying text, typing requests).
 
-**Branch:** `feature/mcp-apps-document-viewer`
+**What Works Well:**
+- OpenSeadragon IIIF image viewer with zoom/pan
+- Keyboard navigation (arrow keys for panning)
+- Text selection in transcription
+- Theme integration via CSS variables
+- External links to GLOBALISE Viewer and National Archives
 
-**Related:**
-- `src/index.ts:286-307` - DOCUMENT_VIEWER_TOOL definition with `_meta`
-- `src/index.ts:329-359` - Resource handlers (ListResources, ReadResource)
-- `apps/document-viewer/` - UI source code
-- MCP Apps Spec: `@modelcontextprotocol/ext-apps`
+**Branch:** `feature/mcp-apps-document-viewer` (ready to merge to main)
 
 ---
 
