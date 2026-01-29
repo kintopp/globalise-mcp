@@ -334,13 +334,7 @@ function renderDocument(doc: DocumentData): void {
       </div>
 
       <nav class="navigation">
-        <button id="nav-prev" disabled title="Navigation not yet available">
-          ← Previous
-        </button>
         <span class="page-info">Page ${escapeHtml(doc.metadata.scan)} of inventory ${escapeHtml(doc.metadata.inventory)}</span>
-        <button id="nav-next" disabled title="Navigation not yet available">
-          Next →
-        </button>
       </nav>
     </div>
   `;
@@ -448,44 +442,6 @@ function renderTranscription(lines: string[], highlightTerms: string[]): string 
 }
 
 /**
- * Navigate to a different document using app.callServerTool()
- */
-async function navigateToDocument(documentId: string, highlightTerms: string[]): Promise<void> {
-  // Show loading state in transcription panel
-  const transcription = document.getElementById('transcription');
-  if (transcription) {
-    transcription.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading page...</p></div>';
-  }
-
-  // Disable navigation buttons during load
-  const prevBtn = document.getElementById('nav-prev') as HTMLButtonElement | null;
-  const nextBtn = document.getElementById('nav-next') as HTMLButtonElement | null;
-  if (prevBtn) prevBtn.disabled = true;
-  if (nextBtn) nextBtn.disabled = true;
-
-  try {
-    app.sendLog({ level: 'info', data: `Navigating to document: ${documentId}` });
-
-    // Call the server tool to get the new document
-    const result = await app.callServerTool('globalise_view_document_ui', {
-      documentId,
-      highlightTerms: highlightTerms || [],
-    });
-
-    app.sendLog({ level: 'info', data: `Navigation callServerTool result: ${JSON.stringify(result)}` });
-
-    // The result will be handled by ontoolresult callback if successful
-    // If there's an error, show it
-    if (result.isError) {
-      showError('Navigation failed', 'Could not load the requested page');
-    }
-  } catch (error) {
-    app.sendLog({ level: 'error', data: `Navigation error: ${error}` });
-    showError('Navigation failed', error instanceof Error ? error.message : 'Unknown error');
-  }
-}
-
-/**
  * Rotate the image by the specified degrees
  */
 function rotateImage(degrees: number): void {
@@ -523,22 +479,6 @@ function attachEventListeners(doc: DocumentData): void {
         }
       }
     });
-  });
-
-  // Navigation buttons - use app.callServerTool() to navigate pages
-  const prevBtn = document.getElementById('nav-prev');
-  const nextBtn = document.getElementById('nav-next');
-
-  prevBtn?.addEventListener('click', () => {
-    if (doc.navigation.prev) {
-      navigateToDocument(doc.navigation.prev, doc.highlight);
-    }
-  });
-
-  nextBtn?.addEventListener('click', () => {
-    if (doc.navigation.next) {
-      navigateToDocument(doc.navigation.next, doc.highlight);
-    }
   });
 
   // Text selection tracking - update model context when user selects text
