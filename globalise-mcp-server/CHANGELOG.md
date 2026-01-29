@@ -2,6 +2,24 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.22.0] - 2026-01-29
+
+### Added
+- **Image Rotation**: Document Viewer now has rotate left (↺) and rotate right (↻) buttons
+  - Buttons placed alongside zoom controls under the manuscript image
+  - Rotation state tracked and can be reset with the Reset button
+
+### Changed
+- **Navigation Buttons Disabled**: Previous/Next buttons are now always disabled
+  - `app.callServerTool()` is broken in Claude Desktop ([#32](https://github.com/anthropics/claude-ai-mcp/issues/32))
+  - Will re-enable when SDK bug is fixed
+
+- **Tool Description Updated**: Added hint that when users select text in the transcription, they typically want a translation
+  - Model should provide 17th/18th century Dutch → modern English translation
+  - Selected text appears in widget context
+
+---
+
 ## [1.21.0] - 2026-01-29
 
 ### Added

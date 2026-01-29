@@ -49,56 +49,49 @@ The Document Viewer MCP App now renders correctly in Claude Desktop. The fixes w
 ### Investigate GLOBALISE API Annotation Coordinate Data
 
 **Priority:** High
-**Status:** Not started
+**Status:** ✅ Completed (2026-01-29)
 **Prerequisite for:** Image Overlays, Text-Image Linking
 
-**Background:**
-The Document Viewer features (image overlays, text-image linking) require coordinate data mapping text regions to positions on the scanned image. The GLOBALISE API returns W3C Web Annotations that may contain this data.
+**Conclusion:** Coordinate data EXISTS in PageXML files but is NOT EXPOSED through the public Broccoli/Gloccoli API.
 
-**Investigation Tasks:**
-1. Fetch a sample document with full annotations: `GET /projects/globalise/{urn}?includeResults=anno`
-2. Examine the `target` field structure in annotations
-3. Determine coordinate granularity: word-level? line-level? region-level?
-4. Identify coordinate system: IIIF normalized (0-1), pixels, or other
-5. Document the annotation structure for implementation reference
+**Key Findings:**
 
-**Expected Structure (to verify):**
+| Question | Answer |
+|----------|--------|
+| Are coordinates available? | Yes, in PageXML (TextRepo) - but requires authentication |
+| Coordinate format | Pixel coordinates as polygon points (`points="x1,y1 x2,y2..."`) |
+| API exposure | Only `px:Page` annotations returned; no line/word coordinates |
+| `TextAnchorSelector` | Contains character offsets, NOT image coordinates |
+
+**What the API returns:**
 ```json
 {
-  "anno": [{
-    "target": [{
-      "source": "https://service.archief.nl/iip/...",
-      "selector": {
-        "type": "FragmentSelector",
-        "value": "xywh=100,200,300,50"  // x, y, width, height in pixels?
-      }
-    }],
-    "body": {
-      "value": "transcribed text for this region"
-    }
-  }]
+  "target": [
+    { "source": "https://service.archief.nl/iip/...", "type": "Image" },  // No coordinates
+    { "source": "...", "type": "Text", "selector": { "type": "TextAnchorSelector", "start": 5245, "end": 5292 }}  // Character offsets only
+  ]
 }
 ```
 
-**Questions to Answer:**
-- Are coordinates available for every line? Every word?
-- Do coordinates align with the transcription lines array?
-- What's the mapping between `views.self.lines[]` and annotation coordinates?
-- Are there different annotation types (px:Page, px:Line, px:Word)?
+**Blockers for Image Overlays/Text-Image Linking:**
+1. TextRepo requires authentication (`401 Authorization Required`)
+2. Broccoli API only returns page-level (`px:Page`) annotations
+3. IIIF manifest doesn't include text line annotations
+4. textannoviz config for GLOBALISE: `annotationTypesToInclude: ["px:Page"]` only
 
-**Output:**
-Document findings in `offline/research/annotation-coordinates.md` with:
-- Sample annotation JSON
-- Coordinate system explanation
-- Mapping strategy for line numbers → image regions
-- Feasibility assessment for overlay/linking features
+**Options to proceed:**
+1. Request TextRepo API access from GLOBALISE team
+2. Implement heuristic line positioning (imprecise)
+3. Focus on navigation enhancements that don't require coordinates
+
+**Documentation:** `offline/research/annotation-coordinates.md`
 
 ---
 
 ### Document Viewer: Image Overlays for Highlighted Terms
 
-**Priority:** High
-**Status:** Planned (pending coordinate data investigation)
+**Priority:** High → Low (blocked)
+**Status:** ⛔ BLOCKED - Coordinate data not accessible
 **Branch:** `feature/document-viewer-image-overlays`
 
 **Background:**
@@ -106,7 +99,12 @@ The Document Viewer currently highlights search terms in the transcription text 
 
 **Prerequisites:**
 - ✅ Complete "Investigate GLOBALISE API Annotation Coordinate Data" first
-- The W3C annotations in API responses include `target` fields with IIIF selectors - need to examine structure
+- ❌ W3C annotations do NOT include IIIF selectors with coordinates - only `TextAnchorSelector` (character offsets)
+
+**Blocker:**
+The investigation (2026-01-29) found that coordinate data is stored in PageXML files in TextRepo, which requires authentication. The public Broccoli/Gloccoli API does not expose line-level coordinates.
+
+**To unblock:** Request TextRepo API access from GLOBALISE team, or wait for API changes to expose coordinates
 
 **OpenSeadragon Overlay API:**
 ```javascript
@@ -137,8 +135,8 @@ viewer.addOverlay({
 
 ### Document Viewer: Text-Image Bidirectional Linking
 
-**Priority:** High
-**Status:** Planned (pending coordinate data investigation)
+**Priority:** High → Low (blocked)
+**Status:** ⛔ BLOCKED - Coordinate data not accessible
 **Branch:** `feature/document-viewer-text-image-linking`
 
 **Background:**
@@ -150,7 +148,15 @@ This significantly improves usability for researchers comparing transcription to
 
 **Prerequisites:**
 - ✅ Complete "Investigate GLOBALISE API Annotation Coordinate Data" first
-- Understand line-level vs word-level coordinate granularity
+- ❌ Line-level coordinate granularity NOT accessible through public API
+
+**Blocker:**
+Same as Image Overlays - coordinate data exists in PageXML (TextRepo) but is not exposed through public API.
+
+**Alternative approaches that DON'T require coordinates:**
+1. Heuristic positioning (divide image height by line count) - imprecise
+2. Navigation buttons without precise targeting
+3. Keyboard shortcuts for incremental panning
 
 **Implementation - Text to Image:**
 ```javascript

@@ -60,6 +60,7 @@ interface DocumentData {
 let currentDocument: DocumentData | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
+let currentRotation = 0; // Track rotation in degrees
 
 // Initialize the MCP App with capabilities
 const app = new App(
@@ -313,9 +314,12 @@ function renderDocument(doc: DocumentData): void {
         <div class="image-panel">
           <div id="openseadragon-viewer"></div>
           <div class="image-controls">
-            <button id="zoom-in" title="Zoom In">+</button>
-            <button id="zoom-out" title="Zoom Out">−</button>
-            <button id="reset-view" title="Reset View">Reset</button>
+            <button id="zoom-in" title="Zoom In (+)">+</button>
+            <button id="zoom-out" title="Zoom Out (−)">−</button>
+            <button id="reset-view" title="Reset View (0)">Reset</button>
+            <span class="control-separator"></span>
+            <button id="rotate-left" title="Rotate Left (R)">↺</button>
+            <button id="rotate-right" title="Rotate Right (Shift+R)">↻</button>
           </div>
         </div>
 
@@ -330,11 +334,11 @@ function renderDocument(doc: DocumentData): void {
       </div>
 
       <nav class="navigation">
-        <button id="nav-prev" ${!doc.navigation.prev ? 'disabled' : ''}>
+        <button id="nav-prev" disabled title="Navigation not yet available">
           ← Previous
         </button>
         <span class="page-info">Page ${escapeHtml(doc.metadata.scan)} of inventory ${escapeHtml(doc.metadata.inventory)}</span>
-        <button id="nav-next" ${!doc.navigation.next ? 'disabled' : ''}>
+        <button id="nav-next" disabled title="Navigation not yet available">
           Next →
         </button>
       </nav>
@@ -482,6 +486,27 @@ async function navigateToDocument(documentId: string, highlightTerms: string[]):
 }
 
 /**
+ * Rotate the image by the specified degrees
+ */
+function rotateImage(degrees: number): void {
+  if (!viewer) return;
+  currentRotation = (currentRotation + degrees) % 360;
+  if (currentRotation < 0) currentRotation += 360;
+  viewer.viewport.setRotation(currentRotation);
+  app.sendLog({ level: 'info', data: `Image rotated to ${currentRotation}°` });
+}
+
+/**
+ * Reset view to default (fit to width, no rotation)
+ */
+function resetView(): void {
+  if (!viewer) return;
+  currentRotation = 0;
+  viewer.viewport.setRotation(0);
+  viewer.viewport.goHome();
+}
+
+/**
  * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
@@ -544,7 +569,16 @@ function attachEventListeners(doc: DocumentData): void {
   });
 
   document.getElementById('reset-view')?.addEventListener('click', () => {
-    viewer?.viewport.goHome();
+    resetView();
+  });
+
+  // Rotation controls
+  document.getElementById('rotate-left')?.addEventListener('click', () => {
+    rotateImage(-90);
+  });
+
+  document.getElementById('rotate-right')?.addEventListener('click', () => {
+    rotateImage(90);
   });
 
   // Splitter drag functionality

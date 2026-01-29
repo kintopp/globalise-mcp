@@ -262,7 +262,7 @@ const TOOLS: Tool[] = [
 const server = new Server(
   {
     name: 'globalise-mcp-server',
-    version: '1.21.0',
+    version: '1.22.0',
   },
   {
     capabilities: {
@@ -312,7 +312,9 @@ const DOCUMENT_VIEWER_TOOL: Tool = {
     '\n\n**USE WHEN:** User wants to see a document visually with the page scan and transcription together. ' +
     'Examples: "show me document NL-HaNA_1.04.02_9966_0106", "view this page with the image", "display the scan and text". ' +
     '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN. ' +
-    '\n\n**FEATURES:** IIIF image viewer with zoom/pan, transcribed text with line numbers, page navigation (prev/next), search term highlighting. ' +
+    '\n\n**FEATURES:** IIIF image viewer with zoom/pan/rotation, transcribed text with line numbers, search term highlighting. ' +
+    '\n\n**TEXT SELECTION:** When the user selects text in the transcription panel, they typically want a translation of those words. ' +
+    'The selected text will appear in the widget context - provide a translation from 17th/18th century Dutch to modern English. ' +
     '\n\n**RETURNS:** Interactive UI with split view showing scanned page and transcription.',
   inputSchema: zodToJsonSchema(viewDocumentUiInputSchema) as Tool['inputSchema'],
   annotations: {

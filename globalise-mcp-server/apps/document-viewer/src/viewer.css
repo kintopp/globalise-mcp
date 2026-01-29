@@ -260,6 +260,13 @@ html, body {
   cursor: not-allowed;
 }
 
+.image-controls .control-separator {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.3);
+  margin: 0 0.25rem;
+}
+
 /* Splitter/divider */
 .splitter {
   width: 4px;
