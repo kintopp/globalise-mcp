@@ -1,0 +1,17 @@
+{
+  "name": "callservertool-repro",
+  "version": "1.0.0",
+  "description": "Minimal reproduction for app.callServerTool() issue #32",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.10.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

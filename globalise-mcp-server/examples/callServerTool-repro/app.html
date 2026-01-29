@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>callServerTool() Reproduction</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 1rem;
+      width: 500px;
+      height: 350px; /* Fixed height for MCP Apps iframe */
+    }
+    h1 { font-size: 1.2rem; margin-bottom: 1rem; }
+    .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .log {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .error { color: #dc2626; }
+    .success { color: #16a34a; }
+    .info { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>callServerTool() Issue #32 Reproduction</h1>
+
+  <div class="controls">
+    <input type="text" id="message" placeholder="Enter a message to echo" value="Hello from UI!">
+    <button id="call-btn">Call echo_message</button>
+  </div>
+
+  <div class="log" id="log">Connecting to host...</div>
+
+  <script type="module">
+    import { App } from 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps';
+
+    const logEl = document.getElementById('log');
+    const messageInput = document.getElementById('message');
+    const callBtn = document.getElementById('call-btn');
+
+    function log(msg, type = 'info') {
+      const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+      logEl.innerHTML += `\n<span class="${type}">[${timestamp}] ${msg}</span>`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Initialize MCP App
+    const app = new App(
+      { name: 'callServerTool-repro', version: '1.0.0' },
+      { tools: { listChanged: false } },
+      { autoResize: true }
+    );
+
+    // Handle tool results
+    app.ontoolresult = (result) => {
+      log(`ontoolresult received:`, 'success');
+      log(JSON.stringify(result, null, 2), 'success');
+    };
+
+    // Button click handler
+    callBtn.addEventListener('click', async () => {
+      const message = messageInput.value || 'test';
+      callBtn.disabled = true;
+
+      log(`Calling app.callServerTool('echo_message', { message: '${message}' })...`, 'info');
+
+      try {
+        const result = await app.callServerTool('echo_message', { message });
+
+        log(`callServerTool returned:`, 'success');
+        log(JSON.stringify(result, null, 2), 'success');
+
+        if (result.isError) {
+          log(`Tool returned error`, 'error');
+        }
+      } catch (error) {
+        log(`callServerTool threw error: ${error}`, 'error');
+        log(`Error details: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`, 'error');
+      } finally {
+        callBtn.disabled = false;
+      }
+    });
+
+    // Connect to host
+    (async () => {
+      try {
+        await app.connect();
+        log('Connected to MCP host', 'success');
+        app.sendLog({ level: 'info', data: 'App connected and ready' });
+
+        // Report size to host (required for Claude Desktop)
+        app.sendSizeChanged({ width: 500, height: 350 });
+      } catch (error) {
+        log(`Failed to connect: ${error}`, 'error');
+      }
+    })();
+  </script>
+</body>
+</html>

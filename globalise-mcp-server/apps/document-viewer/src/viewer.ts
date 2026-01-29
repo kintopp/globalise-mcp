@@ -281,12 +281,25 @@ function renderDocument(doc: DocumentData): void {
   // Build archival context section
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
 
+  // Build external links
+  const externalLinks = [
+    `<a href="${doc.urls.viewer}" data-external-url="${doc.urls.viewer}">GLOBALISE Viewer</a>`,
+    doc.urls.archive
+      ? `<a href="${doc.urls.archive}" data-external-url="${doc.urls.archive}">National Archives</a>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
+
   appEl.innerHTML = `
     <div class="main${isFullscreen ? ' fullscreen' : ''}">
       <header class="header">
         <div class="header-title-row">
           <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
-          ${doc.metadata.license ? `<span class="license">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
+          <div class="header-right">
+            <div class="external-links">${externalLinks}</div>
+            ${doc.metadata.license ? `<span class="license">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
+          </div>
         </div>
         <div class="metadata">
           <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
@@ -316,11 +329,15 @@ function renderDocument(doc: DocumentData): void {
         </div>
       </div>
 
-      <footer class="footer">
+      <nav class="navigation">
+        <button id="nav-prev" ${!doc.navigation.prev ? 'disabled' : ''}>
+          ← Previous
+        </button>
         <span class="page-info">Page ${escapeHtml(doc.metadata.scan)} of inventory ${escapeHtml(doc.metadata.inventory)}</span>
-        ${doc.navigation.prev ? `<span class="nav-hint">Previous: ${doc.navigation.prev.replace('urn:globalise:', '')}</span>` : ''}
-        ${doc.navigation.next ? `<span class="nav-hint">Next: ${doc.navigation.next.replace('urn:globalise:', '')}</span>` : ''}
-      </footer>
+        <button id="nav-next" ${!doc.navigation.next ? 'disabled' : ''}>
+          Next →
+        </button>
+      </nav>
     </div>
   `;
 
@@ -427,19 +444,76 @@ function renderTranscription(lines: string[], highlightTerms: string[]): string 
 }
 
 /**
+ * Navigate to a different document using app.callServerTool()
+ */
+async function navigateToDocument(documentId: string, highlightTerms: string[]): Promise<void> {
+  // Show loading state in transcription panel
+  const transcription = document.getElementById('transcription');
+  if (transcription) {
+    transcription.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading page...</p></div>';
+  }
+
+  // Disable navigation buttons during load
+  const prevBtn = document.getElementById('nav-prev') as HTMLButtonElement | null;
+  const nextBtn = document.getElementById('nav-next') as HTMLButtonElement | null;
+  if (prevBtn) prevBtn.disabled = true;
+  if (nextBtn) nextBtn.disabled = true;
+
+  try {
+    app.sendLog({ level: 'info', data: `Navigating to document: ${documentId}` });
+
+    // Call the server tool to get the new document
+    const result = await app.callServerTool('globalise_view_document_ui', {
+      documentId,
+      highlightTerms: highlightTerms || [],
+    });
+
+    app.sendLog({ level: 'info', data: `Navigation callServerTool result: ${JSON.stringify(result)}` });
+
+    // The result will be handled by ontoolresult callback if successful
+    // If there's an error, show it
+    if (result.isError) {
+      showError('Navigation failed', 'Could not load the requested page');
+    }
+  } catch (error) {
+    app.sendLog({ level: 'error', data: `Navigation error: ${error}` });
+    showError('Navigation failed', error instanceof Error ? error.message : 'Unknown error');
+  }
+}
+
+/**
  * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
-  // External link buttons - use window.open() to ensure they work in iframe context
+  // External link buttons - use app.openLink() for sandboxed iframe
   document.querySelectorAll('.external-links a').forEach((link) => {
-    link.addEventListener('click', (e) => {
+    link.addEventListener('click', async (e) => {
       e.preventDefault();
-      const url = (link as HTMLAnchorElement).href;
+      const url = (link as HTMLAnchorElement).dataset.externalUrl;
       if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        app.sendLog({ level: 'info', data: `Opening external link: ${url}` });
+        app.sendLog({ level: 'info', data: `Opening external link via app.openLink(): ${url}` });
+        const result = await app.openLink({ url });
+        if (result.isError) {
+          app.sendLog({ level: 'error', data: `Failed to open link: ${url}` });
+        }
       }
     });
+  });
+
+  // Navigation buttons - use app.callServerTool() to navigate pages
+  const prevBtn = document.getElementById('nav-prev');
+  const nextBtn = document.getElementById('nav-next');
+
+  prevBtn?.addEventListener('click', () => {
+    if (doc.navigation.prev) {
+      navigateToDocument(doc.navigation.prev, doc.highlight);
+    }
+  });
+
+  nextBtn?.addEventListener('click', () => {
+    if (doc.navigation.next) {
+      navigateToDocument(doc.navigation.next, doc.highlight);
+    }
   });
 
   // Text selection tracking - update model context when user selects text

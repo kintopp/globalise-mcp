@@ -2,6 +2,18 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.21.0] - 2026-01-29
+
+### Added
+- **External Link Buttons Restored**: Document Viewer now has working "GLOBALISE Viewer" and "National Archives" buttons
+  - Uses `app.openLink()` from MCP Apps SDK instead of `window.open()` (which is blocked in sandboxed iframes)
+  - Buttons positioned in header title row, right-aligned next to license
+
+### Fixed
+- **GitHub Issue [#31](https://github.com/anthropics/claude-ai-mcp/issues/31)**: External links now work via SDK method
+
+---
+
 ## [1.20.0] - 2026-01-28
 
 ### Added

@@ -135,6 +135,12 @@ html, body {
   width: 100%;
 }
 
+.header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .header h1 {
   font-size: 1rem;
   font-weight: 500;
@@ -187,7 +193,7 @@ html, body {
 .content {
   flex: 1;
   display: flex;
-  min-height: 850px; /* Large height for image viewing */
+  min-height: 0; /* Allow shrinking to fit navigation bar */
 }
 
 /* Image panel (left) - larger flex ratio for more vertical space */
@@ -320,28 +326,46 @@ html, body {
   font-weight: 500;
 }
 
-/* Footer - page info and navigation hints */
-.footer {
+/* Navigation bar - page info and prev/next buttons */
+.navigation {
   background: var(--color-background-secondary);
   color: var(--color-text-secondary);
   padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 1rem;
   flex-shrink: 0;
   border-top: 1px solid var(--color-border-primary);
+}
+
+.navigation button {
+  background: var(--color-accent-primary);
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
   font-size: 0.85rem;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.footer .page-info {
+.navigation button:hover:not(:disabled) {
+  background: var(--color-accent-secondary, #1a4f8a);
+}
+
+.navigation button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.navigation .page-info {
   color: var(--color-text-primary);
+  font-size: 0.85rem;
   font-weight: 500;
-}
-
-.footer .nav-hint {
-  color: var(--color-text-tertiary);
-  font-size: 0.8rem;
 }
 
 /* Error state */

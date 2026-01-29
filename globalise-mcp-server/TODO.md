@@ -25,9 +25,10 @@ While UI rendering works, several MCP Apps SDK features are **not supported**:
 | Feature | Status | Workaround | Issue |
 |---------|--------|------------|-------|
 | `app.callServerTool()` | ❌ JSON-RPC validation error | None - model must call tools | [#32](https://github.com/anthropics/claude-ai-mcp/issues/32) |
-| `app.sendMessage()` | ❌ Fails silently | None - user must type messages | [#33](https://github.com/anthropics/claude-ai-mcp/issues/33) |
-| `app.updateModelContext()` | ❌ Context not received by model | None - user must copy/paste | [#34](https://github.com/anthropics/claude-ai-mcp/issues/34) |
-| `window.open()` / `<a href>` | ❌ External links don't open | None - user must copy URL manually | [#31](https://github.com/anthropics/claude-ai-mcp/issues/31) |
+| `app.sendMessage()` | ⚠️ Pre-populates composer | User must click Send | [#33](https://github.com/anthropics/claude-ai-mcp/issues/33) |
+| `app.updateModelContext()` | ⚠️ Exposes tool for model | Add instruction in tool response | [#34](https://github.com/anthropics/claude-ai-mcp/issues/34) |
+| `window.open()` / `<a href>` | ❌ Blocked (by design) | Use `app.openLink()` | [#31](https://github.com/anthropics/claude-ai-mcp/issues/31) |
+| `app.openLink()` | ✅ Works | — | — |
 | `app.sendSizeChanged()` | ✅ Works | — | — |
 | `app.sendLog()` | ✅ Works | — | — |
 | `onhostcontextchanged` | ⚠️ Partial (theme works) | — | — |
@@ -41,9 +42,7 @@ While UI rendering works, several MCP Apps SDK features are **not supported**:
 - Theme integration via CSS variables
 - Search term highlighting in transcription text
 - Archival context from OBP/GM database (v1.20.0)
-
-**Removed Features (due to Claude Desktop limitations):**
-- External link buttons (GLOBALISE Viewer, National Archives) - Claude Desktop can't open external URLs
+- External link buttons via `app.openLink()` (v1.21.0)
 
 **Branch:** `feature/mcp-apps-document-viewer` (ready to merge to main)
 
