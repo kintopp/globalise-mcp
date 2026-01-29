@@ -296,6 +296,8 @@ html, body {
   font-weight: 500;
   flex-shrink: 0;
   color: var(--color-text-primary);
+  display: flex;
+  gap: 0.25rem;
 }
 
 .transcription {

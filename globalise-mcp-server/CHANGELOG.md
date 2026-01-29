@@ -10,13 +10,12 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
   - Rotation state tracked and can be reset with the Reset button
 
 ### Changed
-- **Navigation Buttons Disabled**: Previous/Next buttons are now always disabled
+- **Navigation Buttons Hidden**: Previous/Next buttons removed from UI
   - `app.callServerTool()` is broken in Claude Desktop ([#32](https://github.com/anthropics/claude-ai-mcp/issues/32))
-  - Will re-enable when SDK bug is fixed
+  - Will re-add when SDK bug is fixed
 
 - **Tool Description Updated**: Added hint that when users select text in the transcription, they typically want a translation
   - Model should provide 17th/18th century Dutch → modern English translation
-  - Selected text appears in widget context
 
 ---
 

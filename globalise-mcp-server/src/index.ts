@@ -314,7 +314,7 @@ const DOCUMENT_VIEWER_TOOL: Tool = {
     '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN. ' +
     '\n\n**FEATURES:** IIIF image viewer with zoom/pan/rotation, transcribed text with line numbers, search term highlighting. ' +
     '\n\n**TEXT SELECTION:** When the user selects text in the transcription panel, they typically want a translation of those words. ' +
-    'The selected text will appear in the widget context - provide a translation from 17th/18th century Dutch to modern English. ' +
+    'Provide a translation from 17th/18th century Dutch to modern English. ' +
     '\n\n**RETURNS:** Interactive UI with split view showing scanned page and transcription.',
   inputSchema: zodToJsonSchema(viewDocumentUiInputSchema) as Tool['inputSchema'],
   annotations: {
