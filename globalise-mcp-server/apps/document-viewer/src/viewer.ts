@@ -524,13 +524,10 @@ function attachEventListeners(doc: DocumentData): void {
       const selectedText = selection?.toString().trim();
 
       if (selectedText && selectedText.length > 0) {
-        // Update model context with selected text
+        // Update model context with selected text (using content array format)
+        const contextText = `User selected text in document ${doc.id}: "${selectedText}"`;
         app.updateModelContext({
-          structuredContent: {
-            documentId: doc.id,
-            selectedText: selectedText,
-            selectionContext: 'User selected text from transcription',
-          },
+          content: [{ type: 'text', text: contextText }],
         });
         app.sendLog({ level: 'info', data: `Text selected: "${selectedText}"` });
       }
@@ -616,20 +613,19 @@ function setupVisibilityObserver(): void {
 }
 
 /**
- * Update the model context with current document info
+ * Update the model context with current document info (using content array format)
  */
 function updateModelContext(doc: DocumentData): void {
+  const contextText = [
+    `Current document: ${doc.id}`,
+    `Inventory: ${doc.metadata.inventory}, Scan: ${doc.metadata.scan}`,
+    `Languages: ${doc.metadata.languages.map((l) => l.label).join(', ')}`,
+    `Navigation: ${doc.navigation.prev ? 'Has previous' : 'No previous'}, ${doc.navigation.next ? 'Has next' : 'No next'}`,
+    doc.archivalContext ? `Archival context available` : '',
+  ].filter(Boolean).join('. ');
+
   app.updateModelContext({
-    structuredContent: {
-      documentId: doc.id,
-      inventory: doc.metadata.inventory,
-      scan: doc.metadata.scan,
-      languages: doc.metadata.languages,
-      transcriptionPreview: doc.transcription.slice(0, 10).join('\n'),
-      hasNext: !!doc.navigation.next,
-      hasPrev: !!doc.navigation.prev,
-      archivalContext: doc.archivalContext || null,
-    },
+    content: [{ type: 'text', text: contextText }],
   });
 }
 

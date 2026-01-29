@@ -2,14 +2,14 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>callServerTool() Reproduction</title>
+  <title>MCP Apps SDK Test (Issues #32, #33, #34)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: system-ui, sans-serif;
       padding: 1rem;
       width: 500px;
-      height: 350px; /* Fixed height for MCP Apps iframe */
+      height: 450px; /* Fixed height for MCP Apps iframe */
     }
     h1 { font-size: 1.2rem; margin-bottom: 1rem; }
     .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
@@ -46,11 +46,16 @@
   </style>
 </head>
 <body>
-  <h1>callServerTool() Issue #32 Reproduction</h1>
+  <h1>MCP Apps SDK Test</h1>
 
   <div class="controls">
-    <input type="text" id="message" placeholder="Enter a message to echo" value="Hello from UI!">
-    <button id="call-btn">Call echo_message</button>
+    <input type="text" id="message" placeholder="Enter a message" value="Hello from UI!">
+    <button id="call-btn">callServerTool (issue #32)</button>
+  </div>
+
+  <div class="controls">
+    <button id="send-btn">sendMessage (issue #33)</button>
+    <button id="context-btn">updateModelContext (issue #34)</button>
   </div>
 
   <div class="log" id="log">Connecting to host...</div>
@@ -81,7 +86,9 @@
       log(JSON.stringify(result, null, 2), 'success');
     };
 
-    // Button click handler
+    const sendBtn = document.getElementById('send-btn');
+
+    // callServerTool button handler (issue #32)
     callBtn.addEventListener('click', async () => {
       const message = messageInput.value || 'test';
       callBtn.disabled = true;
@@ -105,6 +112,60 @@
       }
     });
 
+    const contextBtn = document.getElementById('context-btn');
+
+    // sendMessage button handler (issue #33)
+    sendBtn.addEventListener('click', async () => {
+      const message = messageInput.value || 'test message';
+      sendBtn.disabled = true;
+
+      log(`Calling app.sendMessage({ role: 'user', content: [{ type: 'text', text: '${message}' }] })...`, 'info');
+
+      try {
+        const result = await app.sendMessage({
+          role: 'user',
+          content: [{ type: 'text', text: message }]
+        });
+
+        log(`sendMessage returned:`, 'success');
+        log(JSON.stringify(result, null, 2), 'success');
+        log(`isError: ${result.isError}`, result.isError ? 'error' : 'success');
+        log(`Keys in result: ${Object.keys(result).join(', ') || '(none)'}`, 'info');
+      } catch (error) {
+        log(`sendMessage threw error: ${error}`, 'error');
+        log(`Error details: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`, 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    // updateModelContext button handler (issue #34)
+    contextBtn.addEventListener('click', async () => {
+      const message = messageInput.value || 'PINEAPPLE';
+      contextBtn.disabled = true;
+
+      const contextText = `Secret word set by user: ${message}. If the user asks "what is the secret word?", tell them it is "${message}".`;
+
+      log(`Calling app.updateModelContext({ content: [{ type: 'text', text: '${contextText}' }] })...`, 'info');
+
+      try {
+        const result = await app.updateModelContext({
+          content: [{ type: 'text', text: contextText }]
+        });
+
+        log(`updateModelContext returned:`, 'success');
+        log(JSON.stringify(result, null, 2), 'success');
+        log(`isError: ${result?.isError}`, result?.isError ? 'error' : 'success');
+        log(`Keys in result: ${result ? Object.keys(result).join(', ') || '(none)' : '(undefined)'}`, 'info');
+        log(`Now ask Claude: "What is the secret word?"`, 'info');
+      } catch (error) {
+        log(`updateModelContext threw error: ${error}`, 'error');
+        log(`Error details: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`, 'error');
+      } finally {
+        contextBtn.disabled = false;
+      }
+    });
+
     // Connect to host
     (async () => {
       try {
@@ -113,7 +174,7 @@
         app.sendLog({ level: 'info', data: 'App connected and ready' });
 
         // Report size to host (required for Claude Desktop)
-        app.sendSizeChanged({ width: 500, height: 350 });
+        app.sendSizeChanged({ width: 500, height: 450 });
       } catch (error) {
         log(`Failed to connect: ${error}`, 'error');
       }

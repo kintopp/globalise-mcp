@@ -460,6 +460,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           '',
           `View in GLOBALISE: ${docResult.urls.viewer}`,
           docResult.urls.archive ? `National Archives: ${docResult.urls.archive}` : '',
+          '',
+          '**Note:** If the user selects text or interacts with the viewer, check widget context for the latest state.',
         ]
           .filter(Boolean)
           .join('\n');
