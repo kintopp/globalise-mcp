@@ -8,9 +8,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 - **External Link Buttons Restored**: Document Viewer now has working "GLOBALISE Viewer" and "National Archives" buttons
   - Uses `app.openLink()` from MCP Apps SDK instead of `window.open()` (which is blocked in sandboxed iframes)
   - Buttons positioned in header title row, right-aligned next to license
+- **Navigation Buttons**: Previous/Next buttons added (uses `app.callServerTool()` - currently broken, see #32)
+- **MCP Apps SDK Test App**: Minimal reproduction in `examples/callServerTool-repro/` for testing SDK methods
 
 ### Fixed
-- **GitHub Issue [#31](https://github.com/anthropics/claude-ai-mcp/issues/31)**: External links now work via SDK method
+- **GitHub Issue [#31](https://github.com/anthropics/claude-ai-mcp/issues/31)**: External links now work via `app.openLink()`
+- **`updateModelContext()` Format**: Fixed to use `content: [{ type: 'text', text }]` array format (was using incorrect `structuredContent`)
+- **Text Selection Context**: Selected text in transcription now properly updates model context
+
+### Documented
+- **MCP Apps SDK Parameter Formats**: `sendMessage()` and `updateModelContext()` require `content` as array of content blocks, not `structuredContent`
+- **GitHub Issue [#32](https://github.com/anthropics/claude-ai-mcp/issues/32)**: Posted minimal reproduction for `callServerTool()` JSON-RPC bug
 
 ---
 

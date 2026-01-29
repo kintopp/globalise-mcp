@@ -18,22 +18,20 @@ The Document Viewer MCP App now renders correctly in Claude Desktop. The fixes w
 2. **Missing CDN domains** — External scripts (OpenSeadragon, ext-apps SDK) weren't in CSP
 3. **Percentage-based heights** — Iframe doesn't have explicit dimensions, so `height: 100%` collapsed to zero. Fixed with explicit pixel heights and `app.sendSizeChanged()`
 
-**Claude Desktop MCP Apps Limitations (as of Jan 2026):**
+**Claude Desktop MCP Apps SDK Status (as of Jan 2026):**
 
-While UI rendering works, several MCP Apps SDK features are **not supported**:
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `app.callServerTool()` | ❌ Broken | JSON-RPC validation error - [#32](https://github.com/anthropics/claude-ai-mcp/issues/32) |
+| `app.sendMessage()` | ✅ Works | Pre-populates composer; user clicks Send. Use `content: [{type: 'text', text}]` array format |
+| `app.updateModelContext()` | ✅ Works | Use `content: [{type: 'text', text}]` array format (not `structuredContent`) |
+| `app.openLink()` | ✅ Works | Opens URLs in browser (use instead of `window.open()`) |
+| `app.sendSizeChanged()` | ✅ Works | Required for iframe sizing in Claude Desktop |
+| `app.sendLog()` | ✅ Works | Debugging/telemetry |
+| `window.open()` / `<a href>` | ❌ Blocked | By design - use `app.openLink()` instead |
+| `onhostcontextchanged` | ⚠️ Partial | Theme works, other context TBD |
 
-| Feature | Status | Workaround | Issue |
-|---------|--------|------------|-------|
-| `app.callServerTool()` | ❌ JSON-RPC validation error | None - model must call tools | [#32](https://github.com/anthropics/claude-ai-mcp/issues/32) |
-| `app.sendMessage()` | ⚠️ Pre-populates composer | User must click Send | [#33](https://github.com/anthropics/claude-ai-mcp/issues/33) |
-| `app.updateModelContext()` | ⚠️ Exposes tool for model | Add instruction in tool response | [#34](https://github.com/anthropics/claude-ai-mcp/issues/34) |
-| `window.open()` / `<a href>` | ❌ Blocked (by design) | Use `app.openLink()` | [#31](https://github.com/anthropics/claude-ai-mcp/issues/31) |
-| `app.openLink()` | ✅ Works | — | — |
-| `app.sendSizeChanged()` | ✅ Works | — | — |
-| `app.sendLog()` | ✅ Works | — | — |
-| `onhostcontextchanged` | ⚠️ Partial (theme works) | — | — |
-
-**Implication:** MCP Apps in Claude Desktop are best suited for **display-only** use cases. Interactive features requiring UI→model communication need user intervention (copying text, typing requests).
+**Key Finding:** Most SDK methods work - the issues were incorrect parameter formats. Use `content: [{ type: 'text', text: '...' }]` (array), not `structuredContent` or single objects.
 
 **What Works Well:**
 - OpenSeadragon IIIF image viewer with zoom/pan
