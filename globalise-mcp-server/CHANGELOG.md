@@ -2,6 +2,31 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.23.0] - 2026-01-29
+
+### Fixed
+- **HTTP Transport Session Race Condition**: Fixed "Connection closed" error on first tool call
+  - Root cause: Sessions were stored before initialization completed, causing race conditions when clients sent parallel requests
+  - Clients (ChatGPT, MSTY) sending tool calls before initialization would fail on first call but succeed on retry
+  - Solution: Use `onsessioninitialized` callback to track pending vs initialized sessions properly
+
+### Changed
+- **Session Lifecycle Improved**: HTTP transport now uses two-phase session storage
+  - `pendingTransports`: Sessions being initialized (not ready for tool calls)
+  - `streamableSessions`: Fully initialized sessions (ready for tool calls)
+  - Prevents race conditions with concurrent MCP protocol requests
+
+### Technical
+- Added `isInitializeRequest` check to reject non-init requests without session ID
+- Uses MCP SDK's `onsessioninitialized` callback for proper lifecycle management
+- Health endpoint now shows `streamableHttpPending` count alongside active sessions
+
+### Related Issues
+- [modelcontextprotocol/typescript-sdk#408](https://github.com/modelcontextprotocol/typescript-sdk/issues/408): Server not initialized error
+- MCP protocol requires `InitializeRequest` → `initialized` → tool calls sequence
+
+---
+
 ## [1.22.0] - 2026-01-29
 
 ### Added
