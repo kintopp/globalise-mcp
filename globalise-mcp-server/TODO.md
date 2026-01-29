@@ -84,7 +84,7 @@ The Document Viewer MCP App now renders correctly in Claude Desktop. The fixes w
 2. Implement heuristic line positioning (imprecise)
 3. Focus on navigation enhancements that don't require coordinates
 
-**Documentation:** `offline/research/annotation-coordinates.md`
+**Documentation:** `offline/research/pagexml-word-coordinates.md`
 
 ---
 
@@ -158,6 +158,10 @@ Same as Image Overlays - coordinate data exists in PageXML (TextRepo) but is not
 2. Navigation buttons without precise targeting
 3. Keyboard shortcuts for incremental panning
 
+**NEW OPTION: Extract from PageXML files directly (2026-01-29)**
+
+PageXML files containing word-level coordinates are publicly available and could be parsed to build a local coordinate database. See "PageXML Word Coordinates Database" section below for detailed analysis.
+
 **Implementation - Text to Image:**
 ```javascript
 // When user clicks line number in transcription
@@ -197,6 +201,126 @@ viewer.addHandler('canvas-click', function(event) {
 **Related Features:**
 - Could combine with Image Overlays to show clickable highlight regions
 - Navigator mini-map would complement this feature
+
+---
+
+### PageXML Word Coordinates Database
+
+**Priority:** Medium
+**Status:** Investigation complete (2026-01-29), ready for implementation
+**Prerequisite for:** Image Overlays, Text-Image Linking
+**Unblocks:** Both blocked features above
+
+**Background:**
+The investigation into annotation coordinates (2026-01-29) found that coordinate data exists in PageXML files but is NOT exposed through the public API. However, PageXML files are publicly available and can be parsed directly.
+
+**Sample PageXML Analysis (NL-HaNA_1.04.02_10000_0043.xml):**
+
+| Metric | Value |
+|--------|-------|
+| File size | 108 KB |
+| Image dimensions | 5698 × 4104 pixels |
+| Text lines | 40 |
+| Words | 219 |
+| Words per line | ~5.5 average |
+
+**PageXML Structure:**
+```xml
+<Page imageFilename="NL-HaNA_1.04.02_10000_0043.jpg" imageWidth="5698" imageHeight="4104">
+  <TextRegion id="region_...">
+    <TextLine id="line_...">
+      <Coords points="x1,y1 x2,y2 ..."/>  <!-- Line polygon -->
+      <Word id="word_...">
+        <Coords points="x1,y1 x2,y2 x3,y3 x4,y4 ..."/>  <!-- Word polygon (6-8 points) -->
+        <TextEquiv>
+          <Unicode>behoor„</Unicode>
+        </TextEquiv>
+      </Word>
+    </TextLine>
+  </TextRegion>
+</Page>
+```
+
+**Word Coordinate Format:**
+- Polygons with 6-8 vertices (not simple bounding boxes)
+- Follows word boundary shape (handles skewed/rotated text)
+- Coordinates in pixels, fits in uint16 (0-65535)
+
+**Storage Size Estimates:**
+
+| Representation | Bytes/word | Per page (200 words) | 4.8M pages |
+|---------------|------------|----------------------|------------|
+| Full polygon (8 pts × 2 × uint16) | 32 bytes | 6.4 KB | 30.7 GB |
+| Bounding box (x,y,w,h × uint16) | 8 bytes | 1.6 KB | 7.7 GB |
+| Bounding box + line index | 10 bytes | 2 KB | 9.6 GB |
+
+**Recommended SQLite Schema:**
+```sql
+CREATE TABLE word_coords (
+  document_id TEXT NOT NULL,      -- NL-HaNA_1.04.02_10000_0043
+  word_index INTEGER NOT NULL,    -- 0-based position in transcription
+  line_index INTEGER NOT NULL,    -- For grouping by line
+  x INTEGER NOT NULL,             -- Bounding box left (uint16)
+  y INTEGER NOT NULL,             -- Bounding box top (uint16)
+  w INTEGER NOT NULL,             -- Width (uint16)
+  h INTEGER NOT NULL,             -- Height (uint16)
+  PRIMARY KEY (document_id, word_index)
+);
+
+CREATE INDEX idx_coords_doc ON word_coords(document_id);
+```
+
+**Estimated Database Size:** ~10-12 GB for 4.8M pages (~1B words)
+
+**Implementation Steps:**
+
+1. **Obtain PageXML files**
+   - Source: GLOBALISE project (check licensing/access)
+   - May be available via DANS/Dataverse or direct request
+   - Could process incrementally (batch by inventory)
+
+2. **Build PageXML parser** (`scripts/parse-pagexml.ts`)
+   - Extract word coordinates per page
+   - Convert polygons to bounding boxes (min/max x,y)
+   - Match word order to transcription line order
+
+3. **Build SQLite database** (`data/word-coords.sqlite`)
+   - Similar to `archival-index.sqlite` pattern
+   - Index on document_id for fast lookup
+
+4. **Add MCP tool** (`globalise_get_word_coordinates`)
+   ```typescript
+   {
+     documentId: string,      // Required
+     wordIndices?: number[],  // Optional: specific words only
+     lineIndices?: number[]   // Optional: specific lines only
+   }
+   ```
+
+5. **Integrate with Document Viewer**
+   - Fetch coordinates when document loads
+   - Enable hover-to-highlight on image
+   - Enable click-to-zoom on transcription lines
+
+**Feasibility Assessment:**
+
+| Aspect | Assessment |
+|--------|------------|
+| Storage | 10-12 GB SQLite is manageable |
+| Query speed | <1ms with index on document_id |
+| Build time | Hours/days depending on source access |
+| Accuracy | High - native HTR output coordinates |
+
+**Open Questions:**
+1. How to access PageXML files at scale? (Direct download, API, data request?)
+2. Should coordinates be stored per-word or per-line?
+3. Store full polygons for accuracy, or just bounding boxes for size?
+4. Incremental updates when new transcriptions are added?
+
+**Related:**
+- `offline/research/annotation-coordinates.md` - API investigation results
+- Sample file: `/Users/bosse0000/Downloads/10000/NL-HaNA_1.04.02_10000_0043.xml`
+- Similar pattern: `data/archival-index.sqlite` (228K records, works well)
 
 ---
 
