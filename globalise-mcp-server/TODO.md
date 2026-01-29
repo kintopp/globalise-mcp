@@ -4,6 +4,38 @@ This document tracks potential improvements, enhancements, and ideas for the GLO
 
 ---
 
+## Known Issues
+
+### Document Viewer Timeout on Claude.ai (Safari)
+
+**Priority:** Medium
+**Status:** 🔴 Open
+**Discovered:** 2026-01-29 (v1.23.0)
+
+**Symptom:**
+When using Claude.ai in Safari browser and requesting to view a document with `globalise_view_document_ui`, the request times out with:
+```
+MCP error -32001: Request timed out
+```
+
+**Context:**
+- Claude Desktop: Works ✅
+- ChatGPT/MSTY via HTTP transport: Works ✅ (after v1.23.0 session race condition fix)
+- Claude.ai in Safari: Timeout ❌
+
+**Possible Causes to Investigate:**
+1. Safari-specific networking/fetch behavior
+2. Claude.ai's MCP client timeout settings
+3. Railway deployment latency for first request (cold start?)
+4. CORS or CSP differences in Safari
+5. SSE streaming handling differences
+
+**Related:**
+- v1.23.0 fixed HTTP session race condition (different error: -32000 "Connection closed")
+- This is error -32001 "Request timed out" - different failure mode
+
+---
+
 ## Potential Improvements
 
 ### MCP Apps: Document Viewer - Claude Desktop Limitations
