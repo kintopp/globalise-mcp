@@ -19,7 +19,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 
-const VERSION = '1.23.0';
+const VERSION = '1.23.1';
 
 export interface HttpServerOptions {
   port?: number;

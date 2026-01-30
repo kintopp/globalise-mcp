@@ -224,27 +224,28 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
   const rows: string[] = [];
 
   // Row 1: Settlement, Year range, Location (+ chamber for GM, HTR for GM)
+  // Uses text labels instead of emojis for professional appearance
   const row1Parts: string[] = [];
   if (ctx.settlements && ctx.settlements.length > 0) {
     const settlementText = ctx.settlements.join(', ');
-    row1Parts.push(`<span title="Settlement">📍 ${escapeHtml(settlementText)}</span>`);
+    row1Parts.push(`<span title="Settlement"><span class="icon-emoji">📍</span><span class="icon-text">LOC</span> ${escapeHtml(settlementText)}</span>`);
   }
   if (ctx.yearRange) {
     const yearText = ctx.yearRange.from === ctx.yearRange.to
       ? `${ctx.yearRange.from}`
       : `${ctx.yearRange.from}–${ctx.yearRange.to}`;
-    row1Parts.push(`<span title="Date range">📅 ${yearText}</span>`);
+    row1Parts.push(`<span title="Date range"><span class="icon-emoji">📅</span><span class="icon-text">DATE</span> ${yearText}</span>`);
   }
   // Location and geographic coverage on same row
   if (ctx.locationTanap) {
-    row1Parts.push(`<span title="Location (TANAP)">📌 ${escapeHtml(ctx.locationTanap)}</span>`);
+    row1Parts.push(`<span title="Location (TANAP)"><span class="icon-emoji">📌</span><span class="icon-text">TANAP</span> ${escapeHtml(ctx.locationTanap)}</span>`);
   }
   if (ctx.geographicalCoverage && ctx.geographicalCoverage !== ctx.settlements?.[0]) {
     // Only show if different from settlement
-    row1Parts.push(`<span title="Geographic coverage">🌍 ${escapeHtml(ctx.geographicalCoverage)}</span>`);
+    row1Parts.push(`<span title="Geographic coverage"><span class="icon-emoji">🌍</span><span class="icon-text">ROUTE</span> ${escapeHtml(ctx.geographicalCoverage)}</span>`);
   }
   if (ctx.chamber) {
-    row1Parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
+    row1Parts.push(`<span title="VOC Chamber"><span class="icon-emoji">🏛️</span><span class="icon-text">CHAMBER</span> ${escapeHtml(ctx.chamber)}</span>`);
   }
   if (ctx.htrAvailable !== undefined) {
     const htrText = ctx.htrAvailable ? 'HTR available' : 'No HTR';
@@ -274,10 +275,13 @@ function renderDocument(doc: DocumentData): void {
   const appEl = document.getElementById('app');
   if (!appEl) return;
 
-  // Build language badges
+  // Build language badges with CSS-based comma separation
   const languageBadges = doc.metadata.languages
-    .map((l) => `<span class="language-badge" title="${l.code}">${l.label}</span>`)
-    .join('');
+    .map((l, i) => {
+      const isLast = i === doc.metadata.languages.length - 1;
+      return `<span class="language-badge" title="${l.code}">${l.label.trim()}${isLast ? '' : ','}</span>`;
+    })
+    .join(' ');
 
   // Build archival context section
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);

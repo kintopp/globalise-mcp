@@ -2,6 +2,18 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.23.1] - 2026-01-30
+
+### Changed
+- **Document Viewer Design Refinements**:
+  - **Language Display**: Multiple languages now comma-separated ("Dutch, Latin" instead of "Dutch Latin")
+  - **Font Sizes**: Slightly increased font sizes for metadata (0.9rem), archival context (0.85rem), and description (0.9rem)
+
+### Fixed
+- **Language Label Whitespace**: Added server-side trim to language labels to prevent extra spaces from API data
+
+---
+
 ## [1.23.0] - 2026-01-29
 
 ### Fixed
