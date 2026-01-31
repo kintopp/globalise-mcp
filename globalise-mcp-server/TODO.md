@@ -394,6 +394,81 @@ Requires fetching metadata for prev/next pages.
 
 ---
 
+### Document Viewer: Chicago-style Citation Format
+
+**Priority:** Medium
+**Status:** Not started
+
+**Background:**
+The current citation format in the Document Viewer is informal and doesn't follow established academic citation styles used by historians.
+
+**Current format:**
+```
+NL-HaNA, VOC, 1.04.02, inv. 10000, scan 0020, Nationaal Archief.
+https://transcriptions.globalise.huygens.knaw.nl/document/urn:globalise:NL-HaNA_1.04.02_10000_0020
+```
+
+**Target:** Chicago Manual of Style (Notes-Bibliography system) — the dominant citation format for historians, with specific guidance for archival sources in sections 14.221–14.233.
+
+**What's Missing:**
+
+| Element | Current | Chicago-style requirement |
+|---------|---------|---------------------------|
+| Archive location | Missing | Required (city) |
+| Full archive name | Abbreviated only | Full name on first use |
+| Full collection name | "VOC" only | Full Dutch name with abbreviation |
+| Inventory format | "inv." | "inv.nr." (Dutch convention) |
+| Scan number | "0020" (padded) | "20" (no leading zeros) |
+| Access method | Missing | "Accessed via [source]" |
+| Access date | Missing | Required for online sources |
+| Description | Missing | Include if available from archivalContext |
+
+**Proposed Chicago-style citation for `NL-HaNA_1.04.02_10000_0020`:**
+
+**First/full footnote:**
+```
+Nationaal Archief, The Hague, Archief van de Verenigde Oostindische Compagnie (VOC), 1.04.02, inv.nr. 10000, scan 20. Accessed [date], via GLOBALISE Transcriptions Viewer. https://transcriptions.globalise.huygens.knaw.nl/document/urn:globalise:NL-HaNA_1.04.02_10000_0020.
+```
+
+**With archival description (if `archivalContext.description` available):**
+```
+Nationaal Archief, The Hague, Archief van de Verenigde Oostindische Compagnie (VOC), 1.04.02, inv.nr. 10000, "Overgekomen brieven en papieren van Batavia," scan 20. Accessed [date], via GLOBALISE Transcriptions Viewer. https://transcriptions.globalise.huygens.knaw.nl/document/urn:globalise:NL-HaNA_1.04.02_10000_0020.
+```
+
+**Shortened footnote (subsequent citations):**
+```
+NL-HaNA, VOC, 1.04.02, inv.nr. 10000, scan 20.
+```
+
+**Implementation Notes:**
+
+1. **Access date** — Use `new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })` for format like "January 31, 2026"
+
+2. **Scan number** — Strip leading zeros: `parseInt(doc.metadata.scan).toString()`
+
+3. **Archival description** — Already available in `doc.archivalContext?.description`
+
+4. **Consider two citation modes:**
+   - Full citation (first use in footnotes)
+   - Short citation (subsequent uses)
+   - Could offer toggle or copy both formats
+
+**Available metadata in DocumentData:**
+- `doc.id` — Full URN
+- `doc.metadata.inventory` — Inventory number
+- `doc.metadata.scan` — Scan number (with leading zeros)
+- `doc.urls.viewer` — GLOBALISE Transcriptions Viewer URL
+- `doc.archivalContext?.description` — Inventory description (if available)
+- `doc.archivalContext?.settlements` — Place names (if available)
+- `doc.archivalContext?.yearRange` — Date range (if available)
+
+**Related:**
+- `src/tools/document.ts` - `copyCitation()` function (~line 512)
+- Chicago Manual of Style 17th edition, sections 14.221–14.233 (archival sources)
+- Dutch archival citation conventions: *Leidraad voor juridische auteurs*
+
+---
+
 ### Remove Unnecessary Translations from Weight and Measures JSON dictionary
 
 **Priority:** Medium

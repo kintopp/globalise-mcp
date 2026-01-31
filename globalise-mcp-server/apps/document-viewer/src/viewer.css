@@ -74,7 +74,7 @@ html, body {
 
 /* Main container - use fixed height for MCP Apps iframe */
 .main {
-  height: 1000px; /* Large height for better image viewing */
+  height: 1125px; /* Large height for better image viewing + 12 lines transcription */
   display: flex;
   flex-direction: column;
   border-radius: var(--border-radius-lg);

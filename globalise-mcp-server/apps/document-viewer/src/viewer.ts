@@ -63,9 +63,10 @@ let isFullscreen = false;
 let currentRotation = 0; // Track rotation in degrees
 
 // Image filter state
-let filterBrightness = 100; // percentage, 100 = default
-let filterContrast = 100; // percentage, 100 = default
 let filterInvert = false;
+
+// Environment detection - fullscreen doesn't work in Claude Code's iframe
+const isInIframe = window.self !== window.top;
 
 // Initialize the MCP App with capabilities
 const app = new App(
@@ -301,9 +302,10 @@ function renderDocument(doc: DocumentData): void {
     .filter(Boolean)
     .join('');
 
-  // Build action buttons
+  // Build action buttons (down arrow indicates "send to conversation" in Claude Code)
+  const citeLabel = isInIframe ? '↓ Cite' : 'Cite';
   const actionButtons = `
-    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation to clipboard or conversation">↓ Cite</button>
+    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation to clipboard or conversation">${citeLabel}</button>
   `;
 
   appEl.innerHTML = `
@@ -336,14 +338,9 @@ function renderDocument(doc: DocumentData): void {
             <button id="rotate-left" title="Rotate Left (R)">↺</button>
             <button id="rotate-right" title="Rotate Right (Shift+R)">↻</button>
             <span class="control-separator"></span>
-            <button id="brightness-up" title="Increase Brightness">☀+</button>
-            <button id="brightness-down" title="Decrease Brightness">☀−</button>
-            <button id="contrast-up" title="Increase Contrast">◐+</button>
-            <button id="contrast-down" title="Decrease Contrast">◐−</button>
-            <button id="invert-toggle" title="Invert Colors (I)">◑</button>
-            <button id="filter-reset" title="Reset Filters">⟲</button>
+            <button id="invert-toggle" title="Invert Colors (I)">◑</button>${!isInIframe ? `
             <span class="control-separator"></span>
-            <button id="fullscreen-toggle" title="Full Screen (F)">⛶</button>
+            <button id="fullscreen-toggle" title="Full Screen (F)">⛶</button>` : ''}
           </div>
         </div>
 
@@ -498,23 +495,7 @@ function applyFilters(): void {
   const canvas = document.querySelector('#openseadragon-viewer .openseadragon-canvas') as HTMLElement;
   if (!canvas) return;
 
-  const filters: string[] = [];
-  if (filterBrightness !== 100) filters.push(`brightness(${filterBrightness}%)`);
-  if (filterContrast !== 100) filters.push(`contrast(${filterContrast}%)`);
-  if (filterInvert) filters.push('invert(1)');
-
-  canvas.style.filter = filters.length > 0 ? filters.join(' ') : 'none';
-}
-
-/**
- * Reset all image filters to default
- */
-function resetFilters(): void {
-  filterBrightness = 100;
-  filterContrast = 100;
-  filterInvert = false;
-  applyFilters();
-  app.sendLog({ level: 'info', data: 'Filters reset to default' });
+  canvas.style.filter = filterInvert ? 'invert(1)' : 'none';
 }
 
 /**
@@ -572,7 +553,7 @@ function showButtonFeedback(buttonId: string, message: string): void {
 
 /**
  * Handle keyboard shortcuts for common actions
- * Shortcuts: H=Home, R=Rotate, Shift+R=Rotate Right, I=Invert, F=Fullscreen
+ * Shortcuts: H=Home, R=Rotate, Shift+R=Rotate Right, I=Invert, F=Fullscreen (browser only)
  */
 function handleKeyboardShortcut(e: KeyboardEvent): void {
   // Don't trigger shortcuts when typing in input fields
@@ -582,9 +563,10 @@ function handleKeyboardShortcut(e: KeyboardEvent): void {
 
   // Check if focus is in transcription (allow text selection)
   const transcription = document.getElementById('transcription');
+  const interceptKeys = isInIframe ? ['h', 'r', 'i'] : ['h', 'r', 'i', 'f'];
   if (transcription?.contains(e.target as Node)) {
     // Only intercept specific keys, let others pass through for text selection
-    if (!['h', 'r', 'i', 'f'].includes(e.key.toLowerCase())) {
+    if (!interceptKeys.includes(e.key.toLowerCase())) {
       return;
     }
   }
@@ -609,8 +591,10 @@ function handleKeyboardShortcut(e: KeyboardEvent): void {
       document.getElementById('invert-toggle')?.classList.toggle('active', filterInvert);
       break;
     case 'f':
-      e.preventDefault();
-      toggleFullscreen();
+      if (!isInIframe) {
+        e.preventDefault();
+        toggleFullscreen();
+      }
       break;
   }
 }
@@ -674,36 +658,11 @@ function attachEventListeners(doc: DocumentData): void {
     rotateImage(90);
   });
 
-  // Filter controls
-  document.getElementById('brightness-up')?.addEventListener('click', () => {
-    filterBrightness = Math.min(200, filterBrightness + 10);
-    applyFilters();
-  });
-
-  document.getElementById('brightness-down')?.addEventListener('click', () => {
-    filterBrightness = Math.max(50, filterBrightness - 10);
-    applyFilters();
-  });
-
-  document.getElementById('contrast-up')?.addEventListener('click', () => {
-    filterContrast = Math.min(200, filterContrast + 10);
-    applyFilters();
-  });
-
-  document.getElementById('contrast-down')?.addEventListener('click', () => {
-    filterContrast = Math.max(50, filterContrast - 10);
-    applyFilters();
-  });
-
+  // Invert toggle
   document.getElementById('invert-toggle')?.addEventListener('click', () => {
     filterInvert = !filterInvert;
     applyFilters();
     document.getElementById('invert-toggle')?.classList.toggle('active', filterInvert);
-  });
-
-  document.getElementById('filter-reset')?.addEventListener('click', () => {
-    resetFilters();
-    document.getElementById('invert-toggle')?.classList.remove('active');
   });
 
   // Fullscreen toggle
