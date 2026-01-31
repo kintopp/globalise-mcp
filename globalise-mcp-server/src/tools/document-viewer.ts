@@ -148,8 +148,8 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
       inventory: inventoryNumber,
       scan: scanNumber,
       languages: metadata?.lang?.map(l => ({
-        code: l.iso?.trim() || '',
-        label: l.label?.trim() || '',
+        code: l.iso,
+        label: l.label,
       })) || [],
       license: metadata?.comment?.replace('license: ', '') || undefined,
     },

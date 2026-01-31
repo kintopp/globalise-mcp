@@ -2,51 +2,6 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
-## [1.24.1] - 2026-01-31
-
-### Changed
-- **Simplified Action Buttons**: Removed text and scan export buttons
-  - Transcription already in context window, scan available via National Archives
-  - Kept only citation button (↓ Cite)
-
-### Fixed
-- **Citation Button in Claude Desktop**: Now works in sandboxed iframes
-  - Tries clipboard first, falls back to `app.sendMessage()` to send to conversation
-  - Button shows "Copied!" or "Sent!" feedback
-
----
-
-## [1.24.0] - 2026-01-31
-
-### Added
-- **Document Viewer Phase 1 Enhancements** (research plan implementation):
-  - **Navigator Mini-Map**: OpenSeadragon navigator shows current viewport position when zoomed in (top-right corner, auto-fades)
-  - **Image Filters**: Brightness (+/-), Contrast (+/-), Invert toggle, and Reset buttons for faded manuscripts
-  - **Export Transcription**: Download transcription as `.txt` file
-  - **Download Scan**: Open high-resolution scan image
-  - **Copy Citation**: One-click formatted citation (Chicago style) with GLOBALISE viewer URL
-  - **Full-Screen Mode**: Toggle button for immersive viewing
-  - **Keyboard Shortcuts**: H (home/reset), R/Shift+R (rotate), I (invert), F (fullscreen)
-
-### Technical
-- Image filters use CSS filters (brightness, contrast, invert) applied to OpenSeadragon canvas
-- Export uses Blob API for client-side file generation
-- Keyboard shortcuts ignore input fields and preserve text selection in transcription panel
-
----
-
-## [1.23.1] - 2026-01-30
-
-### Changed
-- **Document Viewer Design Refinements**:
-  - **Language Display**: Multiple languages now comma-separated ("Dutch, Latin" instead of "Dutch Latin")
-  - **Font Sizes**: Slightly increased font sizes for metadata (0.9rem), archival context (0.85rem), and description (0.9rem)
-
-### Fixed
-- **Language Label Whitespace**: Added server-side trim to language labels to prevent extra spaces from API data
-
----
-
 ## [1.23.0] - 2026-01-29
 
 ### Fixed
