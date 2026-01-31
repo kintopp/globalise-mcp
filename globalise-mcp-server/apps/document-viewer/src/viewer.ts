@@ -309,10 +309,9 @@ function renderDocument(doc: DocumentData): void {
     .filter(Boolean)
     .join('');
 
-  // Build action buttons (down arrow indicates "send to conversation" in Claude Code)
-  const citeLabel = isInIframe ? '↓ Cite' : 'Cite';
+  // Build action buttons
   const actionButtons = `
-    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation to clipboard or conversation">${citeLabel}</button>
+    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation to clipboard or conversation">Cite</button>
   `;
 
   appEl.innerHTML = `
