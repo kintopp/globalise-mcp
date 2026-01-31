@@ -66,7 +66,14 @@ let currentRotation = 0; // Track rotation in degrees
 let filterInvert = false;
 
 // Environment detection - fullscreen doesn't work in Claude Code's iframe
-const isInIframe = window.self !== window.top;
+// Use try-catch to handle cross-origin security errors
+let isInIframe = false;
+try {
+  isInIframe = window.self !== window.top;
+} catch {
+  // Cross-origin iframe access denied - assume we're in an iframe
+  isInIframe = true;
+}
 
 // Initialize the MCP App with capabilities
 const app = new App(
