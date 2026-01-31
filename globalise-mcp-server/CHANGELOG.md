@@ -2,6 +2,20 @@
 
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
+## [1.24.1] - 2026-01-31
+
+### Changed
+- **Simplified Action Buttons**: Removed text and scan export buttons
+  - Transcription already in context window, scan available via National Archives
+  - Kept only citation button (↓ Cite)
+
+### Fixed
+- **Citation Button in Claude Desktop**: Now works in sandboxed iframes
+  - Tries clipboard first, falls back to `app.sendMessage()` to send to conversation
+  - Button shows "Copied!" or "Sent!" feedback
+
+---
+
 ## [1.24.0] - 2026-01-31
 
 ### Added

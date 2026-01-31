@@ -303,9 +303,7 @@ function renderDocument(doc: DocumentData): void {
 
   // Build action buttons
   const actionButtons = `
-    <button id="download-transcript-btn" class="action-btn" title="Download transcription as text file">↓ Text</button>
-    <button id="download-scan-btn" class="action-btn" title="Download scan image">↓ Scan</button>
-    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation">📋 Cite</button>
+    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation to clipboard or conversation">↓ Cite</button>
   `;
 
   appEl.innerHTML = `
@@ -528,44 +526,7 @@ function toggleFullscreen(): void {
 }
 
 /**
- * Download the transcription as a .txt file
- */
-function downloadTranscription(doc: DocumentData): void {
-  const text = doc.transcription.join('\n');
-  const filename = `${doc.id.replace('urn:globalise:', '')}_transcription.txt`;
-
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-
-  app.sendLog({ level: 'info', data: `Downloaded transcription: ${filename}` });
-}
-
-/**
- * Download the high-resolution scan image
- * Uses IIIF Image API to request full resolution
- */
-function downloadScan(doc: DocumentData): void {
-  // The iiifImageUrl is already a direct image URL
-  // For IIIF, we can request max resolution with /full/max/0/default.jpg
-  const imageUrl = doc.iiifImageUrl;
-  const filename = `${doc.id.replace('urn:globalise:', '')}_scan.jpg`;
-
-  // Open in new tab (browser handles download)
-  // Using app.openLink for sandboxed iframe compatibility
-  app.openLink({ url: imageUrl });
-  app.sendLog({ level: 'info', data: `Opening scan: ${filename}` });
-}
-
-/**
- * Copy formatted citation to clipboard
+ * Copy formatted citation - tries clipboard first, falls back to sending to conversation
  */
 async function copyCitation(doc: DocumentData): Promise<void> {
   const citation = [
@@ -573,19 +534,39 @@ async function copyCitation(doc: DocumentData): Promise<void> {
     doc.urls.viewer,
   ].join('\n');
 
+  // Try clipboard first
   try {
     await navigator.clipboard.writeText(citation);
     app.sendLog({ level: 'info', data: 'Citation copied to clipboard' });
+    showButtonFeedback('copy-citation-btn', 'Copied!');
+    return;
+  } catch {
+    // Clipboard failed (sandboxed iframe), send to conversation instead
+    app.sendLog({ level: 'info', data: 'Clipboard unavailable, sending to conversation' });
+  }
 
-    // Visual feedback - temporarily change button text
-    const btn = document.getElementById('copy-citation-btn');
-    if (btn) {
-      const originalText = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = originalText; }, 1500);
-    }
+  // Fallback: send citation to conversation
+  try {
+    await app.sendMessage({
+      role: 'user',
+      content: [{ type: 'text', text: `**Citation:**\n${citation}` }],
+    });
+    showButtonFeedback('copy-citation-btn', 'Sent!');
   } catch (err) {
-    app.sendLog({ level: 'error', data: `Failed to copy citation: ${err}` });
+    app.sendLog({ level: 'error', data: `sendMessage failed: ${err}` });
+    showButtonFeedback('copy-citation-btn', 'Failed');
+  }
+}
+
+/**
+ * Show temporary feedback on a button
+ */
+function showButtonFeedback(buttonId: string, message: string): void {
+  const btn = document.getElementById(buttonId);
+  if (btn) {
+    const originalText = btn.textContent;
+    btn.textContent = message;
+    setTimeout(() => { btn.textContent = originalText; }, 1500);
   }
 }
 
@@ -730,15 +711,7 @@ function attachEventListeners(doc: DocumentData): void {
     toggleFullscreen();
   });
 
-  // Export buttons
-  document.getElementById('download-transcript-btn')?.addEventListener('click', () => {
-    downloadTranscription(doc);
-  });
-
-  document.getElementById('download-scan-btn')?.addEventListener('click', () => {
-    downloadScan(doc);
-  });
-
+  // Citation button
   document.getElementById('copy-citation-btn')?.addEventListener('click', () => {
     copyCitation(doc);
   });
