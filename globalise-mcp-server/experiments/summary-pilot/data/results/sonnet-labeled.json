@@ -1,0 +1,1001 @@
+{
+  "experiment": "sonnet-labeled",
+  "timestamp": "2026-01-31T10:19:19.968Z",
+  "config": {
+    "name": "sonnet-labeled",
+    "model": "Sonnet 4.5",
+    "modelId": "claude-sonnet-4-5-20250929",
+    "inputFormat": "labeled",
+    "provider": "anthropic"
+  },
+  "results": [
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0004",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 78,
+        "tokenCount": 569
+      },
+      "output": {
+        "title": "Letter to Governor-General Willem Arnold Alting via English Ship Atlas",
+        "abstract": "Official correspondence addressed to Governor-General Willem Arnold Alting and the Council of the Dutch East Indies in Batavia. The document is a duplicate letter sent via the English private ship 'Atlas'. Alting served as VOC Governor-General from 1780-1796, placing this document in the late 18th century. The letter demonstrates formal diplomatic communication channels between VOC officials, utilizing both Dutch and English vessels for correspondence delivery during this period."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4215,
+        "inputTokens": 569,
+        "outputTokens": 133,
+        "cost": 0.003702
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0009",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 338,
+        "tokenCount": 1070
+      },
+      "output": {
+        "title": "VOC Financial Correspondence on Ceylon and Cape Payment Demands, 1785",
+        "abstract": "This document discusses the VOC's financial challenges in meeting payment demands from Ceylon and the Cape. It addresses the difficulty of negotiating credit with private individuals in Ceylon due to limited local resources, the introduction of paper money and its limitations, and increased interest rates to 9%. The correspondence details the distribution of goods across VOC chambers (Rotterdam and Amsterdam) and requests financial support from the sovereign to fulfill payment obligations totaling 13,000 for 1785."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4763,
+        "inputTokens": 1070,
+        "outputTokens": 134,
+        "cost": 0.00522
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0010",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 208,
+        "tokenCount": 807
+      },
+      "output": {
+        "title": "VOC Financial Crisis and Request for Relief from Sovereign, ca. 1780s",
+        "abstract": "This document describes the VOC's severe financial difficulties and emergency measures taken to address them. The Company awaits a crucial decision from the sovereign regarding their petition for assistance. Commissioners are appointed to handle routine Hague business and to distribute remaining Indian and Cape goods among the respective chambers. The chambers are requested to send allocated funds to India or the Cape at the earliest opportunity. The text reveals the Company's desperate financial state and dependence on government intervention, while private trade suffers as the Company absorbs available resources."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5950,
+        "inputTokens": 807,
+        "outputTokens": 147,
+        "cost": 0.004626
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0024",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 158,
+        "tokenCount": 690
+      },
+      "output": {
+        "title": "Extract from VOC Letter: Cape to Batavia via Amsterdam, November 1784",
+        "abstract": "This extract from a November 18, 1784 letter from the VOC assembly of XVII (Heeren XVII) to the Governor-General and Council of the Indies in Batavia discusses correspondence logistics. It references previous letters from May 15 and August 6, 1784, and explains complications with mail delivery. The company logger ship 'de Zwaluw' from Cape of Good Hope (Caab de Goede Hoop) was forced to stop at Padiae due to poor condition and was sold as unrepairable, necessitating overland transport of letters and papers from Spain to Amsterdam instead."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5547,
+        "inputTokens": 690,
+        "outputTokens": 176,
+        "cost": 0.00471
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0030",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 355,
+        "tokenCount": 1185
+      },
+      "output": {
+        "title": "VOC Chank Shell Diving Operations and Payment Disputes on Ceylon, 1778-1784",
+        "abstract": "This document discusses VOC arrangements for chank shell (sjankoos) diving operations on Ceylon, including a proposal to supply 800-1000 lasts of Bengali or Coromandel rice annually in exchange for chanks at 4 rixdollars per sack. The Company suspended auctioning diving rights in favor of direct operations. The text addresses unresolved payment disputes from 1778-1779 involving Bengali merchant Blinne and former director Ross, with chanks lost when Trincomalee fell to enemy forces. Authorities await post-war resolution on whether to resume the lease system."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5944,
+        "inputTokens": 1185,
+        "outputTokens": 179,
+        "cost": 0.00624
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0034",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 304,
+        "tokenCount": 1076
+      },
+      "output": {
+        "title": "VOC Linen Tax Farm Dispute Resolution in Colombo, Galle, and Kalutara 1781-1782",
+        "abstract": "This document discusses the resolution of a dispute with a Modliaar (tax farmer) who held the linen cloth (lijwaad) tax farm for Colombo, Galle, and Kalutara during the final eight months of fiscal year 1781. Originally contracted for 16,080 rixdollars, the amount was reduced to 7,250.36¾ rixdollars due to wartime conditions and reduced cloth imports. The resolution of January 15, 1782, accepted the farmer's sworn testimony and detailed accounts. The document also addresses arrears from previous linen tax farmers (1776-1780), criticizing over-reliance on their unverified claims of inability to collect revenues."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6551,
+        "inputTokens": 1076,
+        "outputTokens": 212,
+        "cost": 0.006408
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0036",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 371,
+        "tokenCount": 1187
+      },
+      "output": {
+        "title": "VOC Directive on Outstanding Secretary Fees and Penalties at Palembang, 1782",
+        "abstract": "This document concerns a 1782 directive from the VOC High Government regarding the collection of outstanding \"twintigste penning\" (twentieth penny tax) from secretaries at Palembang for the years 1775-1776. The correspondence addresses delays in payment collection and the liability of Company servants, specifically mentioning Secretary Lebeck's widow's entitlement to compensation. The VOC authorities express concern over the negligence in collecting these arrears and order local ministers to ensure the Company is held harmless for servants' delays, while determining proper accountability for the outstanding amounts."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6180,
+        "inputTokens": 1187,
+        "outputTokens": 167,
+        "cost": 0.006066
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0042",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 150,
+        "tokenCount": 662
+      },
+      "output": {
+        "title": "VOC Concerns Regarding the Fall of Trincomalee Fortress, 1782",
+        "abstract": "This document discusses VOC correspondence from 1782 regarding the fall of Trincomalee fortress to enemy forces. It references secret missives from April and June 1782 expressing concerns about the incomplete state of fortifications under Ridder Des Roijs' administration. The text criticizes the defective, confused, and ill-considered defense of the strategically important fortress, noting that landward fortifications were inadequate when Trincomalee surrendered. The passage reflects Dutch anxieties about military preparedness and colonial defense during wartime."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4976,
+        "inputTokens": 662,
+        "outputTokens": 160,
+        "cost": 0.004386
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0046",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 206,
+        "tokenCount": 796
+      },
+      "output": {
+        "title": "VOC Correspondence on Ships and Orders during English Conflict, 1781-1782",
+        "abstract": "This document discusses VOC deliberations regarding the fate of company ships and their cargo during wartime with the English. It references correspondence from December 1781 concerning two frigates that disappeared from view, and mentions orders sent to Trincomalee (Ceylon/Sri Lanka) regarding two chaloupes at Pale. The text debates whether ships should have been burned rather than allowed to fall into English hands as prizes, expressing regret over the situation. A secret missive from February 12 is referenced regarding instructions to VOC officials at Trincomalee."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5157,
+        "inputTokens": 796,
+        "outputTokens": 160,
+        "cost": 0.004788
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0055",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 147,
+        "tokenCount": 653
+      },
+      "output": {
+        "title": "VOC Investigation: Smuggling Allegations and Death of Skipper Jansen",
+        "abstract": "This document discusses a VOC investigation into suspected smuggling (sluijkerij) involving skipper Jansen and an English vessel anchored in Paalsche Bay. The investigation was complicated by Jansen's death, preventing authorities from hearing his testimony regarding the charges. The text suggests that a warehouse master (Pakhuijsmeester) attempted to deflect suspicion by implicating others, a common tactic when unable to properly defend one's own conduct. The authorities concluded that the warehouse master's actions only increased the accusations against him rather than exonerating him."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5438,
+        "inputTokens": 653,
+        "outputTokens": 164,
+        "cost": 0.004419
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0070",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 149,
+        "tokenCount": 701
+      },
+      "output": {
+        "title": "VOC Ship Spaarenrijk Operations: Pepper and Rice Trade Routes, 1700s",
+        "abstract": "Resolution dated October 11 documenting the VOC ship Spaarenrijk's trading activities between Pale, Koetsjim (Cochin), and Porca. The vessel loaded goods from the ship de Bodt on November 20 and departed for Koetsjim to collect pepper and rice cargo. Reports from Ministers indicate the ship was sent to Porca on December 23 for pepper loading. The bark De Liefde brought news that Spaarenrijk departed Porca on the first of the month, returning to Ceylon. The document also references an earlier voyage to Malabar coast."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5140,
+        "inputTokens": 701,
+        "outputTokens": 180,
+        "cost": 0.004803
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0071",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 99,
+        "tokenCount": 540
+      },
+      "output": {
+        "title": "VOC Ship Stavenisse Reassignment from Zeeland to Amsterdam Chamber, 1700s",
+        "abstract": "This document records a VOC decision made on the 24th of the month to reassign the ship Stavenisse from the Zeeland Chamber to the Amsterdam Chamber. The reassignment was necessary because the expected shipment of pepper and saltpeter (salpeter/saepeeter) had not arrived from Ceylon, making it impossible to load two return ships. The Stavenisse, already in loading, was to be ballasted and prepared for Amsterdam instead. This reflects VOC inter-chamber logistics and commodity distribution challenges."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5914,
+        "inputTokens": 540,
+        "outputTokens": 157,
+        "cost": 0.003975
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0074",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 281,
+        "tokenCount": 1005
+      },
+      "output": {
+        "title": "VOC Ships Stavenisse and Middelwijk: Cargo Reports and Voyages, 1700s",
+        "abstract": "This document reports on VOC shipping activities involving the ships Stavenisse and Middelwijk. The Stavenisse, initially designated as a return ship to the Netherlands for the Zeeland chamber but reassigned to Amsterdam, arrived from Batavia on October 10th after a swift voyage. It subsequently made a voyage to Koetsjiem (Cochin) and Gale (Galle) carrying rice, pepper, and supplies for the squadron. The Middelwijk arrived later on October 19th from Batavia, with its cargo partially unloaded and distributed according to resolutions dated November and December."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6190,
+        "inputTokens": 1005,
+        "outputTokens": 186,
+        "cost": 0.005805
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0084",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 233,
+        "tokenCount": 933
+      },
+      "output": {
+        "title": "VOC Horse Breeding on Delft Island and Textile Trade Regulations, 1700s",
+        "abstract": "This VOC document details horse breeding operations on Delft Island and Twee Gebroeders, listing 215 horses including Persian stallions, indigenous horses, mares, and foals. Maintenance costs totaled ƒ817.5.8, a decrease of ƒ117.0.8 from the previous year. Two unusable horses were sold by public auction in Colombo per resolution of March 19. The document also addresses lijnwaad (linen cloth) collection along the Madurai coast, with regulations prohibiting private trade in certain coarse textile varieties to promote Company monopoly, and price increases implemented per July 9 resolution."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6348,
+        "inputTokens": 933,
+        "outputTokens": 190,
+        "cost": 0.005649
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0094",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 213,
+        "tokenCount": 890
+      },
+      "output": {
+        "title": "Chank Diving Operations in Ceylon and Tuticorin, 1850",
+        "abstract": "This document discusses the chank (conch shell) diving operations along the Ceylon coasts and at Tuticorin. Due to low lease bids (3,600 and 1,850 rixdollars respectively, far below normal value), the VOC decided on September 3rd to operate the diving for the Company's own account rather than lease it out. This decision was primarily made to fulfill contractual obligations with the Count of Bijland regarding payment in rice for chanks collected, involving eight hundred lasten of rice."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5318,
+        "inputTokens": 890,
+        "outputTokens": 156,
+        "cost": 0.00501
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0095",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 211,
+        "tokenCount": 836
+      },
+      "output": {
+        "title": "VOC Report on Sjankos Trade at Kalpettij and Pearl Banks Inspection, 1786",
+        "abstract": "This document discusses VOC trade regulations at Kalpettij, particularly concerning sjankos (a type of shell or commodity). A resolution from October 22 established pricing at 16 guilders 32 stuivers for quantities exceeding 20,000 pieces, previously paid at 15 guilders 12 stuivers. Rice prices were set at four ropijen per sack or eighty ropijen per last. The document also references an inspection of pearl banks (Taarel banken) along Ceylon's Arippo coast, conducted in August by commissioners including dessave De Bock and administrator de Lannoij. Burger Blinne's request regarding 1786 sjankos trade remained unanswered."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6584,
+        "inputTokens": 836,
+        "outputTokens": 211,
+        "cost": 0.005673
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0096",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 161,
+        "tokenCount": 687
+      },
+      "output": {
+        "title": "VOC Report on Pearl Oyster Bank Inspections at Tuticorin and Madura Coast",
+        "abstract": "This document reports on unsuccessful pearl oyster bank inspections conducted near Tuticorin, Kalpettij, and the Madura coast. Despite careful examination by the captain commandant of Kalpettij Kusen and merchant van Rantzouw with local guides, only very few and immature pearl oysters were found. The resolution of December 29 notes this disappointing outcome and commits to reporting to the High Authorities. Following the November 22 resolution, an additional inspection of pearl banks on the Madura coast was ordered at the insistence of Nabob Machmiet Alichan, with results pending."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5812,
+        "inputTokens": 687,
+        "outputTokens": 184,
+        "cost": 0.004821
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0098",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 193,
+        "tokenCount": 822
+      },
+      "output": {
+        "title": "VOC Purchase of Trade Goods and Rice from English Ship, 1700s",
+        "abstract": "This VOC administrative record details the purchase of trade goods and provisions throughout the year, with particular emphasis on an emergency acquisition of 6,000 sacks of Bengali rice from an English ship named 'Stasting' at six rupees per 150-pound sack due to severe shortages in warehouses. The document references multiple resolutions from January through December concerning procurement of equipment goods, provisions, Dutch rope, sailcloth, sail yarn, pitch, tar, and hemp for the Dutch squadron's urgent needs at Pale and other locations."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5516,
+        "inputTokens": 822,
+        "outputTokens": 155,
+        "cost": 0.004791
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0100",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 727,
+        "tokenCount": 2672
+      },
+      "output": {
+        "title": "VOC Spice Trade and Dutch Merchandise Account: Purchase and Sale Prices",
+        "abstract": "This VOC accounting document records the purchase (inkoop) and sale (verkoop) prices of spices and Dutch merchandise (Vaderlandsche Koopmanschappen), calculating profit margins. Key spices listed include cloves (Tarrioffel Nagulen), nutmeg (Foelie/Macis), mace (Nooten Musshaeten), and cinnamon (kanneel), totaling over 15,000 pounds. The document also inventories various Dutch trade goods including textiles (Laakenen), metals (copper, silver, tin), glassware, beer, tools, sailcloth (Zeijldoek), camphor (Lampher), and gold thread. Detailed financial calculations show purchase costs, selling prices, and profit percentages, demonstrating the VOC's systematic commercial accounting practices."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6065,
+        "inputTokens": 2672,
+        "outputTokens": 226,
+        "cost": 0.011406
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0102",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 1111,
+        "tokenCount": 3940
+      },
+      "output": {
+        "title": "VOC Inventory and Accounting Ledger: Trade Goods and Financial Calculations",
+        "abstract": "This VOC accounting page records an extensive inventory of trade goods with associated costs and profit calculations. Items include commodities destined for Coromandel (Kormandel) and Cochin (Koetssien), such as Surat textiles (Tarwa Suratse), spices (pepper, tamarind, mustard seed), medicinal goods (opium/amphioen, salpeter), metals (Japanese copper), foodstuffs (rice, sugar candy, coffee beans), and various materials for shipyards and workshops. The document shows detailed financial accounting with purchase prices (Inkoops) and sales profits (verkoops winst), totaling over 122,000 guilders. Origins mentioned include Surat, Coromandel, Ceylon (Ceilouse), Java (Iavase), and Cape (Kaebse)."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 7303,
+        "inputTokens": 3940,
+        "outputTokens": 234,
+        "cost": 0.01533
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0106",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 313,
+        "tokenCount": 1115
+      },
+      "output": {
+        "title": "VOC Spice Trade Pricing and Domain Revenue Report, 1784-1786",
+        "abstract": "This document reports on VOC administrative decisions regarding spice pricing and domain (domeinen) revenue in the mid-1780s. It references resolutions from July 1784 and June 1785 setting prices for nutmeg (noote mustaaten) at 100 Indian guilders and mace (foelie) at 150 stuivers. The report discusses accounting discrepancies in clove (nagelen) sales quantities and notes significant increase in domain revenue from ƒ283,801 (1784/5) to ƒ397,429 (1785/6). Due to a salt transport ban to the uplands, tax farms (pagten) at Putelang found no bidders and were temporarily collected monthly by the Company."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 7293,
+        "inputTokens": 1115,
+        "outputTokens": 211,
+        "cost": 0.00651
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0108",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 233,
+        "tokenCount": 884
+      },
+      "output": {
+        "title": "VOC Domain Auctions in Jaffna and Mannar, August-September 1790",
+        "abstract": "Records the public auction of VOC Company domains in Jaffna and Mannar held on August 26-27, including various tax farms (pachten). Notable transactions include the Ponnorijn to Pringalij domain for 585 rijksdaalders and cloth tax farms in Colombo, Galle, and Kalpitiya for 20,000 rijksdaalders. Documents preferential bidding procedures for certain bidders and approved tax reductions: 150 rijksdaalders for the Levai salt pans lessee due to salt transport restrictions, and 2,000 rijksdaalders for Jaffna lessees of inland cloth shops and passage rights."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6083,
+        "inputTokens": 884,
+        "outputTokens": 202,
+        "cost": 0.005682
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0117",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 552,
+        "tokenCount": 1619
+      },
+      "output": {
+        "title": "Gold Shipment and Pagoda Coin Production at Coromandel, 1784-1785",
+        "abstract": "VOC financial records documenting the Pagoda mint at Coromandel (Kolomst), which produced 101,759 pagodas from 1,413 marks of fine gold between September 1784 and August 1785. The document details a shipment of 25 bharen (bars) of gold from Europe destined for the Zeeland chamber, transported via the ship Zes Zuster Freres to Cape of Good Hope, then via the frigate De Waaksaamheid to Galle, and finally overland to Coromandel. Each gold bar is numbered and weighed at 18 kant with 5½ prijn fineness."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6836,
+        "inputTokens": 1619,
+        "outputTokens": 200,
+        "cost": 0.007857
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0118",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 1292,
+        "tokenCount": 3165
+      },
+      "output": {
+        "title": "VOC Gold Shipment Inventory from Batavia and Zeeland (18th Century)",
+        "abstract": "Detailed inventory of gold bars (bhaaren) transported to the Netherlands via VOC ships Triton from Batavia and Stavenisse from Zeeland. Records 82 gold bars and fragments with precise weights, assay values (18-21 karats), and identification numbers. Each entry documents weight measurements and quality assessments. The gold was packed in marked chests (kist) and systematically numbered for accounting purposes. Total recorded value of 1413 guilders, 4 stuivers, 8¾ penningen, representing significant precious metal transfers within the VOC trading network."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6247,
+        "inputTokens": 3165,
+        "outputTokens": 175,
+        "cost": 0.01212
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0119",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 655,
+        "tokenCount": 2097
+      },
+      "output": {
+        "title": "VOC Gold Coinage Production and Assay Records with Cost Accounting",
+        "abstract": "Detailed accounting records of gold coin (pagoda) minting operations, documenting three separate batches (vermunting) totaling over 101,000 pagodas. The document records the refining process using Japanese copper to achieve 18/24 carat purity, includes assay results conducted in the presence of the fiscal and council members, and provides comprehensive cost breakdowns for materials, labor (silversmiths, minters, writers, smelters), and supplies. Payments were transferred to the groote geld kassa (main treasury) under supervision of the Hoofadministrateur. Values calculated at 375 guilders per fine mark, with detailed weight measurements in marks, carats, and grains."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 7003,
+        "inputTokens": 2097,
+        "outputTokens": 197,
+        "cost": 0.009246
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0120",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 338,
+        "tokenCount": 1242
+      },
+      "output": {
+        "title": "VOC Coromandel Mint Operations and Gold Coinage Accounts, 1700s",
+        "abstract": "Financial records detailing five batches of gold coinage (vermunting) operations, with precise weights in marks, karats, and grains, totaling approximately 408,595 guilders in receipts. Documents the minting of 101,759 pagodas (Indian gold coins) valued at 422,300 guilders, yielding a profit of 13,705 guilders. References the Jaffnapatnam (Fanuiis) mint's suspension and planned relocation to Tuticorin. Also notes the melting down of worn silverware from the government's collection for recoinage, as per resolutions from April and November."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6442,
+        "inputTokens": 1242,
+        "outputTokens": 190,
+        "cost": 0.006576
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0130",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 209,
+        "tokenCount": 777
+      },
+      "output": {
+        "title": "Commission Report on Colombo Fortification Works, March 1786",
+        "abstract": "A VOC administrative report from 1786 describing the appointment of a commission to assess fortification works in Colombo, similar to work done in Galle (Pale). The commission, headed by Major Paravicini, experienced delays due to his travel to Trincomalee. The report discusses the incomplete status of surveying Colombo's defensive structures and needed improvements, with hopes to send a preliminary report via the ship Stavenisse, which was delayed due to squadron work in Galle Bay."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5967,
+        "inputTokens": 777,
+        "outputTokens": 149,
+        "cost": 0.004566
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0139",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 157,
+        "tokenCount": 711
+      },
+      "output": {
+        "title": "VOC Instructions on Fortification Works and Engineer Supervision",
+        "abstract": "This document contains VOC administrative instructions regarding fortification construction and oversight. It mandates continuous work on three defensive installations until they can withstand enemy attack, with priorities determined by local conditions. Lieutenant Lawe, serving as engineer, must annually swear an oath regarding his faithful conduct in managing coolies, servants, and craftsmen, as well as all matters under his engineering department. The text emphasizes strict punishment for any breach of trust, demonstrating VOC concern with both military preparedness and administrative accountability in colonial defenses."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5114,
+        "inputTokens": 711,
+        "outputTokens": 144,
+        "cost": 0.004293
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0140",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 222,
+        "tokenCount": 881
+      },
+      "output": {
+        "title": "Request for Salary Increase for Lieutenant Lowe and VOC Construction Costs",
+        "abstract": "A petition to VOC authorities requesting an annual allowance of 1800 ropijen (150 ropijen monthly) for Lieutenant Lowe, arguing that adequate compensation enables servants to fulfill their duties without resorting to illicit means. The document includes detailed construction and repair costs totaling ƒ64,822 across VOC establishments including Colombo (ƒ41,874), Jaffenapatnam (ƒ2,160), Mannaar (ƒ909), Gale (ƒ11,558), and Mature (ƒ395). The text emphasizes that modest legitimate income prevents servants from breaking their oaths through unauthorized activities."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5731,
+        "inputTokens": 881,
+        "outputTokens": 194,
+        "cost": 0.005553
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0143",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 216,
+        "tokenCount": 943
+      },
+      "output": {
+        "title": "VOC Ceylon Administrative Reports: Apothecary, Warehouse Audits 1784",
+        "abstract": "This document records routine VOC administrative matters in Ceylon (Sri Lanka) from 1784, including quarterly reports from the apothecary regarding prepared medications, warehouse confrontations (audits) at Colombo and Jaffnapatnam conducted in August 1784, and financial settlements for iron works at the ammunition house. The resolutions reference multiple dates throughout 1784 (March, April, June, October, December), documenting the systematic verification of workshop accounts, iron magazine inventories, and disposal of defective goods according to VOC administrative orders."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5580,
+        "inputTokens": 943,
+        "outputTokens": 161,
+        "cost": 0.005244
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0144",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 222,
+        "tokenCount": 883
+      },
+      "output": {
+        "title": "Dismissal and Audit of VOC Agent Zeeke at Tranquebar, 1784-1785",
+        "abstract": "This document concerns the dismissal and financial accounting of VOC agent Zeeke at Tranquebar (Danish colonial settlement on the Coromandel Coast). Zeeke was dismissed in January 1785 and summoned to Colombo for final accounting of his administration and to resolve financial discrepancies between his accounts and those of Captain-Lieutenant De Bellon, who commanded the sepoys on the Coromandel Coast. The document references resolutions from February 1 and April 4, 1785, and includes findings from warehouse inspections at Gale dated August 1784."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5269,
+        "inputTokens": 883,
+        "outputTokens": 178,
+        "cost": 0.005319
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0156",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 331,
+        "tokenCount": 1396
+      },
+      "output": {
+        "title": "VOC General Accounts 1784/5: Costs, Profits and Inventory Comparison",
+        "abstract": "Financial overview of VOC operations for the book year 1784/5, comparing general costs and profits against budgeted estimates. Documents show profits of ƒ643,770 in Dutch currency versus budgeted ƒ963,600, while actual costs reached ƒ1,503,564 against estimated ƒ902,500. Includes audit reports of payroll books (soldij boeken) from Colombo, Jaffanapatnam, and Galle, plus inventory assessments of cash, merchandise, provisions, equipment and ammunition totaling ƒ6,126,694 as of August 1785. References administrative order of July 27, 1780 regarding financial reporting procedures."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6242,
+        "inputTokens": 1396,
+        "outputTokens": 204,
+        "cost": 0.007248
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0157",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 127,
+        "tokenCount": 658
+      },
+      "output": {
+        "title": "VOC Ceylon: Payment Specifications and Request for Supplies (1700s)",
+        "abstract": "Administrative correspondence from VOC Ceylon regarding financial accounts and supply requisitions. Documents payments to Coromandel servants recorded in Ceylon salary books, and provisional accounting for bookkeepers and sick visitors transferred from Nagapatnam to Colombo. References resolutions from February, March, May, and December concerning payment specifications and minor administrative matters. Includes a formal request (eijsch) for necessary supplies submitted to higher authorities."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4482,
+        "inputTokens": 658,
+        "outputTokens": 129,
+        "cost": 0.003909
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0158",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 320,
+        "tokenCount": 1404
+      },
+      "output": {
+        "title": "VOC Cargo Inventory List: Spices, Metals, Porcelain and Provisions (1786)",
+        "abstract": "A detailed VOC cargo manifest dated January 1786 listing commodities for trade and company use. Major items include 300,000 lb sugar (poeder suijker), 100,000 lb Japanese copper (Japans staaffkoper), significant quantities of spices (foelie/nutmeg, nooten/mace, nagelen/cloves), tin, pewter, Chinese porcelain (schotels, borden, spoekkommen), Nanking linen, rice, wax candles, arrack, and military supplies (vuursteenen/flints, tromsnaeren/drumstrings) for the armory (wapenkamer). The inventory reflects typical VOC trade operations combining Asian luxury goods with provisions for colonial administration."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 7257,
+        "inputTokens": 1404,
+        "outputTokens": 217,
+        "cost": 0.007467
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0159",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 501,
+        "tokenCount": 2351
+      },
+      "output": {
+        "title": "VOC Supply Requisition List for Workshops and Medicine Store",
+        "abstract": "This VOC document details supply requisitions for various workshops and facilities, including timber yards (Timmerwerven), medicine store (Medicijn winkel), smithy and cooper's workshop (Smits en Kuijpers Winkel), and shipyard (Scheepstimmerwerff). Medical supplies include radix China, camphor, musk, and various medicinal oils. Construction materials list copper, borax, barrel staves, and timber of specified dimensions (voet and duim measurements). The document includes quantities in Dutch pounds (lb) and pieces (p:s), with annotations suggesting multi-year supply planning."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6270,
+        "inputTokens": 2351,
+        "outputTokens": 172,
+        "cost": 0.009633
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0160",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 318,
+        "tokenCount": 1249
+      },
+      "output": {
+        "title": "VOC Ceylon Supply Inventory and Financial Accounts, 1782",
+        "abstract": "A detailed inventory document from VOC Ceylon (Sri Lanka) dated 1782, listing supply requirements and financial accounts for various residencies including Colombo, Jaffna, Mannar, Galle, Mature, Tutucorijn, Trincomalee, Batticaloa, and Kalpettij. The document specifies quantities of timber (Tinkanse planks of various sizes) allocated to shipyards (scheepstimmerwerff), house carpentry workshops (huistimmerwinkel), and gun carriage makers (affuijtmakers). Financial accounts are recorded in guilders, with provisions for rice (rijst) and arrack (nelie) supplies across different residencies, indicating operational budgets and resource management for VOC establishments in Ceylon."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6653,
+        "inputTokens": 1249,
+        "outputTokens": 209,
+        "cost": 0.006882
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0161",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 204,
+        "tokenCount": 905
+      },
+      "output": {
+        "title": "Complaint of the Council of Justice against Orphan Masters, 1700s",
+        "abstract": "This VOC document addresses a jurisdictional dispute between the Council of Justice (Raad van Justitie) and the orphan masters (weesmeesteren) of the castle. The Council complained that orphan masters failed to comply with a judicial ruling and instead appealed directly to higher authorities. The resolution of September 3rd clarified that the orphan chamber (weeskamer) and other administrative colleges must submit to the Council's rulings and can be subject to enforcement measures (contrainte) without exception. The document illustrates colonial administrative hierarchy and legal procedures."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5757,
+        "inputTokens": 905,
+        "outputTokens": 161,
+        "cost": 0.00513
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0167",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 185,
+        "tokenCount": 730
+      },
+      "output": {
+        "title": "VOC Report on Seminary Education and Teacher Quality Issues (1700s)",
+        "abstract": "This document discusses concerns about a VOC-established educational institution (seminary/Seminarium) in the Dutch East Indies. Officials report that despite significant Company expenditure, the institution lacks qualified teachers. Recent graduates sent to the Netherlands had to return to lower classes, indicating inadequate preparation. The text references resolutions from April 15 and September 6, and suggests that the seminary can only effectively produce catechism masters and indigenous schoolmasters if improvements are made according to proposals from the school board (scholarchen)."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6115,
+        "inputTokens": 730,
+        "outputTokens": 145,
+        "cost": 0.004365
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0169",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 223,
+        "tokenCount": 863
+      },
+      "output": {
+        "title": "Jaffna Orphan Masters' Proposal for Widow and Orphan Support, 1784",
+        "abstract": "The orphan masters (weesmeesteren) of Jaffna submitted a proposal to support European widows and orphans who were inadequately maintained by the Deacons or not at all. They requested permission to use surplus interest from the orphan chamber's funds, which amounted to 1117 rijksdaalders and 3 stuivers by August 1784. The VOC authorities approved this proposal on May 7, commending the orphan masters for their paternal care while ensuring the principal capital remained intact for compensating potential losses to pupil funds."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5526,
+        "inputTokens": 863,
+        "outputTokens": 171,
+        "cost": 0.005154
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0170",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 175,
+        "tokenCount": 845
+      },
+      "output": {
+        "title": "Financial Report on Diaconate Capital and Leper House Fund, Ceylon 1700s",
+        "abstract": "This VOC administrative document details the financial status of charitable institutions in Dutch Ceylon. The Diaconate (Diaconij) capital totaled ƒ126,161.14.6¼, distributed across Colombo (ƒ36,882), Jaffna and Mannar (ƒ58,185), Galle and Matara (ƒ22,486), and Kalpitiya (ƒ8,612). The report also addresses repairs to the deteriorating leper house (Leproosen huijs), authorized by resolution of September 13, costing 1,709 rixdollars. The Leper House Fund stood at ƒ31,735 by late August. Financial statements from outlying offices are referenced as appendices."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6551,
+        "inputTokens": 845,
+        "outputTokens": 224,
+        "cost": 0.005895
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0192",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 244,
+        "tokenCount": 944
+      },
+      "output": {
+        "title": "VOC Report on Nabab's Commissioners and Pearl Fishery Dispute at Tuticorin",
+        "abstract": "This VOC document discusses the arrival of commissioners sent by the Nabab to attend the inspection of the Tuticorin pearl banks. It references correspondence between the Nabab, the VOC Governor, and officials at Tuticorin regarding disputes over pearl fishery rights. The document also mentions an English doctor named Dot who arrived in Tuticorin with instructions from the Nabab to negotiate with the Company about the pearl fishery conflicts. Multiple resolutions from September, November, and December are cited as supporting documentation."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4606,
+        "inputTokens": 944,
+        "outputTokens": 159,
+        "cost": 0.005217
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0202",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 200,
+        "tokenCount": 787
+      },
+      "output": {
+        "title": "VOC Regulation on Honorary Titles of Don and Modliaar in Jaffna, 1760s",
+        "abstract": "This document outlines VOC regulations regarding the granting and renewal of honorary titles 'Don' and 'Modliaar' in Jaffna. Individuals who received these titles from successive commanders since 1760 must renew their certificates within six weeks, paying 12 rijksdaalders for the seal plus half a rijksdaalder in secretarial fees. New applicants pay similar fees, with total costs not exceeding 25 rijksdaalders. The regulation emphasizes these titles cause no inconvenience to Company service and participation is voluntary."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6047,
+        "inputTokens": 787,
+        "outputTokens": 173,
+        "cost": 0.004956
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0210",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 150,
+        "tokenCount": 704
+      },
+      "output": {
+        "title": "Appointment of Thomas Nagel as Administrator of Vanni Lands, Jaffnapatam",
+        "abstract": "This VOC document details the appointment of artillery lieutenant and sworn land surveyor Thomas Nagel to administer newly acquired territories in the Vanni region near Jaffnapatam (Jaffna), Ceylon. Nagel is credited with bringing these lands under direct Company control, suppressing a dangerous rebellion, and possessing sixteen years of experience as a land surveyor in Jaffnapatam. The text emphasizes his extensive local knowledge and suitability for governing the Vanni lands, while noting the necessity of granting him appropriate authority given the character of the Ceylonese population."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5724,
+        "inputTokens": 704,
+        "outputTokens": 174,
+        "cost": 0.004722
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0218",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 111,
+        "tokenCount": 564
+      },
+      "output": {
+        "title": "VOC Request for Supplies from French Governor Coutancheau at Pondicherry",
+        "abstract": "This document records negotiations between VOC officials and French provisional Governor Coutancheau at Pondicherry regarding the supply of needed goods, particularly ammunition. The French governor agreed to provide the required items but could not establish prices immediately. Instead, he proposed issuing goods against receipt (quitantie), leaving the final accounting to be settled between the respective governments in Europe. The VOC accepted this arrangement and received ammunition supplies from the French government on receipt."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4360,
+        "inputTokens": 564,
+        "outputTokens": 139,
+        "cost": 0.003777
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0219",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 135,
+        "tokenCount": 694
+      },
+      "output": {
+        "title": "Discharge of Artillery Captain-Lieutenant Heupner as Weapons Chamber Overseer",
+        "abstract": "This VOC administrative document records the discharge of Captain-Lieutenant Klaas Ditloff Heupner from his position as overseer of the Company's weapons chamber (wapenkamer) due to his advanced age and increasing physical ailments. The document also references correspondence with the Gentlemen XVII regarding received ammunition goods and settlement accounts with the French Government. Heupner was allowed to continue serving as captain-lieutenant of artillery despite being relieved of his weapons chamber duties."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 4377,
+        "inputTokens": 694,
+        "outputTokens": 143,
+        "cost": 0.004227
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0246",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 167,
+        "tokenCount": 707
+      },
+      "output": {
+        "title": "VOC Governor's Concerns About Authority and Arrest of Colonial Officer",
+        "abstract": "This document discusses tensions between a VOC Governor and colonial officials, warning about the precarious position of certain officials who could be arrested at any moment by an arbitrary and embittered chief. It references the arrest of Colonel D'Hugonet amid growing unrest due to conflicts between the Republic and the Emperor. The text includes a paragraph (§307) describing evidence of the arrested person's intention to oppose the Government, with details sent to the Zeeland Chamber directors and the fiscal's report. The correspondence emphasizes urgent action and warns that delay could lead to serious complications."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5370,
+        "inputTokens": 707,
+        "outputTokens": 156,
+        "cost": 0.004461
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0251",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 205,
+        "tokenCount": 747
+      },
+      "output": {
+        "title": "Judicial Proceedings Against Luxembourg Regiment and Command Transfer, Ceylon",
+        "abstract": "This document discusses judicial proceedings initiated against members of the Luxembourg Regiment stationed in Ceylon following violent incidents. The fiscal has been ordered to prosecute the accused according to proper procedure. The text highlights ongoing difficulties with the Luxembourg Regiment's conduct and emphasizes the dangerous situation of having a large military force that lacks proper subordination to VOC authority. A resolution from September 13 addresses command structure changes. The matter will be referred to the Heeren Bewindhebbers of the Zeeland Chamber for final decision."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5134,
+        "inputTokens": 747,
+        "outputTokens": 141,
+        "cost": 0.004356
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0259",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 220,
+        "tokenCount": 792
+      },
+      "output": {
+        "title": "VOC Payment Regulations for Luxembourg Regiment Soldiers, 18th Century",
+        "abstract": "This document details financial arrangements between the VOC and the Regiment of Luxembourg following capitulation terms. Key provisions include: a surplus payment of five stuivers per guilder to be separately announced via ordinance; equal treatment of Luxembourg regiment soldiers with other Company troops regarding clothing supplies from Company warehouses (including nankings linen) at standard prices; and provision of weapons (snaphaanen) to recruits arriving with Colonel D'Hilgonet, with costs charged to the regiment's separate account. Annual accounts were to be submitted to the Zeeland Chamber directors, as the Prince of Luxembourg was contractually obligated to bear these expenses."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 6460,
+        "inputTokens": 792,
+        "outputTokens": 171,
+        "cost": 0.004941
+      }
+    },
+    {
+      "pageId": "NL-HaNA_1.04.02_10000_0261",
+      "experiment": "sonnet-labeled",
+      "input": {
+        "format": "labeled",
+        "wordCount": 204,
+        "tokenCount": 869
+      },
+      "output": {
+        "title": "VOC Military Personnel Roster: Soldiers, Musketeers, and Sailors",
+        "abstract": "A detailed muster roll listing VOC military personnel, including 2 soldiers (Jacobus Kroese from Cape, Nicolaas Smit from Colombo), 6 musketeers, 1 drummer (Johan Christiaan Timmerman), and 22 sailors from diverse origins including Malakka, Nagapatnam, and various European cities. The document also records a Jaffna detachment stationed at Trincomalee with 13 individuals, including 12 soldiers from locations such as Leuven, Riga, Brussels, Antwerp, Milan, and Tournai. This roster reflects the multinational composition of VOC military forces in Asian colonial outposts."
+      },
+      "parseSuccess": true,
+      "metrics": {
+        "latencyMs": 5621,
+        "inputTokens": 869,
+        "outputTokens": 203,
+        "cost": 0.005652
+      }
+    }
+  ],
+  "summary": {
+    "totalPages": 49,
+    "successCount": 49,
+    "avgLatencyMs": 5817,
+    "totalCost": 0.28878599999999993,
+    "avgTitleLength": 68,
+    "avgAbstractWords": 81
+  }
+}
