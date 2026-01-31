@@ -189,6 +189,29 @@ html, body {
   color: white;
 }
 
+/* Action buttons (download, copy citation) */
+.header .action-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.header .action-btn {
+  color: var(--color-text-primary);
+  background: var(--color-background-tertiary);
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.header .action-btn:hover {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
 /* Main content area - split view */
 .content {
   flex: 1;
@@ -265,6 +288,11 @@ html, body {
   height: 20px;
   background: rgba(255, 255, 255, 0.3);
   margin: 0 0.25rem;
+}
+
+.image-controls button.active {
+  background: var(--color-accent-primary);
+  color: white;
 }
 
 /* Splitter/divider */
@@ -521,4 +549,16 @@ html, body {
 /* Selection highlight in transcription */
 .transcription ::selection {
   background: var(--color-highlight-bg);
+}
+
+/* Navigator mini-map styling */
+.navigator {
+  border: 2px solid var(--color-border-primary) !important;
+  border-radius: var(--border-radius-sm) !important;
+  background: var(--color-background-secondary) !important;
+}
+
+.navigator .displayregion {
+  border: 2px solid var(--color-accent-primary) !important;
+  background: rgba(15, 52, 96, 0.2) !important;
 }

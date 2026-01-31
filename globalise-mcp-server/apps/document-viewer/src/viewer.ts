@@ -62,6 +62,11 @@ let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
 let currentRotation = 0; // Track rotation in degrees
 
+// Image filter state
+let filterBrightness = 100; // percentage, 100 = default
+let filterContrast = 100; // percentage, 100 = default
+let filterInvert = false;
+
 // Initialize the MCP App with capabilities
 const app = new App(
   { name: 'GLOBALISE Document Viewer', version: '1.0.0' },
@@ -296,12 +301,20 @@ function renderDocument(doc: DocumentData): void {
     .filter(Boolean)
     .join('');
 
+  // Build action buttons
+  const actionButtons = `
+    <button id="download-transcript-btn" class="action-btn" title="Download transcription as text file">↓ Text</button>
+    <button id="download-scan-btn" class="action-btn" title="Download scan image">↓ Scan</button>
+    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation">📋 Cite</button>
+  `;
+
   appEl.innerHTML = `
     <div class="main${isFullscreen ? ' fullscreen' : ''}">
       <header class="header">
         <div class="header-title-row">
           <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
           <div class="header-right">
+            <div class="action-buttons">${actionButtons}</div>
             <div class="external-links">${externalLinks}</div>
             ${doc.metadata.license ? `<span class="license">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
           </div>
@@ -320,10 +333,19 @@ function renderDocument(doc: DocumentData): void {
           <div class="image-controls">
             <button id="zoom-in" title="Zoom In (+)">+</button>
             <button id="zoom-out" title="Zoom Out (−)">−</button>
-            <button id="reset-view" title="Reset View (0)">Reset</button>
+            <button id="reset-view" title="Reset View (H)">Reset</button>
             <span class="control-separator"></span>
             <button id="rotate-left" title="Rotate Left (R)">↺</button>
             <button id="rotate-right" title="Rotate Right (Shift+R)">↻</button>
+            <span class="control-separator"></span>
+            <button id="brightness-up" title="Increase Brightness">☀+</button>
+            <button id="brightness-down" title="Decrease Brightness">☀−</button>
+            <button id="contrast-up" title="Increase Contrast">◐+</button>
+            <button id="contrast-down" title="Decrease Contrast">◐−</button>
+            <button id="invert-toggle" title="Invert Colors (I)">◑</button>
+            <button id="filter-reset" title="Reset Filters">⟲</button>
+            <span class="control-separator"></span>
+            <button id="fullscreen-toggle" title="Full Screen (F)">⛶</button>
           </div>
         </div>
 
@@ -391,6 +413,11 @@ function initializeImageViewer(imageUrl: string): void {
     showHomeControl: false,
     showFullPageControl: false,
     showRotationControl: false,
+    // Navigator mini-map for orientation when zoomed in
+    showNavigator: true,
+    navigatorPosition: 'TOP_RIGHT',
+    navigatorSizeRatio: 0.15,
+    navigatorAutoFade: true,
     animationTime: 0.3,
     blendTime: 0.1,
     constrainDuringPan: true,
@@ -467,6 +494,147 @@ function resetView(): void {
 }
 
 /**
+ * Apply CSS filters to the OpenSeadragon viewer
+ */
+function applyFilters(): void {
+  const canvas = document.querySelector('#openseadragon-viewer .openseadragon-canvas') as HTMLElement;
+  if (!canvas) return;
+
+  const filters: string[] = [];
+  if (filterBrightness !== 100) filters.push(`brightness(${filterBrightness}%)`);
+  if (filterContrast !== 100) filters.push(`contrast(${filterContrast}%)`);
+  if (filterInvert) filters.push('invert(1)');
+
+  canvas.style.filter = filters.length > 0 ? filters.join(' ') : 'none';
+}
+
+/**
+ * Reset all image filters to default
+ */
+function resetFilters(): void {
+  filterBrightness = 100;
+  filterContrast = 100;
+  filterInvert = false;
+  applyFilters();
+  app.sendLog({ level: 'info', data: 'Filters reset to default' });
+}
+
+/**
+ * Toggle fullscreen mode
+ */
+function toggleFullscreen(): void {
+  if (!viewer) return;
+  viewer.setFullScreen(!viewer.isFullPage());
+}
+
+/**
+ * Download the transcription as a .txt file
+ */
+function downloadTranscription(doc: DocumentData): void {
+  const text = doc.transcription.join('\n');
+  const filename = `${doc.id.replace('urn:globalise:', '')}_transcription.txt`;
+
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  app.sendLog({ level: 'info', data: `Downloaded transcription: ${filename}` });
+}
+
+/**
+ * Download the high-resolution scan image
+ * Uses IIIF Image API to request full resolution
+ */
+function downloadScan(doc: DocumentData): void {
+  // The iiifImageUrl is already a direct image URL
+  // For IIIF, we can request max resolution with /full/max/0/default.jpg
+  const imageUrl = doc.iiifImageUrl;
+  const filename = `${doc.id.replace('urn:globalise:', '')}_scan.jpg`;
+
+  // Open in new tab (browser handles download)
+  // Using app.openLink for sandboxed iframe compatibility
+  app.openLink({ url: imageUrl });
+  app.sendLog({ level: 'info', data: `Opening scan: ${filename}` });
+}
+
+/**
+ * Copy formatted citation to clipboard
+ */
+async function copyCitation(doc: DocumentData): Promise<void> {
+  const citation = [
+    `NL-HaNA, VOC, 1.04.02, inv. ${doc.metadata.inventory}, scan ${doc.metadata.scan}, Nationaal Archief.`,
+    doc.urls.viewer,
+  ].join('\n');
+
+  try {
+    await navigator.clipboard.writeText(citation);
+    app.sendLog({ level: 'info', data: 'Citation copied to clipboard' });
+
+    // Visual feedback - temporarily change button text
+    const btn = document.getElementById('copy-citation-btn');
+    if (btn) {
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = originalText; }, 1500);
+    }
+  } catch (err) {
+    app.sendLog({ level: 'error', data: `Failed to copy citation: ${err}` });
+  }
+}
+
+/**
+ * Handle keyboard shortcuts for common actions
+ * Shortcuts: H=Home, R=Rotate, Shift+R=Rotate Right, I=Invert, F=Fullscreen
+ */
+function handleKeyboardShortcut(e: KeyboardEvent): void {
+  // Don't trigger shortcuts when typing in input fields
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    return;
+  }
+
+  // Check if focus is in transcription (allow text selection)
+  const transcription = document.getElementById('transcription');
+  if (transcription?.contains(e.target as Node)) {
+    // Only intercept specific keys, let others pass through for text selection
+    if (!['h', 'r', 'i', 'f'].includes(e.key.toLowerCase())) {
+      return;
+    }
+  }
+
+  switch (e.key.toLowerCase()) {
+    case 'h':
+      e.preventDefault();
+      resetView();
+      break;
+    case 'r':
+      e.preventDefault();
+      if (e.shiftKey) {
+        rotateImage(90);
+      } else {
+        rotateImage(-90);
+      }
+      break;
+    case 'i':
+      e.preventDefault();
+      filterInvert = !filterInvert;
+      applyFilters();
+      document.getElementById('invert-toggle')?.classList.toggle('active', filterInvert);
+      break;
+    case 'f':
+      e.preventDefault();
+      toggleFullscreen();
+      break;
+  }
+}
+
+/**
  * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
@@ -524,6 +692,59 @@ function attachEventListeners(doc: DocumentData): void {
   document.getElementById('rotate-right')?.addEventListener('click', () => {
     rotateImage(90);
   });
+
+  // Filter controls
+  document.getElementById('brightness-up')?.addEventListener('click', () => {
+    filterBrightness = Math.min(200, filterBrightness + 10);
+    applyFilters();
+  });
+
+  document.getElementById('brightness-down')?.addEventListener('click', () => {
+    filterBrightness = Math.max(50, filterBrightness - 10);
+    applyFilters();
+  });
+
+  document.getElementById('contrast-up')?.addEventListener('click', () => {
+    filterContrast = Math.min(200, filterContrast + 10);
+    applyFilters();
+  });
+
+  document.getElementById('contrast-down')?.addEventListener('click', () => {
+    filterContrast = Math.max(50, filterContrast - 10);
+    applyFilters();
+  });
+
+  document.getElementById('invert-toggle')?.addEventListener('click', () => {
+    filterInvert = !filterInvert;
+    applyFilters();
+    document.getElementById('invert-toggle')?.classList.toggle('active', filterInvert);
+  });
+
+  document.getElementById('filter-reset')?.addEventListener('click', () => {
+    resetFilters();
+    document.getElementById('invert-toggle')?.classList.remove('active');
+  });
+
+  // Fullscreen toggle
+  document.getElementById('fullscreen-toggle')?.addEventListener('click', () => {
+    toggleFullscreen();
+  });
+
+  // Export buttons
+  document.getElementById('download-transcript-btn')?.addEventListener('click', () => {
+    downloadTranscription(doc);
+  });
+
+  document.getElementById('download-scan-btn')?.addEventListener('click', () => {
+    downloadScan(doc);
+  });
+
+  document.getElementById('copy-citation-btn')?.addEventListener('click', () => {
+    copyCitation(doc);
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboardShortcut);
 
   // Splitter drag functionality
   const splitter = document.querySelector('.splitter');
