@@ -62,6 +62,19 @@ let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
 let currentRotation = 0; // Track rotation in degrees
 
+// Image filter state
+let filterInvert = false;
+
+// Environment detection - fullscreen doesn't work in Claude Code's iframe
+// Use try-catch to handle cross-origin security errors
+let isInIframe = false;
+try {
+  isInIframe = window.self !== window.top;
+} catch {
+  // Cross-origin iframe access denied - assume we're in an iframe
+  isInIframe = true;
+}
+
 // Initialize the MCP App with capabilities
 const app = new App(
   { name: 'GLOBALISE Document Viewer', version: '1.0.0' },
@@ -224,27 +237,28 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
   const rows: string[] = [];
 
   // Row 1: Settlement, Year range, Location (+ chamber for GM, HTR for GM)
+  // Uses text labels instead of emojis for professional appearance
   const row1Parts: string[] = [];
   if (ctx.settlements && ctx.settlements.length > 0) {
     const settlementText = ctx.settlements.join(', ');
-    row1Parts.push(`<span title="Settlement">📍 ${escapeHtml(settlementText)}</span>`);
+    row1Parts.push(`<span title="Settlement"><span class="icon-emoji">📍</span><span class="icon-text">LOC</span> ${escapeHtml(settlementText)}</span>`);
   }
   if (ctx.yearRange) {
     const yearText = ctx.yearRange.from === ctx.yearRange.to
       ? `${ctx.yearRange.from}`
       : `${ctx.yearRange.from}–${ctx.yearRange.to}`;
-    row1Parts.push(`<span title="Date range">📅 ${yearText}</span>`);
+    row1Parts.push(`<span title="Date range"><span class="icon-emoji">📅</span><span class="icon-text">DATE</span> ${yearText}</span>`);
   }
   // Location and geographic coverage on same row
   if (ctx.locationTanap) {
-    row1Parts.push(`<span title="Location (TANAP)">📌 ${escapeHtml(ctx.locationTanap)}</span>`);
+    row1Parts.push(`<span title="Location (TANAP)"><span class="icon-emoji">📌</span><span class="icon-text">TANAP</span> ${escapeHtml(ctx.locationTanap)}</span>`);
   }
   if (ctx.geographicalCoverage && ctx.geographicalCoverage !== ctx.settlements?.[0]) {
     // Only show if different from settlement
-    row1Parts.push(`<span title="Geographic coverage">🌍 ${escapeHtml(ctx.geographicalCoverage)}</span>`);
+    row1Parts.push(`<span title="Geographic coverage"><span class="icon-emoji">🌍</span><span class="icon-text">ROUTE</span> ${escapeHtml(ctx.geographicalCoverage)}</span>`);
   }
   if (ctx.chamber) {
-    row1Parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
+    row1Parts.push(`<span title="VOC Chamber"><span class="icon-emoji">🏛️</span><span class="icon-text">CHAMBER</span> ${escapeHtml(ctx.chamber)}</span>`);
   }
   if (ctx.htrAvailable !== undefined) {
     const htrText = ctx.htrAvailable ? 'HTR available' : 'No HTR';
@@ -274,10 +288,13 @@ function renderDocument(doc: DocumentData): void {
   const appEl = document.getElementById('app');
   if (!appEl) return;
 
-  // Build language badges
+  // Build language badges with CSS-based comma separation
   const languageBadges = doc.metadata.languages
-    .map((l) => `<span class="language-badge" title="${l.code}">${l.label}</span>`)
-    .join('');
+    .map((l, i) => {
+      const isLast = i === doc.metadata.languages.length - 1;
+      return `<span class="language-badge" title="${l.code}">${l.label.trim()}${isLast ? '' : ','}</span>`;
+    })
+    .join(' ');
 
   // Build archival context section
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
@@ -292,12 +309,18 @@ function renderDocument(doc: DocumentData): void {
     .filter(Boolean)
     .join('');
 
+  // Build action buttons
+  const actionButtons = `
+    <button id="copy-citation-btn" class="action-btn" title="Copy formatted citation to clipboard or conversation">Cite</button>
+  `;
+
   appEl.innerHTML = `
     <div class="main${isFullscreen ? ' fullscreen' : ''}">
       <header class="header">
         <div class="header-title-row">
           <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
           <div class="header-right">
+            <div class="action-buttons">${actionButtons}</div>
             <div class="external-links">${externalLinks}</div>
             ${doc.metadata.license ? `<span class="license">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
           </div>
@@ -316,10 +339,14 @@ function renderDocument(doc: DocumentData): void {
           <div class="image-controls">
             <button id="zoom-in" title="Zoom In (+)">+</button>
             <button id="zoom-out" title="Zoom Out (−)">−</button>
-            <button id="reset-view" title="Reset View (0)">Reset</button>
+            <button id="reset-view" title="Reset View (H)">Reset</button>
             <span class="control-separator"></span>
             <button id="rotate-left" title="Rotate Left (R)">↺</button>
             <button id="rotate-right" title="Rotate Right (Shift+R)">↻</button>
+            <span class="control-separator"></span>
+            <button id="invert-toggle" title="Invert Colors (I)">◑</button>${!isInIframe ? `
+            <span class="control-separator"></span>
+            <button id="fullscreen-toggle" title="Full Screen (F)">⛶</button>` : ''}
           </div>
         </div>
 
@@ -387,6 +414,11 @@ function initializeImageViewer(imageUrl: string): void {
     showHomeControl: false,
     showFullPageControl: false,
     showRotationControl: false,
+    // Navigator mini-map for orientation when zoomed in
+    showNavigator: true,
+    navigatorPosition: 'TOP_RIGHT',
+    navigatorSizeRatio: 0.15,
+    navigatorAutoFade: true,
     animationTime: 0.3,
     blendTime: 0.1,
     constrainDuringPan: true,
@@ -463,6 +495,117 @@ function resetView(): void {
 }
 
 /**
+ * Apply CSS filters to the OpenSeadragon viewer
+ */
+function applyFilters(): void {
+  const canvas = document.querySelector('#openseadragon-viewer .openseadragon-canvas') as HTMLElement;
+  if (!canvas) return;
+
+  canvas.style.filter = filterInvert ? 'invert(1)' : 'none';
+}
+
+/**
+ * Toggle fullscreen mode
+ */
+function toggleFullscreen(): void {
+  if (!viewer) return;
+  viewer.setFullScreen(!viewer.isFullPage());
+}
+
+/**
+ * Copy formatted citation - tries clipboard first, falls back to sending to conversation
+ */
+async function copyCitation(doc: DocumentData): Promise<void> {
+  const citation = [
+    `NL-HaNA, VOC, 1.04.02, inv. ${doc.metadata.inventory}, scan ${doc.metadata.scan}, Nationaal Archief.`,
+    doc.urls.viewer,
+  ].join('\n');
+
+  // Try clipboard first
+  try {
+    await navigator.clipboard.writeText(citation);
+    app.sendLog({ level: 'info', data: 'Citation copied to clipboard' });
+    showButtonFeedback('copy-citation-btn', 'Copied!');
+    return;
+  } catch {
+    // Clipboard failed (sandboxed iframe), send to conversation instead
+    app.sendLog({ level: 'info', data: 'Clipboard unavailable, sending to conversation' });
+  }
+
+  // Fallback: send citation to conversation
+  try {
+    await app.sendMessage({
+      role: 'user',
+      content: [{ type: 'text', text: `**Citation:**\n${citation}` }],
+    });
+    showButtonFeedback('copy-citation-btn', 'Sent!');
+  } catch (err) {
+    app.sendLog({ level: 'error', data: `sendMessage failed: ${err}` });
+    showButtonFeedback('copy-citation-btn', 'Failed');
+  }
+}
+
+/**
+ * Show temporary feedback on a button
+ */
+function showButtonFeedback(buttonId: string, message: string): void {
+  const btn = document.getElementById(buttonId);
+  if (btn) {
+    const originalText = btn.textContent;
+    btn.textContent = message;
+    setTimeout(() => { btn.textContent = originalText; }, 1500);
+  }
+}
+
+/**
+ * Handle keyboard shortcuts for common actions
+ * Shortcuts: H=Home, R=Rotate, Shift+R=Rotate Right, I=Invert, F=Fullscreen (browser only)
+ */
+function handleKeyboardShortcut(e: KeyboardEvent): void {
+  // Don't trigger shortcuts when typing in input fields
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    return;
+  }
+
+  // Check if focus is in transcription (allow text selection)
+  const transcription = document.getElementById('transcription');
+  const interceptKeys = isInIframe ? ['h', 'r', 'i'] : ['h', 'r', 'i', 'f'];
+  if (transcription?.contains(e.target as Node)) {
+    // Only intercept specific keys, let others pass through for text selection
+    if (!interceptKeys.includes(e.key.toLowerCase())) {
+      return;
+    }
+  }
+
+  switch (e.key.toLowerCase()) {
+    case 'h':
+      e.preventDefault();
+      resetView();
+      break;
+    case 'r':
+      e.preventDefault();
+      if (e.shiftKey) {
+        rotateImage(90);
+      } else {
+        rotateImage(-90);
+      }
+      break;
+    case 'i':
+      e.preventDefault();
+      filterInvert = !filterInvert;
+      applyFilters();
+      document.getElementById('invert-toggle')?.classList.toggle('active', filterInvert);
+      break;
+    case 'f':
+      if (!isInIframe) {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+      break;
+  }
+}
+
+/**
  * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
@@ -520,6 +663,26 @@ function attachEventListeners(doc: DocumentData): void {
   document.getElementById('rotate-right')?.addEventListener('click', () => {
     rotateImage(90);
   });
+
+  // Invert toggle
+  document.getElementById('invert-toggle')?.addEventListener('click', () => {
+    filterInvert = !filterInvert;
+    applyFilters();
+    document.getElementById('invert-toggle')?.classList.toggle('active', filterInvert);
+  });
+
+  // Fullscreen toggle
+  document.getElementById('fullscreen-toggle')?.addEventListener('click', () => {
+    toggleFullscreen();
+  });
+
+  // Citation button
+  document.getElementById('copy-citation-btn')?.addEventListener('click', () => {
+    copyCitation(doc);
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboardShortcut);
 
   // Splitter drag functionality
   const splitter = document.querySelector('.splitter');
