@@ -52,9 +52,12 @@ export class LRUCache<T> {
 
   /**
    * Set a value in the cache
-   * Evicts least recently used entry if cache is full
+   * Purges expired entries first, then evicts LRU if still full
    */
   set(key: string, value: T): void {
+    // Purge expired entries before adding new ones
+    this.purgeExpired();
+
     // Remove if exists
     if (this.cache.has(key)) {
       this.cache.delete(key);
@@ -69,6 +72,18 @@ export class LRUCache<T> {
       value,
       timestamp: Date.now()
     });
+  }
+
+  /**
+   * Remove all expired entries from the cache
+   */
+  purgeExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache) {
+      if (now - entry.timestamp > this.ttlMs) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   /**

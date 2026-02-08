@@ -42,7 +42,7 @@ export function createHttpServer(
 
   // Middleware
   app.use(cors({ origin: allowedOrigins }));
-  app.use(express.json());
+  app.use(express.json({ limit: '1mb' }));
 
   // Session storage for both transports
   // - streamableSessions: fully initialized sessions ready for tool calls
@@ -157,15 +157,19 @@ export function createHttpServer(
         console.error(`[MCP] New session (pending init): ${newSessionId}`);
       }
 
-      // Connect to MCP server
-      await mcpServer.connect(transport);
-
-      // Clean up on close
+      // Register cleanup BEFORE connecting (in case connect fails/closes immediately)
       transport.onclose = () => {
         console.error(`[MCP] Session closed: ${newSessionId}`);
         pendingTransports.delete(newSessionId);
         streamableSessions.delete(newSessionId);
       };
+
+      try {
+        await mcpServer.connect(transport);
+      } catch (error) {
+        pendingTransports.delete(newSessionId);
+        throw error;
+      }
     }
 
     // Handle the request
@@ -234,7 +238,7 @@ export function createHttpServer(
       return;
     }
 
-    const transport = streamableSessions.get(sessionId);
+    const transport = streamableSessions.get(sessionId) || pendingTransports.get(sessionId);
 
     if (!transport) {
       res.status(404).json({ error: 'Session not found', sessionId });
@@ -244,6 +248,7 @@ export function createHttpServer(
     console.error(`[MCP] Terminating session: ${sessionId}`);
     await transport.close();
     streamableSessions.delete(sessionId);
+    pendingTransports.delete(sessionId);
     res.status(200).json({ message: 'Session terminated', sessionId });
   });
 

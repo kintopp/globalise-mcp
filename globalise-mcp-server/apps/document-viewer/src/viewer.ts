@@ -282,11 +282,11 @@ function renderDocument(doc: DocumentData): void {
   // Build archival context section
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
 
-  // Build external links
+  // Build external links (sanitize URLs to prevent protocol injection)
   const externalLinks = [
-    `<a href="${doc.urls.viewer}" data-external-url="${doc.urls.viewer}">GLOBALISE Viewer</a>`,
+    `<a href="${sanitizeUrl(doc.urls.viewer)}" data-external-url="${sanitizeUrl(doc.urls.viewer)}">GLOBALISE Viewer</a>`,
     doc.urls.archive
-      ? `<a href="${doc.urls.archive}" data-external-url="${doc.urls.archive}">National Archives</a>`
+      ? `<a href="${sanitizeUrl(doc.urls.archive)}" data-external-url="${sanitizeUrl(doc.urls.archive)}">National Archives</a>`
       : '',
   ]
     .filter(Boolean)
@@ -642,6 +642,21 @@ function escapeHtml(text: string): string {
  */
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Validate URL protocol to prevent javascript: and data: injection
+ */
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return url;
+    }
+  } catch {
+    // Invalid URL
+  }
+  return '#';
 }
 
 // IMPORTANT: Register ALL handlers BEFORE calling app.connect()

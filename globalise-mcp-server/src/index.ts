@@ -50,6 +50,7 @@ import {
   findArchivalDocuments,
   findArchivalDocumentsInputSchema,
 } from './tools/archival-index.js';
+import { closeDatabase } from './utils/database.js';
 import {
   viewDocumentUi,
   viewDocumentUiInputSchema,
@@ -515,27 +516,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     return { content };
   } catch (error) {
-    // Handle validation errors from Zod
-    if (error instanceof Error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(
-              {
-                error: error.message,
-                tool: name,
-              },
-              null,
-              2
-            ),
-          },
-        ],
-        isError: true,
-      };
-    }
+    // Handle all error types:
+    // - Error instances (Zod validation, standard errors)
+    // - ApiError plain objects from api-client.ts (thrown as { type, error, suggestion, ... })
+    // - Any other thrown values
+    const errorMessage = error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error !== null && 'error' in error
+        ? (error as { error: string }).error
+        : String(error);
 
-    throw error;
+    const errorDetails = typeof error === 'object' && error !== null && 'suggestion' in error
+      ? (error as { suggestion: string }).suggestion
+      : undefined;
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          error: errorMessage,
+          ...(errorDetails && { suggestion: errorDetails }),
+          tool: name,
+        }, null, 2),
+      }],
+      isError: true,
+    };
   }
 });
 
@@ -567,6 +572,15 @@ async function main() {
     console.error(`${allTools.length} tools available:`, allTools.map(t => t.name).join(', '));
   }
 }
+
+function shutdown(signal: string) {
+  console.error(`[SHUTDOWN] ${signal} received, cleaning up...`);
+  closeDatabase();
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 main().catch((error) => {
   console.error('Fatal error in main():', error);
