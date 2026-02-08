@@ -4,6 +4,24 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
 > **Archive:** Versions 1.0.0–1.16.5 (Dec 2025 – Jan 2026) are in `offline/outdated/CHANGELOG-v1.0-v1.16.md`.
 
+## Code Simplification - 2026-02-08
+
+### Changed
+- **Extract `formatError` helper** in `index.ts`: Replaced nested ternary error handling with clear `if/else` function
+- **Extract `createStreamableSession` helper** in `http-server.ts`: Consolidated duplicated session creation logic (~30 lines removed)
+- **Extract `applyHostContext` helper** in `viewer.ts`: Eliminated duplicated theme/style application between `onhostcontextchanged` and `connect()`
+- **Extract shared `document-id.ts` utility**: Consolidated document ID parsing duplicated across `document.ts`, `document-viewer.ts`, and `convenience.ts`
+- **Consolidate `apiFetchOnce`** in `api-client.ts`: Merged duplicate `apiGetOnce`/`apiPostOnce` into a single function
+- **Extract archival query helpers** in `archival-index.ts`: `buildCommonConditions`, `mapObpRow`/`mapGmRow`, `appendNotNull`
+- **Simplify filter building** in `search.ts` and `convenience.ts`: Spread syntax replaces repetitive if-blocks
+- **Hoist `allTools` array** in `index.ts`: Removed duplication between `http` and `stdio` branches
+
+### Removed
+- **Dead code in `iiif.ts`**: Removed unused `IIIF_BASE_URL`, `buildOpenSeadragonTileSource()`, and `buildThumbnailUrl()` exports
+- **Un-exported `CacheEntry`** in `cache.ts`: Interface was only used internally
+
+---
+
 ## Repo Housekeeping - 2026-02-08
 
 ### Changed
