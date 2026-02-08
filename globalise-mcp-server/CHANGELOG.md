@@ -4,6 +4,19 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
 > **Archive:** Versions 1.0.0–1.16.5 (Dec 2025 – Jan 2026) are in `offline/outdated/CHANGELOG-v1.0-v1.16.md`.
 
+## Repo Housekeeping - 2026-02-08
+
+### Changed
+- **Track CLAUDE.md**: Removed CLAUDE.md from `.gitignore` so project instructions are version-controlled
+- **Rename `examples/` to `issues/`**: Renamed directory and added `scripts/README.md`
+- **Update archived file paths**: Updated references to archived CHANGELOG and TODO files in `offline/outdated/`
+
+### Removed
+- **Research files**: Moved 7 API research files from `globalise-transcriptions-api/research/` to `offline/research/api-research/`
+- **Reverted v1.24.x branch**: Reverted merge of `feature/mcp-apps-document-viewer` (v1.23.1–v1.24.2); server remains at v1.23.0
+
+---
+
 ## [1.23.0] - 2026-01-29
 
 ### Fixed
