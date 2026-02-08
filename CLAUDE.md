@@ -10,7 +10,7 @@ GLOBALISE MCP Server for accessing Dutch East India Company (VOC) transcriptions
 - Archived CHANGELOG (v1.0–v1.16) and completed/deferred TODOs are in `offline/outdated/`.
 - **Do not modify `.gitignore` without explicit user approval.**
 - "TODO" or "todo" means `globalise-mcp-server/TODO.md`.
-- CLAUDE.md is gitignored. Version references here are for local reference only.
+- CLAUDE.md is tracked in git.
 - A SessionEnd hook automatically captures `★ Insight` blocks to `offline/INSIGHTS.md`.
 
 ## Shell Best Practices (Lesson Learned)
