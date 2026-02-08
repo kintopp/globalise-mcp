@@ -106,6 +106,27 @@ function extractViewerLinks(result: Record<string, unknown>, toolName: string): 
 }
 
 /**
+ * Extract a readable message and optional suggestion from thrown values.
+ *
+ * Handles three error shapes:
+ * - Error instances (Zod validation, standard errors)
+ * - ApiError plain objects from api-client.ts (thrown as { type, error, suggestion, ... })
+ * - Any other thrown values (coerced to string)
+ */
+function formatError(error: unknown): { message: string; suggestion?: string } {
+  if (error instanceof Error) {
+    return { message: error.message };
+  }
+
+  if (typeof error === 'object' && error !== null && 'error' in error) {
+    const apiError = error as { error: string; suggestion?: string };
+    return { message: apiError.error, suggestion: apiError.suggestion };
+  }
+
+  return { message: String(error) };
+}
+
+/**
  * Tool definitions for MCP
  *
  * Note: Claude Desktop can handle 100+ tools, but performance degrades with many tools
@@ -516,26 +537,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     return { content };
   } catch (error) {
-    // Handle all error types:
-    // - Error instances (Zod validation, standard errors)
-    // - ApiError plain objects from api-client.ts (thrown as { type, error, suggestion, ... })
-    // - Any other thrown values
-    const errorMessage = error instanceof Error
-      ? error.message
-      : typeof error === 'object' && error !== null && 'error' in error
-        ? (error as { error: string }).error
-        : String(error);
-
-    const errorDetails = typeof error === 'object' && error !== null && 'suggestion' in error
-      ? (error as { suggestion: string }).suggestion
-      : undefined;
+    const { message, suggestion } = formatError(error);
 
     return {
       content: [{
         type: 'text',
         text: JSON.stringify({
-          error: errorMessage,
-          ...(errorDetails && { suggestion: errorDetails }),
+          error: message,
+          ...(suggestion && { suggestion }),
           tool: name,
         }, null, 2),
       }],
@@ -549,6 +558,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
  */
 async function main() {
   const transportMode = process.env.TRANSPORT || 'stdio';
+  const allTools = [...TOOLS, DOCUMENT_VIEWER_TOOL];
 
   if (transportMode === 'http' || transportMode === 'sse') {
     // HTTP/SSE transport for remote access
@@ -559,16 +569,13 @@ async function main() {
 
     createHttpServer(server, { port, allowedOrigins });
 
-    const allTools = [...TOOLS, DOCUMENT_VIEWER_TOOL];
     console.error(`[HTTP] ${allTools.length} tools available:`, allTools.map(t => t.name).join(', '));
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
-    // Log to stderr since stdout is used for MCP communication
     console.error('GLOBALISE MCP Server running on stdio');
-    const allTools = [...TOOLS, DOCUMENT_VIEWER_TOOL];
     console.error(`${allTools.length} tools available:`, allTools.map(t => t.name).join(', '));
   }
 }

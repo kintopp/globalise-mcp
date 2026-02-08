@@ -146,36 +146,36 @@ app.ontoolresult = (result) => {
 };
 
 /**
- * Handle host context changes (theme, safe areas, display mode)
+ * Apply host context settings (theme, styles, safe areas, display mode)
  */
-app.onhostcontextchanged = (params) => {
-  // Apply theme
+function applyHostContext(params: Parameters<NonNullable<typeof app.onhostcontextchanged>>[0]): void {
   if (params.theme) {
     applyDocumentTheme(params.theme);
   }
 
-  // Apply CSS variables from host
   if (params.styles?.variables) {
     applyHostStyleVariables(params.styles.variables);
   }
 
-  // Apply fonts from host
   if (params.styles?.css?.fonts) {
     applyHostFonts(params.styles.css.fonts);
   }
 
-  // Handle safe area insets
   if (params.safeAreaInsets) {
     const { top, right, bottom, left } = params.safeAreaInsets;
     document.body.style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
   }
 
-  // Handle display mode changes
   if (params.displayMode) {
     isFullscreen = params.displayMode === 'fullscreen';
     document.querySelector('.main')?.classList.toggle('fullscreen', isFullscreen);
   }
-};
+}
+
+/**
+ * Handle host context changes (theme, safe areas, display mode)
+ */
+app.onhostcontextchanged = applyHostContext;
 
 /**
  * Handle app teardown - return viewer state
@@ -485,10 +485,9 @@ function attachEventListeners(doc: DocumentData): void {
   const transcriptionEl = document.getElementById('transcription');
   if (transcriptionEl) {
     transcriptionEl.addEventListener('mouseup', () => {
-      const selection = window.getSelection();
-      const selectedText = selection?.toString().trim();
+      const selectedText = window.getSelection()?.toString().trim();
 
-      if (selectedText && selectedText.length > 0) {
+      if (selectedText) {
         // Update model context with selected text (using content array format)
         const contextText = `User selected text in document ${doc.id}: "${selectedText}"`;
         app.updateModelContext({
@@ -499,27 +498,12 @@ function attachEventListeners(doc: DocumentData): void {
     });
   }
 
-  // Zoom controls
-  document.getElementById('zoom-in')?.addEventListener('click', () => {
-    viewer?.viewport.zoomBy(1.5);
-  });
-
-  document.getElementById('zoom-out')?.addEventListener('click', () => {
-    viewer?.viewport.zoomBy(0.67);
-  });
-
-  document.getElementById('reset-view')?.addEventListener('click', () => {
-    resetView();
-  });
-
-  // Rotation controls
-  document.getElementById('rotate-left')?.addEventListener('click', () => {
-    rotateImage(-90);
-  });
-
-  document.getElementById('rotate-right')?.addEventListener('click', () => {
-    rotateImage(90);
-  });
+  // Image controls
+  document.getElementById('zoom-in')?.addEventListener('click', () => viewer?.viewport.zoomBy(1.5));
+  document.getElementById('zoom-out')?.addEventListener('click', () => viewer?.viewport.zoomBy(0.67));
+  document.getElementById('reset-view')?.addEventListener('click', resetView);
+  document.getElementById('rotate-left')?.addEventListener('click', () => rotateImage(-90));
+  document.getElementById('rotate-right')?.addEventListener('click', () => rotateImage(90));
 
   // Splitter drag functionality
   const splitter = document.querySelector('.splitter');
@@ -568,17 +552,9 @@ function setupVisibilityObserver(): void {
 
   const observer = new IntersectionObserver(
     (entries) => {
-      entries.forEach((entry) => {
-        if (!viewer) return;
-
-        if (entry.isIntersecting) {
-          // Resume viewer updates when visible
-          viewer.setMouseNavEnabled(true);
-        } else {
-          // Pause viewer updates when not visible
-          viewer.setMouseNavEnabled(false);
-        }
-      });
+      for (const entry of entries) {
+        viewer?.setMouseNavEnabled(entry.isIntersecting);
+      }
     },
     { threshold: 0.1 }
   );
@@ -670,18 +646,8 @@ function sanitizeUrl(url: string): string {
 
     // Apply initial host context
     const context = app.getHostContext();
-    if (context?.theme) {
-      applyDocumentTheme(context.theme);
-    }
-    if (context?.styles?.variables) {
-      applyHostStyleVariables(context.styles.variables);
-    }
-    if (context?.styles?.css?.fonts) {
-      applyHostFonts(context.styles.css.fonts);
-    }
-    if (context?.safeAreaInsets) {
-      const { top, right, bottom, left } = context.safeAreaInsets;
-      document.body.style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
+    if (context) {
+      applyHostContext(context);
     }
   } catch (error) {
     console.error('Failed to connect:', error);

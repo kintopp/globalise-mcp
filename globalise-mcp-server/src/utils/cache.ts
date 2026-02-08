@@ -6,7 +6,7 @@
  * - Expired entries based on TTL (time-to-live)
  */
 
-export interface CacheEntry<T> {
+interface CacheEntry<T> {
   value: T;
   timestamp: number;
 }

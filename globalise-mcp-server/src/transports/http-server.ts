@@ -51,6 +51,41 @@ export function createHttpServer(
   const pendingTransports = new Map<string, StreamableHTTPServerTransport>();
   const sseSessions = new Map<string, SSEServerTransport>();
 
+  /**
+   * Create a new StreamableHTTPServerTransport, register it as pending,
+   * wire up lifecycle callbacks, and connect it to the MCP server.
+   */
+  async function createStreamableSession(sessionId: string): Promise<StreamableHTTPServerTransport> {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => sessionId,
+      onsessioninitialized: (id: string) => {
+        const t = pendingTransports.get(id);
+        if (t) {
+          pendingTransports.delete(id);
+          streamableSessions.set(id, t);
+          console.error(`[MCP] Session initialized: ${id}`);
+        }
+      },
+    });
+
+    pendingTransports.set(sessionId, transport);
+
+    transport.onclose = () => {
+      console.error(`[MCP] Session closed: ${sessionId}`);
+      pendingTransports.delete(sessionId);
+      streamableSessions.delete(sessionId);
+    };
+
+    try {
+      await mcpServer.connect(transport);
+    } catch (error) {
+      pendingTransports.delete(sessionId);
+      throw error;
+    }
+
+    return transport;
+  }
+
   // ==========================================================================
   // Health Check Endpoint
   // ==========================================================================
@@ -135,41 +170,13 @@ export function createHttpServer(
       // Create new session (for init request, or stale session recovery)
       const newSessionId = sessionId || randomUUID();
 
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => newSessionId,
-        // Callback when initialization completes - move from pending to active
-        onsessioninitialized: (initializedSessionId: string) => {
-          const t = pendingTransports.get(initializedSessionId);
-          if (t) {
-            pendingTransports.delete(initializedSessionId);
-            streamableSessions.set(initializedSessionId, t);
-            console.error(`[MCP] Session initialized: ${initializedSessionId}`);
-          }
-        },
-      });
-
-      // Store in pending while initialization happens
-      pendingTransports.set(newSessionId, transport);
-
       if (sessionId) {
         console.error(`[MCP] Auto-recovering stale session: ${sessionId}`);
       } else {
         console.error(`[MCP] New session (pending init): ${newSessionId}`);
       }
 
-      // Register cleanup BEFORE connecting (in case connect fails/closes immediately)
-      transport.onclose = () => {
-        console.error(`[MCP] Session closed: ${newSessionId}`);
-        pendingTransports.delete(newSessionId);
-        streamableSessions.delete(newSessionId);
-      };
-
-      try {
-        await mcpServer.connect(transport);
-      } catch (error) {
-        pendingTransports.delete(newSessionId);
-        throw error;
-      }
+      transport = await createStreamableSession(newSessionId);
     }
 
     // Handle the request
@@ -199,27 +206,7 @@ export function createHttpServer(
     // Auto-recover stale session for SSE stream
     if (!transport) {
       console.error(`[MCP] Auto-recovering stale session for SSE: ${sessionId}`);
-
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => sessionId,
-        onsessioninitialized: (initializedSessionId: string) => {
-          const t = pendingTransports.get(initializedSessionId);
-          if (t) {
-            pendingTransports.delete(initializedSessionId);
-            streamableSessions.set(initializedSessionId, t);
-            console.error(`[MCP] Session initialized (SSE recovery): ${initializedSessionId}`);
-          }
-        },
-      });
-
-      await mcpServer.connect(transport);
-      pendingTransports.set(sessionId, transport);
-
-      transport.onclose = () => {
-        console.error(`[MCP] Session closed: ${sessionId}`);
-        pendingTransports.delete(sessionId);
-        streamableSessions.delete(sessionId);
-      };
+      transport = await createStreamableSession(sessionId);
     }
 
     console.error(`[MCP] SSE stream requested for session: ${sessionId}`);
