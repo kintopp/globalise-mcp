@@ -1,9 +1,6 @@
 # Excluded directories
 offline/
 
-# Local development notes
-CLAUDE.md
-
 # Dependencies
 node_modules/
 
