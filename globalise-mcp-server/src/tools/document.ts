@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import { getCachedApiGet, buildUrl, API_CONFIG, documentCache } from '../utils/api-client.js';
+import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { DocumentResponse } from '../utils/types.js';
 
 export const getDocumentInputSchema = z.object({
@@ -54,41 +55,6 @@ export const getDocumentSimpleInputSchema = z.object({
 export type GetDocumentInput = z.infer<typeof getDocumentInputSchema>;
 export type GetDocumentOutput = z.infer<typeof getDocumentOutputSchema>;
 export type GetDocumentSimpleInput = z.infer<typeof getDocumentSimpleInputSchema>;
-
-/**
- * Normalize document ID to URN format
- */
-function normalizeDocumentId(docId: string): string {
-  if (docId.startsWith('urn:globalise:')) {
-    return docId;
-  }
-  return `urn:globalise:${docId}`;
-}
-
-/**
- * Extract inventory and scan numbers from document ID
- */
-function parseDocumentId(docId: string): { archive: string; inventoryNumber: string; scanNumber: string } {
-  // Remove URN prefix if present
-  const cleanId = docId.replace('urn:globalise:', '');
-
-  // Format: NL-HaNA_{archive}_{inventory}_{scan}
-  const parts = cleanId.split('_');
-
-  if (parts.length >= 4) {
-    return {
-      archive: parts[1],
-      inventoryNumber: parts[2],
-      scanNumber: parts[3],
-    };
-  }
-
-  return {
-    archive: 'unknown',
-    inventoryNumber: 'unknown',
-    scanNumber: 'unknown',
-  };
-}
 
 /**
  * Get detailed document information

@@ -158,34 +158,36 @@ interface GmDbRow {
   rgp_page: string | null;
 }
 
+interface WhereClause {
+  where: string;
+  params: Record<string, unknown>;
+}
+
 /**
- * Build WHERE clause and parameters for OBP queries
+ * Build common WHERE conditions shared between OBP and GM queries:
+ * FTS query, inventory number filter, and year range filter.
  */
-function buildObpWhereClause(input: FindArchivalDocumentsInput): { where: string; params: Record<string, unknown> } {
+function buildCommonConditions(
+  input: FindArchivalDocumentsInput,
+  ftsTable: string,
+): { conditions: string[]; params: Record<string, unknown> } {
   const conditions: string[] = [];
   const params: Record<string, unknown> = {};
 
-  // FTS query on description
   if (input.query) {
-    conditions.push('id IN (SELECT rowid FROM obp_fts WHERE obp_fts MATCH @query)');
+    conditions.push(`id IN (SELECT rowid FROM ${ftsTable} WHERE ${ftsTable} MATCH @query)`);
     params.query = input.query;
   }
 
-  // Inventory number filter
   if (input.inventoryNumber) {
     const invNumbers = Array.isArray(input.inventoryNumber) ? input.inventoryNumber : [input.inventoryNumber];
     const placeholders = invNumbers.map((_, i) => `@inv${i}`).join(', ');
     conditions.push(`inventory_number IN (${placeholders})`);
-    invNumbers.forEach((inv, i) => { params[`inv${i}`] = inv; });
+    for (let i = 0; i < invNumbers.length; i++) {
+      params[`inv${i}`] = invNumbers[i];
+    }
   }
 
-  // Settlement filter
-  if (input.settlement) {
-    conditions.push('settlement = @settlement');
-    params.settlement = input.settlement;
-  }
-
-  // Year range filter
   if (input.yearFrom !== undefined) {
     conditions.push('(year_latest >= @yearFrom OR year_latest IS NULL)');
     params.yearFrom = input.yearFrom;
@@ -195,8 +197,29 @@ function buildObpWhereClause(input: FindArchivalDocumentsInput): { where: string
     params.yearTo = input.yearTo;
   }
 
-  // Folio range filter (requires inventory number)
-  if (input.inventoryNumber && (input.folioFrom !== undefined || input.folioTo !== undefined)) {
+  return { conditions, params };
+}
+
+/**
+ * Format conditions into a WHERE clause string.
+ */
+function toWhereClause(conditions: string[], params: Record<string, unknown>): WhereClause {
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { where, params };
+}
+
+/**
+ * Build WHERE clause for OBP queries.
+ */
+function buildObpWhereClause(input: FindArchivalDocumentsInput): WhereClause {
+  const { conditions, params } = buildCommonConditions(input, 'obp_fts');
+
+  if (input.settlement) {
+    conditions.push('settlement = @settlement');
+    params.settlement = input.settlement;
+  }
+
+  if (input.inventoryNumber) {
     if (input.folioFrom !== undefined) {
       conditions.push('(folio_end >= @folioFrom OR folio_end IS NULL)');
       params.folioFrom = input.folioFrom;
@@ -207,59 +230,90 @@ function buildObpWhereClause(input: FindArchivalDocumentsInput): { where: string
     }
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  return { where, params };
+  return toWhereClause(conditions, params);
 }
 
 /**
- * Build WHERE clause and parameters for GM queries
+ * Build WHERE clause for GM queries.
  */
-function buildGmWhereClause(input: FindArchivalDocumentsInput): { where: string; params: Record<string, unknown> } {
-  const conditions: string[] = [];
-  const params: Record<string, unknown> = {};
+function buildGmWhereClause(input: FindArchivalDocumentsInput): WhereClause {
+  const { conditions, params } = buildCommonConditions(input, 'gm_fts');
 
-  // FTS query on description
-  if (input.query) {
-    conditions.push('id IN (SELECT rowid FROM gm_fts WHERE gm_fts MATCH @query)');
-    params.query = input.query;
-  }
-
-  // Inventory number filter
-  if (input.inventoryNumber) {
-    const invNumbers = Array.isArray(input.inventoryNumber) ? input.inventoryNumber : [input.inventoryNumber];
-    const placeholders = invNumbers.map((_, i) => `@inv${i}`).join(', ');
-    conditions.push(`inventory_number IN (${placeholders})`);
-    invNumbers.forEach((inv, i) => { params[`inv${i}`] = inv; });
-  }
-
-  // Chamber filter
   if (input.chamber) {
     conditions.push('chamber = @chamber');
     params.chamber = input.chamber;
   }
 
-  // Year range filter
-  if (input.yearFrom !== undefined) {
-    conditions.push('(year_latest >= @yearFrom OR year_latest IS NULL)');
-    params.yearFrom = input.yearFrom;
-  }
-  if (input.yearTo !== undefined) {
-    conditions.push('(year_earliest <= @yearTo OR year_earliest IS NULL)');
-    params.yearTo = input.yearTo;
-  }
-
-  // HTR available filter
   if (input.htrAvailable !== undefined) {
     conditions.push('htr_available = @htrAvailable');
     params.htrAvailable = input.htrAvailable ? 1 : 0;
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  return { where, params };
+  return toWhereClause(conditions, params);
 }
 
 /**
- * Query the archival index database
+ * Map an OBP database row to the output format.
+ */
+function mapObpRow(row: ObpDbRow) {
+  return {
+    type: 'obp' as const,
+    id: row.id,
+    idCsv: row.id_csv,
+    idTanap: row.id_tanap,
+    description: row.description,
+    inventoryNumber: row.inventory_number,
+    section: row.section,
+    folioStart: row.folio_start,
+    folioEnd: row.folio_end,
+    yearEarliest: row.year_earliest,
+    yearLatest: row.year_latest,
+    settlement: row.settlement,
+    locationTanap: row.location_tanap,
+    geographicalCoverage: row.geographical_coverage,
+    documentType: row.document_type,
+  };
+}
+
+/**
+ * Map a GM database row to the output format.
+ */
+function mapGmRow(row: GmDbRow) {
+  return {
+    type: 'gm' as const,
+    id: row.id,
+    idCsv: row.id_csv,
+    idTanap: row.id_tanap,
+    description: row.description,
+    inventoryNumber: row.inventory_number,
+    chamber: row.chamber,
+    folioStart: row.folio_start,
+    folioEnd: row.folio_end,
+    scanStart: row.scan_start,
+    scanEnd: row.scan_end,
+    yearEarliest: row.year_earliest,
+    yearLatest: row.year_latest,
+    dateDisplay: row.date_display,
+    dateNumeric: row.date_numeric,
+    scanUrlFirst: row.scan_url_first,
+    scanUrlLast: row.scan_url_last,
+    htrAvailable: row.htr_available === 1,
+    rgpVolume: row.rgp_volume,
+    rgpPage: row.rgp_page,
+  };
+}
+
+/**
+ * Append a NOT NULL condition to an existing WHERE clause.
+ */
+function appendNotNull(where: string, column: string): string {
+  return where
+    ? `${where} AND ${column} IS NOT NULL`
+    : `WHERE ${column} IS NOT NULL`;
+}
+
+/**
+ * Query the archival index database.
  */
 export async function findArchivalDocuments(input: FindArchivalDocumentsInput): Promise<FindArchivalDocumentsOutput> {
   // Check database availability
@@ -301,25 +355,7 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
           const selectSql = `SELECT * FROM obp_documents ${where} ORDER BY year_earliest, inventory_number, folio_start LIMIT @limit OFFSET @offset`;
           const rows = db.prepare(selectSql).all({ ...params, limit, offset }) as ObpDbRow[];
 
-          for (const row of rows) {
-            results.push({
-              type: 'obp',
-              id: row.id,
-              idCsv: row.id_csv,
-              idTanap: row.id_tanap,
-              description: row.description,
-              inventoryNumber: row.inventory_number,
-              section: row.section,
-              folioStart: row.folio_start,
-              folioEnd: row.folio_end,
-              yearEarliest: row.year_earliest,
-              yearLatest: row.year_latest,
-              settlement: row.settlement,
-              locationTanap: row.location_tanap,
-              geographicalCoverage: row.geographical_coverage,
-              documentType: row.document_type,
-            });
-          }
+          results.push(...rows.map(mapObpRow));
         }
       }
     }
@@ -354,72 +390,43 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
         const selectSql = `SELECT * FROM generale_missiven ${where} ORDER BY date_numeric, inventory_number LIMIT @limit OFFSET @offset`;
         const rows = db.prepare(selectSql).all({ ...params, limit, offset: gmOffset }) as GmDbRow[];
 
-        for (const row of rows) {
-          results.push({
-            type: 'gm',
-            id: row.id,
-            idCsv: row.id_csv,
-            idTanap: row.id_tanap,
-            description: row.description,
-            inventoryNumber: row.inventory_number,
-            chamber: row.chamber,
-            folioStart: row.folio_start,
-            folioEnd: row.folio_end,
-            scanStart: row.scan_start,
-            scanEnd: row.scan_end,
-            yearEarliest: row.year_earliest,
-            yearLatest: row.year_latest,
-            dateDisplay: row.date_display,
-            dateNumeric: row.date_numeric,
-            scanUrlFirst: row.scan_url_first,
-            scanUrlLast: row.scan_url_last,
-            htrAvailable: row.htr_available === 1,
-            rgpVolume: row.rgp_volume,
-            rgpPage: row.rgp_page,
-          });
-        }
+        results.push(...rows.map(mapGmRow));
       }
     }
   }
 
-  // Build aggregations if requested
   let aggregations: FindArchivalDocumentsOutput['aggregations'];
   if (input.includeAggregations) {
     aggregations = {};
+    const includesObp = input.source === 'obp' || input.source === 'all';
+    const includesGm = input.source === 'gm' || input.source === 'all';
 
-    // Settlement aggregation (OBP only)
-    if (input.source === 'obp' || input.source === 'all') {
+    if (includesObp) {
       const { where, params } = buildObpWhereClause(input);
-      const settlementCondition = where
-        ? `${where} AND settlement IS NOT NULL`
-        : 'WHERE settlement IS NOT NULL';
-      const aggSql = `SELECT settlement, COUNT(*) as count FROM obp_documents ${settlementCondition} GROUP BY settlement ORDER BY count DESC LIMIT 20`;
-      const aggRows = db.prepare(aggSql).all(params) as { settlement: string; count: number }[];
-      if (aggRows.length > 0) {
-        aggregations.settlements = aggRows;
+
+      const settlementRows = db.prepare(
+        `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
+      ).all(params) as { settlement: string; count: number }[];
+      if (settlementRows.length > 0) {
+        aggregations.settlements = settlementRows;
+      }
+
+      const invRows = db.prepare(
+        `SELECT inventory_number, COUNT(*) as count FROM obp_documents ${where} GROUP BY inventory_number ORDER BY count DESC LIMIT 20`
+      ).all(params) as { inventory_number: string; count: number }[];
+      if (invRows.length > 0) {
+        aggregations.inventories = invRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
       }
     }
 
-    // Chamber aggregation (GM only)
-    if (input.source === 'gm' || input.source === 'all') {
+    if (includesGm) {
       const { where, params } = buildGmWhereClause(input);
-      const chamberCondition = where
-        ? `${where} AND chamber IS NOT NULL`
-        : 'WHERE chamber IS NOT NULL';
-      const aggSql = `SELECT chamber, COUNT(*) as count FROM generale_missiven ${chamberCondition} GROUP BY chamber ORDER BY count DESC`;
-      const aggRows = db.prepare(aggSql).all(params) as { chamber: string; count: number }[];
-      if (aggRows.length > 0) {
-        aggregations.chambers = aggRows;
-      }
-    }
 
-    // Inventory aggregation
-    if (input.source === 'obp' || input.source === 'all') {
-      const { where, params } = buildObpWhereClause(input);
-      const aggSql = `SELECT inventory_number, COUNT(*) as count FROM obp_documents ${where} GROUP BY inventory_number ORDER BY count DESC LIMIT 20`;
-      const aggRows = db.prepare(aggSql).all(params) as { inventory_number: string; count: number }[];
-      if (aggRows.length > 0) {
-        aggregations.inventories = aggRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
+      const chamberRows = db.prepare(
+        `SELECT chamber, COUNT(*) as count FROM generale_missiven ${appendNotNull(where, 'chamber')} GROUP BY chamber ORDER BY count DESC`
+      ).all(params) as { chamber: string; count: number }[];
+      if (chamberRows.length > 0) {
+        aggregations.chambers = chamberRows;
       }
     }
   }

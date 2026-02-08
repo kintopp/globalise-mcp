@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod';
+import { parseDocumentId } from '../utils/document-id.js';
 import { search, SearchInput, SearchOutput } from './search.js';
 import { getDocument, GetDocumentOutput } from './document.js';
 
@@ -103,51 +104,32 @@ export type SearchByInventoryOutput = z.infer<typeof searchByInventoryOutputSche
  * Search within a specific inventory number
  */
 export async function searchByInventory(input: SearchByInventoryInput): Promise<SearchByInventoryOutput> {
-  // Build search query with inventory filter using the terms API
   const filters: Record<string, string[]> = {
     invNr: [input.inventoryNumber],
+    ...(input.languages?.length ? { langIso: input.languages } : {}),
+    ...(input.languageLabels?.length ? { langLabel: input.languageLabels } : {}),
   };
 
-  // Add language ISO filter if provided
-  if (input.languages && input.languages.length > 0) {
-    filters.langIso = input.languages;
-  }
-
-  // Add language label filter if provided
-  if (input.languageLabels && input.languageLabels.length > 0) {
-    filters.langLabel = input.languageLabels;
-  }
-
-  const searchInput: SearchInput = {
-    query: input.query || '*', // Match all if no query provided
+  const searchResult = await search({
+    query: input.query || '*',
     from: input.from,
     size: input.size,
-    fragmentSize: 500, // Default fragment size
+    fragmentSize: 500,
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
-    includeAggregations: false, // Don't need aggregations for this focused search
-    filters, // Pass the filters to the API
-  };
-
-  // Perform the search
-  const searchResult = await search(searchInput);
-
-  // Extract scan numbers from document IDs
-  const resultsWithScan = searchResult.results.map(result => {
-    // Extract scan number from document ID (format: NL-HaNA_{archive}_{inventory}_{scan})
-    const parts = result.document.split('_');
-    const scanNumber = parts.length >= 4 ? parts[3] : 'unknown';
-
-    return {
-      id: result.id,
-      document: result.document,
-      scanNumber,
-      highlightedFragments: result.highlightedFragments,
-      tokenCount: result.tokenCount,
-      languages: result.languages,
-      viewerUrl: result.viewerUrl,
-    };
+    includeAggregations: false,
+    filters,
   });
+
+  const resultsWithScan = searchResult.results.map(result => ({
+    id: result.id,
+    document: result.document,
+    scanNumber: parseDocumentId(result.document).scanNumber,
+    highlightedFragments: result.highlightedFragments,
+    tokenCount: result.tokenCount,
+    languages: result.languages,
+    viewerUrl: result.viewerUrl,
+  }));
 
   return {
     inventoryNumber: input.inventoryNumber,
@@ -221,11 +203,7 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
     includeText: false,
   });
 
-  // Parse current document ID
-  const parts = currentDoc.document.split('_');
-  const currentInventory = parts.length >= 3 ? parts[2] : 'unknown';
-  const currentScan = parts.length >= 4 ? parts[3] : 'unknown';
-
+  const { inventoryNumber: currentInventory, scanNumber: currentScan } = parseDocumentId(currentDoc.document);
   const currentDocInfo = {
     id: currentDoc.id,
     document: currentDoc.document,
@@ -255,11 +233,7 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
     includeText: input.includeText,
   });
 
-  // Parse target document ID
-  const targetParts = targetDoc.document.split('_');
-  const targetInventory = targetParts.length >= 3 ? targetParts[2] : 'unknown';
-  const targetScan = targetParts.length >= 4 ? targetParts[3] : 'unknown';
-
+  const { inventoryNumber: targetInventory, scanNumber: targetScan } = parseDocumentId(targetDoc.document);
   return {
     success: true,
     currentDocument: currentDocInfo,
@@ -317,58 +291,31 @@ export type SearchByLanguageOutput = z.infer<typeof searchByLanguageOutputSchema
  * Supports multiple languages with AND (matchAll) or OR logic
  */
 export async function searchByLanguage(input: SearchByLanguageInput): Promise<SearchByLanguageOutput> {
-  // Normalize language to array
   const languages = Array.isArray(input.language) ? input.language : [input.language];
-
-  // Detect if languages are ISO codes (2-3 chars) or human-readable names
-  // Assume all are same type based on first entry
   const isISOCode = languages[0].length <= 3;
+  // For matchAll (AND logic), filter on the first language at the API level
+  // (assumed rarer) and post-filter to require ALL languages. This avoids
+  // results dominated by the most common language (e.g., Dutch).
+  const useMatchAll = input.matchAll && languages.length > 1;
+  const filterLanguages = useMatchAll ? [languages[0]] : languages;
 
-  // For matchAll (AND logic), we use a smarter strategy:
-  // 1. Filter on just ONE language at the API level (the one in the filter)
-  // 2. Post-filter results to require ALL languages
-  // This works better because filtering on multiple languages with OR
-  // returns results dominated by the most common language (e.g., Dutch)
-  // We filter on the first language in the array, which should be the rarer one
-  // for best results (e.g., ["eng", "nld"] filters for English, then checks for Dutch)
-  const requestSize = input.matchAll && languages.length > 1
-    ? Math.min(input.size * 10, 500) // Request 10x more for post-filtering
-    : input.size;
+  const languageFilter = isISOCode
+    ? { languages: filterLanguages }
+    : { languageLabels: filterLanguages };
 
-  // Build search query with language filter
-  const searchInput: SearchInput = {
-    query: input.query || '*', // Match all if no query provided
-    from: input.matchAll && languages.length > 1 ? 0 : input.from, // Start from 0 for post-filtering
-    size: requestSize,
+  const searchResult = await search({
+    query: input.query || '*',
+    from: useMatchAll ? 0 : input.from,
+    size: useMatchAll ? Math.min(input.size * 10, 500) : input.size,
     fragmentSize: 500,
     sortBy: '_score',
     sortOrder: 'desc',
     includeAggregations: input.includeInventoryCounts,
-  };
+    ...languageFilter,
+  });
 
-  // Add language filter
-  // When matchAll=true, filter on first language only (assumed to be rarer)
-  // Then post-filter for remaining languages
-  const filterLanguages = input.matchAll && languages.length > 1
-    ? [languages[0]] // Use first language only for API filter
-    : languages;     // Use all languages for OR logic
-
-  if (isISOCode) {
-    searchInput.languages = filterLanguages;
-  } else {
-    searchInput.languageLabels = filterLanguages;
-  }
-
-  // Perform the search
-  const searchResult = await search(searchInput);
-
-  // Extract scan numbers and inventory numbers from document IDs
   let resultsWithDetails = searchResult.results.map(result => {
-    // Extract inventory and scan number from document ID (format: NL-HaNA_{archive}_{inventory}_{scan})
-    const parts = result.document.split('_');
-    const inventoryNumber = parts.length >= 3 ? parts[2] : 'unknown';
-    const scanNumber = parts.length >= 4 ? parts[3] : 'unknown';
-
+    const { inventoryNumber, scanNumber } = parseDocumentId(result.document);
     return {
       id: result.id,
       document: result.document,
@@ -381,10 +328,9 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
     };
   });
 
-  // Apply AND logic post-filter if matchAll is true
   let filteredTotal = searchResult.total;
-  if (input.matchAll && languages.length > 1) {
-    // Filter to only documents that have ALL specified languages
+  if (useMatchAll) {
+    // Post-filter: keep only documents containing ALL specified languages
     resultsWithDetails = resultsWithDetails.filter(result => {
       const docLangCodes = result.languages.map(l => l.code.toLowerCase());
       const docLangLabels = result.languages.map(l => l.label.toLowerCase());
@@ -395,36 +341,30 @@ export async function searchByLanguage(input: SearchByLanguageInput): Promise<Se
       });
     });
 
-    // Update total to reflect filtered count
-    // Note: This is an approximation - the true total requires scanning all results
+    // Approximation -- true total would require scanning all results
     filteredTotal = {
       value: resultsWithDetails.length,
       relation: 'gte' as const, // Indicates there may be more
     };
 
-    // Apply pagination after filtering
-    const startIdx = input.from;
-    const endIdx = input.from + input.size;
-    resultsWithDetails = resultsWithDetails.slice(startIdx, endIdx);
+    resultsWithDetails = resultsWithDetails.slice(input.from, input.from + input.size);
   }
 
-  // Extract inventory counts from aggregations if requested
-  let inventoryCounts;
-  if (input.includeInventoryCounts && searchResult.aggregations?.topInventoryNumbers) {
-    inventoryCounts = searchResult.aggregations.topInventoryNumbers;
-  }
+  const inventoryCounts = input.includeInventoryCounts
+    ? searchResult.aggregations?.topInventoryNumbers
+    : undefined;
 
   return {
     language: input.language,
-    matchAll: input.matchAll && languages.length > 1 ? true : undefined,
+    matchAll: useMatchAll || undefined,
     total: filteredTotal,
     results: resultsWithDetails,
     inventoryCounts,
     pagination: {
       from: input.from,
       size: input.size,
-      hasMore: input.matchAll && languages.length > 1
-        ? resultsWithDetails.length === input.size // Approximate for AND logic
+      hasMore: useMatchAll
+        ? resultsWithDetails.length === input.size
         : filteredTotal.value > input.from + input.size,
     },
   };

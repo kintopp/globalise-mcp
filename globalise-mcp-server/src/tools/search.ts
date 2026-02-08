@@ -130,10 +130,8 @@ export type SearchSimpleInput = z.infer<typeof searchSimpleInputSchema>;
  * Search GLOBALISE transcriptions
  */
 export async function search(input: SearchInput): Promise<SearchOutput> {
-  // Get index name if not provided
-  let indexName = input.indexName || API_CONFIG.DEFAULT_INDEX;
+  const indexName = input.indexName || API_CONFIG.DEFAULT_INDEX;
 
-  // Build aggregations object
   const aggs = input.includeAggregations ? {
     invNr: { order: 'countDesc', size: 10 },
     document: { order: 'countDesc', size: 10 },
@@ -141,25 +139,12 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     langLabel: { order: 'countDesc', size: 10 },
   } : {};
 
-  // Build terms filters
-  const terms: Record<string, string[]> = {};
-
-  // Add language ISO code filter if provided
-  if (input.languages && input.languages.length > 0) {
-    terms.langIso = input.languages;
-  }
-
-  // Add language label filter if provided (human-readable names)
-  if (input.languageLabels && input.languageLabels.length > 0) {
-    terms.langLabel = input.languageLabels;
-  }
-
-  // Add custom filters if provided
-  if (input.filters) {
-    Object.entries(input.filters).forEach(([key, values]) => {
-      terms[key] = values;
-    });
-  }
+  // Build terms filters from language codes, labels, and custom filters
+  const terms: Record<string, string[]> = {
+    ...(input.languages?.length ? { langIso: input.languages } : {}),
+    ...(input.languageLabels?.length ? { langLabel: input.languageLabels } : {}),
+    ...input.filters,
+  };
 
   // Validate that all filter fields are indexed and searchable
   const filterFields = Object.keys(terms);
@@ -167,14 +152,8 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     await validateSearchFields(filterFields, indexName);
   }
 
-  // Build request body
-  const requestBody = {
-    text: input.query,
-    terms,
-    aggs,
-  };
+  const requestBody = { text: input.query, terms, aggs };
 
-  // Build URL with query parameters
   const url = buildUrl(
     `${API_CONFIG.BROCCOLI_BASE_URL}/projects/globalise/search`,
     {
@@ -187,17 +166,14 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     }
   );
 
-  // Make API request
   const response = await apiPost<SearchResponse>(url, requestBody);
 
-  // Transform response to output format
   const results = response.results.map(result => ({
     id: result._id,
     document: result.document,
     inventoryNumber: result.invNr,
     highlightedFragments: result._hits?.text || [],
     tokenCount: result.textTokenCount,
-    // Map langIso and langLabel arrays to {code, label}[] objects
     languages: result.langIso.map((code, i) => ({
       code,
       label: result.langLabel[i] || code,
@@ -205,8 +181,7 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
     viewerUrl: `https://transcriptions.globalise.huygens.knaw.nl/detail/${result._id}`,
   }));
 
-  // Transform aggregations if present
-  let aggregations;
+  let aggregations: SearchOutput['aggregations'];
   if (input.includeAggregations && response.aggs) {
     aggregations = {
       topInventoryNumbers: response.aggs.invNr
@@ -246,28 +221,19 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
  * For testing Claude Desktop filtering issues
  */
 export async function searchSimple(input: SearchSimpleInput): Promise<SearchOutput> {
-  // Map simple input to full search input
-  const searchInput: SearchInput = {
+  const invNrFilter = input.inventoryNumber
+    ? { invNr: Array.isArray(input.inventoryNumber) ? input.inventoryNumber : [input.inventoryNumber] }
+    : undefined;
+
+  return search({
     query: input.query,
     from: input.from,
     size: input.size,
-    fragmentSize: 500, // Fixed default
+    fragmentSize: 500,
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
-    includeAggregations: true, // Fixed default
+    includeAggregations: true,
     languages: input.languages,
-  };
-
-  // Add inventory filter if provided (supports single string or array)
-  if (input.inventoryNumber) {
-    const invNrArray = Array.isArray(input.inventoryNumber)
-      ? input.inventoryNumber
-      : [input.inventoryNumber];
-    searchInput.filters = {
-      invNr: invNrArray,
-    };
-  }
-
-  // Call the full search function
-  return search(searchInput);
+    filters: invNrFilter,
+  });
 }

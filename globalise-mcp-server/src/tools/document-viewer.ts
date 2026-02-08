@@ -7,8 +7,9 @@
 
 import { z } from 'zod';
 import { getCachedApiGet, buildUrl, API_CONFIG, documentCache } from '../utils/api-client.js';
-import { DocumentResponse } from '../utils/types.js';
+import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
+import { DocumentResponse } from '../utils/types.js';
 import { findArchivalDocuments } from './archival-index.js';
 
 /**
@@ -75,36 +76,76 @@ export interface ViewDocumentUiOutput {
 }
 
 /**
- * Normalize document ID to URN format
+ * Determine which database source(s) are represented in the results.
  */
-function normalizeDocumentId(docId: string): string {
-  if (docId.startsWith('urn:globalise:')) {
-    return docId;
-  }
-  return `urn:globalise:${docId}`;
+function determineSource(results: { type: string }[]): ArchivalContext['source'] {
+  const hasObp = results.some(r => r.type === 'obp');
+  const hasGm = results.some(r => r.type === 'gm');
+
+  if (hasObp && hasGm) return 'both';
+  if (hasObp) return 'obp';
+  if (hasGm) return 'gm';
+  return 'none';
 }
 
 /**
- * Extract inventory and scan numbers from document ID
+ * Build archival context from OBP/GM database results.
+ * Returns undefined if the database is unavailable or has no results.
  */
-function parseDocumentId(docId: string): { inventoryNumber: string; scanNumber: string } {
-  // Remove URN prefix if present
-  const cleanId = docId.replace('urn:globalise:', '');
+async function fetchArchivalContext(inventoryNumber: string): Promise<ArchivalContext | undefined> {
+  try {
+    const result = await findArchivalDocuments({
+      source: 'all',
+      inventoryNumber,
+      from: 0,
+      size: 10,
+      includeAggregations: true,
+    });
 
-  // Format: NL-HaNA_{archive}_{inventory}_{scan}
-  const parts = cleanId.split('_');
+    if (result.total.value === 0) return undefined;
 
-  if (parts.length >= 4) {
-    return {
-      inventoryNumber: parts[2],
-      scanNumber: parts[3],
+    const context: ArchivalContext = {
+      source: determineSource(result.results),
+      inventoryTotal: result.total.value,
     };
-  }
 
-  return {
-    inventoryNumber: 'unknown',
-    scanNumber: 'unknown',
-  };
+    // Settlements from aggregations (OBP)
+    const settlements = result.aggregations?.settlements;
+    if (settlements?.length) {
+      context.settlements = settlements.slice(0, 5).map(s => s.settlement);
+    }
+
+    // Year range from results
+    const years = result.results
+      .flatMap(r => [r.yearEarliest, r.yearLatest])
+      .filter((y): y is number => y !== null && y !== undefined);
+    if (years.length > 0) {
+      context.yearRange = { from: Math.min(...years), to: Math.max(...years) };
+    }
+
+    // GM-specific fields
+    const gmResult = result.results.find(r => r.type === 'gm');
+    if (gmResult?.type === 'gm') {
+      context.chamber = gmResult.chamber ?? undefined;
+      context.htrAvailable = gmResult.htrAvailable;
+    }
+
+    // OBP-specific fields, with fallback description from first result
+    const obpResult = result.results.find(r => r.type === 'obp');
+    if (obpResult?.type === 'obp') {
+      context.locationTanap = obpResult.locationTanap ?? undefined;
+      context.geographicalCoverage = obpResult.geographicalCoverage ?? undefined;
+      context.description = obpResult.description;
+    } else {
+      context.description = result.results[0]?.description;
+    }
+
+    return context;
+  } catch (error) {
+    // Archival context is optional -- don't fail if database is unavailable
+    console.error('Failed to fetch archival context:', error);
+    return undefined;
+  }
 }
 
 /**
@@ -114,7 +155,6 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
   const documentUrn = normalizeDocumentId(input.documentId);
   const { inventoryNumber, scanNumber } = parseDocumentId(documentUrn);
 
-  // Build URL with query parameters to get all needed data
   const url = buildUrl(
     `${API_CONFIG.BROCCOLI_BASE_URL}/projects/globalise/${documentUrn}`,
     {
@@ -125,32 +165,23 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
     }
   );
 
-  // Make cached API request
   const cacheKey = `${documentUrn}:anno,text`;
   const response = await getCachedApiGet<DocumentResponse>(url, cacheKey, documentCache);
-
-  // Extract metadata from first annotation
   const metadata = response.anno?.[0]?.body?.metadata;
-
-  // Extract IIIF image URL from annotation target
   const iiifImageUrl = extractIiifImageUrl(response);
 
   if (!iiifImageUrl) {
     throw new Error(`No IIIF image URL found for document ${documentUrn}`);
   }
 
-  // Build the output structure for the UI
-  const output: ViewDocumentUiOutput = {
+  return {
     id: documentUrn,
     iiifImageUrl,
     transcription: response.views?.self?.lines || [],
     metadata: {
       inventory: inventoryNumber,
       scan: scanNumber,
-      languages: metadata?.lang?.map(l => ({
-        code: l.iso,
-        label: l.label,
-      })) || [],
+      languages: metadata?.lang?.map(l => ({ code: l.iso, label: l.label })) || [],
       license: metadata?.comment?.replace('license: ', '') || undefined,
     },
     navigation: {
@@ -162,86 +193,6 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
       archive: metadata?.naUrl || null,
     },
     highlight: input.highlightTerms || [],
+    archivalContext: await fetchArchivalContext(inventoryNumber),
   };
-
-  // Fetch archival context from OBP/GM databases
-  try {
-    const archivalResult = await findArchivalDocuments({
-      source: 'all',
-      inventoryNumber,
-      from: 0,
-      size: 10,  // Get a few entries to extract metadata
-      includeAggregations: true,
-    });
-
-    if (archivalResult.total.value > 0) {
-      const archivalContext: ArchivalContext = {
-        source: 'none',
-        inventoryTotal: archivalResult.total.value,
-      };
-
-      // Determine source type from results
-      const hasObp = archivalResult.results.some(r => r.type === 'obp');
-      const hasGm = archivalResult.results.some(r => r.type === 'gm');
-      if (hasObp && hasGm) {
-        archivalContext.source = 'both';
-      } else if (hasObp) {
-        archivalContext.source = 'obp';
-      } else if (hasGm) {
-        archivalContext.source = 'gm';
-      }
-
-      // Extract settlements from aggregations (OBP)
-      if (archivalResult.aggregations?.settlements && archivalResult.aggregations.settlements.length > 0) {
-        archivalContext.settlements = archivalResult.aggregations.settlements
-          .slice(0, 5)
-          .map(s => s.settlement);
-      }
-
-      // Extract year range from results
-      const years = archivalResult.results
-        .flatMap(r => [r.yearEarliest, r.yearLatest])
-        .filter((y): y is number => y !== null && y !== undefined);
-      if (years.length > 0) {
-        archivalContext.yearRange = {
-          from: Math.min(...years),
-          to: Math.max(...years),
-        };
-      }
-
-      // Extract chamber from GM results
-      const gmResult = archivalResult.results.find(r => r.type === 'gm');
-      if (gmResult && gmResult.type === 'gm') {
-        if (gmResult.chamber) {
-          archivalContext.chamber = gmResult.chamber;
-        }
-        archivalContext.htrAvailable = gmResult.htrAvailable;
-      }
-
-      // Extract location and description from first OBP result
-      const obpResult = archivalResult.results.find(r => r.type === 'obp');
-      if (obpResult && obpResult.type === 'obp') {
-        if (obpResult.locationTanap) {
-          archivalContext.locationTanap = obpResult.locationTanap;
-        }
-        if (obpResult.geographicalCoverage) {
-          archivalContext.geographicalCoverage = obpResult.geographicalCoverage;
-        }
-        archivalContext.description = obpResult.description;
-      } else {
-        // Fallback to first result's description (for GM)
-        const firstResult = archivalResult.results[0];
-        if (firstResult) {
-          archivalContext.description = firstResult.description;
-        }
-      }
-
-      output.archivalContext = archivalContext;
-    }
-  } catch (error) {
-    // Archival context is optional - don't fail if database is unavailable
-    console.error('Failed to fetch archival context:', error);
-  }
-
-  return output;
 }

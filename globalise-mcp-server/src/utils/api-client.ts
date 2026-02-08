@@ -236,48 +236,38 @@ async function withRetry<T>(
   fn: () => Promise<T>,
   maxAttempts = API_CONFIG.RETRY_MAX_ATTEMPTS
 ): Promise<T> {
-  let lastError: ApiError | undefined;
-
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       const apiError = error as ApiError;
 
-      // If it's not a retryable error, throw immediately
-      if (!apiError.type || !isRetryableError(apiError)) {
+      // Non-retryable errors or last attempt: throw immediately
+      if (!apiError.type || !isRetryableError(apiError) || attempt === maxAttempts - 1) {
         throw error;
       }
 
-      lastError = apiError;
-
-      // If we've exhausted all attempts, throw
-      if (attempt === maxAttempts - 1) {
-        throw error;
-      }
-
-      // Calculate delay and wait before retrying
       const delayMs = calculateRetryDelay(attempt, apiError);
       await sleep(delayMs);
     }
   }
 
-  // This should never be reached, but TypeScript needs it
-  throw lastError;
+  // Unreachable: the loop always returns or throws
+  throw new Error('Retry loop exhausted without result');
 }
 
 /**
- * Execute a single GET request without retry
+ * Execute a fetch request with throttling, timeout, and error classification.
+ * Shared implementation for both GET and POST requests.
  */
-async function apiGetOnce<T>(url: string, timeoutMs: number): Promise<T> {
-  // Throttle requests to avoid overwhelming the API
+async function apiFetchOnce<T>(url: string, timeoutMs: number, init?: RequestInit): Promise<T> {
   await throttle();
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, { ...init, signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -288,89 +278,37 @@ async function apiGetOnce<T>(url: string, timeoutMs: number): Promise<T> {
   } catch (error) {
     clearTimeout(timeoutId);
 
-    // Handle AbortError (timeout)
     if ((error as Error).name === 'AbortError') {
       throw createTimeoutError(url);
     }
-
-    // Handle TypeError (network errors)
     if (error instanceof TypeError) {
       throw createNetworkError(url, error);
     }
-
-    // Re-throw ApiError as-is
     if ((error as ApiError).type) {
       throw error;
     }
-
-    // Unknown error
     throw createUnknownError(error);
   }
 }
 
 /**
- * Make a GET request to the API with timeout and automatic retry
- * Retries on transient failures (network errors, timeouts, 5xx, 429)
+ * Make a GET request to the API with timeout and automatic retry.
+ * Retries on transient failures (network errors, timeouts, 5xx, 429).
  */
 export async function apiGet<T>(url: string, timeoutMs = API_CONFIG.TIMEOUT_MS): Promise<T> {
-  return withRetry(() => apiGetOnce<T>(url, timeoutMs));
+  return withRetry(() => apiFetchOnce<T>(url, timeoutMs));
 }
 
 /**
- * Execute a single POST request without retry
- */
-async function apiPostOnce<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
-  // Throttle requests to avoid overwhelming the API
-  await throttle();
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw createHttpError(response, url);
-    }
-
-    return await response.json() as T;
-  } catch (error) {
-    clearTimeout(timeoutId);
-
-    // Handle AbortError (timeout)
-    if ((error as Error).name === 'AbortError') {
-      throw createTimeoutError(url);
-    }
-
-    // Handle TypeError (network errors)
-    if (error instanceof TypeError) {
-      throw createNetworkError(url, error);
-    }
-
-    // Re-throw ApiError as-is
-    if ((error as ApiError).type) {
-      throw error;
-    }
-
-    // Unknown error
-    throw createUnknownError(error);
-  }
-}
-
-/**
- * Make a POST request to the API with timeout and automatic retry
- * Retries on transient failures (network errors, timeouts, 5xx, 429)
+ * Make a POST request to the API with timeout and automatic retry.
+ * Retries on transient failures (network errors, timeouts, 5xx, 429).
  */
 export async function apiPost<T>(url: string, body: unknown, timeoutMs = API_CONFIG.TIMEOUT_MS): Promise<T> {
-  return withRetry(() => apiPostOnce<T>(url, body, timeoutMs));
+  return withRetry(() => apiFetchOnce<T>(url, timeoutMs, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }));
 }
 
 /**
@@ -379,11 +317,11 @@ export async function apiPost<T>(url: string, body: unknown, timeoutMs = API_CON
 export function buildUrl(baseUrl: string, params: Record<string, string | number | boolean | undefined>): string {
   const url = new URL(baseUrl);
 
-  Object.entries(params).forEach(([key, value]) => {
+  for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) {
       url.searchParams.append(key, String(value));
     }
-  });
+  }
 
   return url.toString();
 }
