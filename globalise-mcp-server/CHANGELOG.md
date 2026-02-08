@@ -3,6 +3,8 @@
 All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
 > **Archive:** Versions 1.0.0–1.16.5 (Dec 2025 – Jan 2026) are in `offline/outdated/CHANGELOG-v1.0-v1.16.md`.
+>
+> **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
 ## Code Simplification - 2026-02-08
 
