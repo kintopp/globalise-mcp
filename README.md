@@ -12,8 +12,6 @@ Health check: https://globalise-mcp-production.up.railway.app/health
 
 #### [`globalise-mcp-server/`](./globalise-mcp-server/)
 
-A production-ready Model Context Protocol (MCP) server providing 5 tools for searching and retrieving VOC transcriptions.
-
 **Features:**
 - Search transcriptions with full-text queries, filters, and aggregations
 - Retrieve document details with metadata, annotations, and IIIF image URLs
