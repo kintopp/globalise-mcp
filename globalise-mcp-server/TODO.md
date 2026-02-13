@@ -83,6 +83,21 @@ LLMs can translate entries themselves. Multilingual descriptions in the archived
 
 ---
 
+### Deploy Size Review
+
+**Priority:** Low
+**Status:** Not started
+
+The deploy image includes ~56 MB of unused Bun binaries pulled in by `@modelcontextprotocol/ext-apps`'s `postinstall` script. We only use a single string constant (`RESOURCE_MIME_TYPE`) from that package.
+
+1. **Check ext-apps PR [#451](https://github.com/modelcontextprotocol/ext-apps/pull/451):** Moves Bun/Rollup binaries to devDependencies. If merged and released, upgrading eliminates the bloat. If stalled, consider inlining `RESOURCE_MIME_TYPE = "text/html;profile=mcp-app"` and dropping the dependency.
+
+2. **Reconsider committing the archival SQLite database.** Currently gitignored and rebuilt from CSV on every Railway deploy (~183 MB). The rebuild adds build time and requires the CSV source files and build script to remain in the deploy. Committing the pre-built database (or storing it as a release artifact) would skip this step entirely. Before doing so, confirm all data in the CSVs remains relevant and up-to-date.
+
+**Context:** `node_modules` is ~172 MB locally (macOS), potentially ~400 MB+ on Linux due to platform-specific binaries. The SQLite database is the single largest component at 183 MB.
+
+---
+
 ### Document Viewer: OpenSeadragon Enhancements
 
 **Priority:** Low
