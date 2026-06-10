@@ -6,6 +6,21 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.1.0] - 2026-06-10
+
+P2 wave per `MCP-SERVER-REFACTOR-REVIEW.md` (items R11, R13, R14, R15, R16; R12 already landed inside R6's consolidation in 2.0.0). No breaking changes.
+
+### Added
+- **R13 — Document-ID validation**: malformed document IDs (anything not matching `NL-HaNA_{archive}_{inventory}_{scan}`, with optional `urn:globalise:` prefix) now fail fast with a structured error and an example of the expected format, instead of flowing into an upstream URN lookup that 404'd confusingly.
+- **R16 — Test harness rounded out**: `npm test` runs three suites — `test:archival` (filter-combination matrix, FTS5 hostile inputs, combined OBP→GM pagination boundary, aggregation-cache stability; plain Node scripts, local DB only), `test:viewer-build` (built viewer exists, is self-contained, has no CDN references), and the existing `test:smoke` (now also checks the R13 malformed-ID error path).
+
+### Changed
+- **R11 — Viewer dependencies bundled**: the document viewer no longer imports the ext-apps SDK from unpkg (which had silently pinned it to 1.0.1) or OpenSeadragon from jsdelivr; both are bundled from node_modules into the single-file HTML (~580 KB) by Vite. A CDN hiccup can no longer blank the viewer iframe, and `resourceDomains` in the CSP shrinks to just `https://service.archief.nl` (IIIF images).
+- **R14 — Static DB work cached per connection**: the two full-table `COUNT(*)` totals are computed once per database connection (previously run on every `findArchivalDocuments` call), and unfiltered aggregations (GROUP BYs over ~227K rows) are cached after first computation — better-sqlite3 is synchronous, so these blocked the event loop per request. The global outbound-API throttle's latency-stacking caveat under concurrent users is now documented in `api-client.ts` (kept as-is for the current 1–2 users).
+- **R15 — Version single-sourced in code**: `SERVER_VERSION` is read from `package.json` at startup; the hardcoded copy in `src/index.ts` is gone. The version-bump lockstep list shrinks to package.json + CLAUDE.md + CHANGELOG.
+
+---
+
 ## [2.0.1] - 2026-06-10
 
 Code-quality pass over the P0/P1 refactor commits (no behavior changes intended).

@@ -23,24 +23,32 @@ export function normalizeDocumentId(docId: string): string {
 }
 
 /**
+ * Document ID shape: NL-HaNA_{archive}_{inventory}_{scan}, with exactly four
+ * underscore-separated segments (so a match splits unambiguously).
+ */
+const DOCUMENT_ID_PATTERN = /^NL-HaNA_[\d.]+_[^_]+_[^_]+$/;
+
+/**
  * Extract archive, inventory, and scan numbers from a document ID or URN.
  * Format: NL-HaNA_{archive}_{inventory}_{scan}
+ *
+ * Malformed IDs throw a structured error (R13) instead of flowing into an
+ * upstream URN lookup that would 404 confusingly.
  */
 export function parseDocumentId(docId: string): ParsedDocumentId {
   const cleanId = docId.replace('urn:globalise:', '');
-  const parts = cleanId.split('_');
 
-  if (parts.length >= 4) {
-    return {
-      archive: parts[1],
-      inventoryNumber: parts[2],
-      scanNumber: parts[3],
+  if (!DOCUMENT_ID_PATTERN.test(cleanId)) {
+    throw {
+      error: `Invalid document ID: ${docId}`,
+      suggestion: 'Expected NL-HaNA_{archive}_{inventory}_{scan}, e.g. "NL-HaNA_1.04.02_9966_0106" (optionally prefixed with "urn:globalise:").',
     };
   }
 
+  const parts = cleanId.split('_');
   return {
-    archive: 'unknown',
-    inventoryNumber: 'unknown',
-    scanNumber: 'unknown',
+    archive: parts[1],
+    inventoryNumber: parts[2],
+    scanNumber: parts[3],
   };
 }

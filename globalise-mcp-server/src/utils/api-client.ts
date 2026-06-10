@@ -28,6 +28,12 @@ let throttleQueue: Promise<void> = Promise.resolve();
  * Ensure minimum delay between API requests to avoid overwhelming the server.
  * Uses a promise queue to serialize concurrent requests, preventing race conditions
  * where multiple requests could bypass the delay by reading lastRequestTime simultaneously.
+ *
+ * Caveat (R14): the queue is global, so ALL outbound upstream calls are
+ * serialized at REQUEST_DELAY_MS spacing — courteous for the current 1-2
+ * users, but under many concurrent HTTP users the chain grows unboundedly
+ * and latency stacks. If tool calls ever feel slow under parallel use, this
+ * is the first suspect (fix: per-host token bucket instead of one chain).
  */
 async function throttle(): Promise<void> {
   // Chain this request onto the queue to serialize access

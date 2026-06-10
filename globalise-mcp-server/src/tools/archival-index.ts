@@ -316,29 +316,38 @@ function appendNotNull(where: string, column: string): string {
 
 type Db = ReturnType<typeof getDatabase>;
 
+type Aggregations = NonNullable<FindArchivalDocumentsOutput['aggregations']>;
+
 /**
- * Constant-SQL statements, prepared once per database connection rather than
- * re-compiled by db.prepare() on every call. Keyed by the db handle so a
- * reopened database (closeDatabase + getDatabase) gets fresh statements.
+ * Per-connection state whose SQL or results are constant: the FTS probe
+ * statement, the table totals, and (lazily) the unfiltered aggregations.
+ * The database is read-only and rebuilt only at deploy, so these cannot
+ * change for the life of a connection (R14) — without this, every call ran
+ * two full-table COUNT(*)s, and unfiltered calls re-ran GROUP BYs over 227K
+ * rows (better-sqlite3 is synchronous, so each blocks the event loop).
+ * Keyed by the db handle so a reopened database (closeDatabase +
+ * getDatabase) gets fresh state.
  */
-let staticStatements: {
+let staticDbState: {
   db: Db;
   ftsProbe: Statement;
-  obpTotal: Statement;
-  gmTotal: Statement;
+  obpTotal: number;
+  gmTotal: number;
+  obpUnfilteredAggregations?: Pick<Aggregations, 'settlements' | 'inventories'>;
+  gmUnfilteredAggregations?: Pick<Aggregations, 'chambers'>;
 } | null = null;
 
-function getStaticStatements(db: Db) {
-  if (staticStatements?.db !== db) {
-    staticStatements = {
+function getStaticDbState(db: Db) {
+  if (staticDbState?.db !== db) {
+    staticDbState = {
       db,
       // Syntax errors are query-side, so probing one FTS table covers both
       ftsProbe: db.prepare('SELECT rowid FROM obp_fts WHERE obp_fts MATCH @query LIMIT 1'),
-      obpTotal: db.prepare('SELECT COUNT(*) as count FROM obp_documents'),
-      gmTotal: db.prepare('SELECT COUNT(*) as count FROM generale_missiven'),
+      obpTotal: (db.prepare('SELECT COUNT(*) as count FROM obp_documents').get() as { count: number }).count,
+      gmTotal: (db.prepare('SELECT COUNT(*) as count FROM generale_missiven').get() as { count: number }).count,
     };
   }
-  return staticStatements;
+  return staticDbState;
 }
 
 /**
@@ -353,7 +362,7 @@ function sanitizeFtsQuery(
   db: Db,
   query: string,
 ): { query: string; note?: string } {
-  const probe = getStaticStatements(db).ftsProbe;
+  const probe = getStaticDbState(db).ftsProbe;
 
   try {
     probe.get({ query });
@@ -430,10 +439,8 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   const results: FindArchivalDocumentsOutput['results'] = [];
   let totalCount = 0;
 
-  // Get database totals
-  const stmts = getStaticStatements(db);
-  const obpTotal = (stmts.obpTotal.get() as { count: number }).count;
-  const gmTotal = (stmts.gmTotal.get() as { count: number }).count;
+  // Cached per-connection totals (R14)
+  const dbState = getStaticDbState(db);
 
   // Query OBP if source includes it (skipped when a GM-only filter is set)
   if (input.source === 'obp' || input.source === 'all') {
@@ -442,16 +449,17 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
     } else {
       const { where, params } = buildObpWhereClause(effectiveInput);
 
-      // Count total
-      const countSql = `SELECT COUNT(*) as count FROM obp_documents ${where}`;
-      const countResult = db.prepare(countSql).get(params) as { count: number };
-      totalCount += countResult.count;
+      // Count total (an unfiltered count is the cached table total)
+      const obpCount = where === ''
+        ? dbState.obpTotal
+        : (db.prepare(`SELECT COUNT(*) as count FROM obp_documents ${where}`).get(params) as { count: number }).count;
+      totalCount += obpCount;
 
       // OBP results come first in combined pagination, so the offset is input.from
       const offset = input.from;
       const limit = input.size;
 
-      if (offset < countResult.count) {
+      if (offset < obpCount) {
         const selectSql = `SELECT * FROM obp_documents ${where} ORDER BY year_earliest, inventory_number, folio_start LIMIT @limit OFFSET @offset`;
         const rows = db.prepare(selectSql).all({ ...params, limit, offset }) as ObpDbRow[];
 
@@ -467,10 +475,10 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
     } else {
       const { where, params } = buildGmWhereClause(effectiveInput);
 
-      // Count total
-      const countSql = `SELECT COUNT(*) as count FROM generale_missiven ${where}`;
-      const countResult = db.prepare(countSql).get(params) as { count: number };
-      const gmCount = countResult.count;
+      // Count total (an unfiltered count is the cached table total)
+      const gmCount = where === ''
+        ? dbState.gmTotal
+        : (db.prepare(`SELECT COUNT(*) as count FROM generale_missiven ${where}`).get(params) as { count: number }).count;
 
       // Calculate offset for GM results
       let gmOffset = 0;
@@ -507,29 +515,52 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
     if (includesObp) {
       const { where, params } = buildObpWhereClause(effectiveInput);
 
-      const settlementRows = db.prepare(
-        `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
-      ).all(params) as { settlement: string; count: number }[];
-      if (settlementRows.length > 0) {
-        aggregations.settlements = settlementRows;
-      }
+      // Unfiltered GROUP BYs scan all ~227K rows — cache them (R14)
+      if (where === '' && dbState.obpUnfilteredAggregations) {
+        Object.assign(aggregations, dbState.obpUnfilteredAggregations);
+      } else {
+        const obpAggs: Pick<Aggregations, 'settlements' | 'inventories'> = {};
 
-      const invRows = db.prepare(
-        `SELECT inventory_number, COUNT(*) as count FROM obp_documents ${where} GROUP BY inventory_number ORDER BY count DESC LIMIT 20`
-      ).all(params) as { inventory_number: string; count: number }[];
-      if (invRows.length > 0) {
-        aggregations.inventories = invRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
+        const settlementRows = db.prepare(
+          `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
+        ).all(params) as { settlement: string; count: number }[];
+        if (settlementRows.length > 0) {
+          obpAggs.settlements = settlementRows;
+        }
+
+        const invRows = db.prepare(
+          `SELECT inventory_number, COUNT(*) as count FROM obp_documents ${where} GROUP BY inventory_number ORDER BY count DESC LIMIT 20`
+        ).all(params) as { inventory_number: string; count: number }[];
+        if (invRows.length > 0) {
+          obpAggs.inventories = invRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
+        }
+
+        if (where === '') {
+          dbState.obpUnfilteredAggregations = obpAggs;
+        }
+        Object.assign(aggregations, obpAggs);
       }
     }
 
     if (includesGm) {
       const { where, params } = buildGmWhereClause(effectiveInput);
 
-      const chamberRows = db.prepare(
-        `SELECT chamber, COUNT(*) as count FROM generale_missiven ${appendNotNull(where, 'chamber')} GROUP BY chamber ORDER BY count DESC`
-      ).all(params) as { chamber: string; count: number }[];
-      if (chamberRows.length > 0) {
-        aggregations.chambers = chamberRows;
+      if (where === '' && dbState.gmUnfilteredAggregations) {
+        Object.assign(aggregations, dbState.gmUnfilteredAggregations);
+      } else {
+        const gmAggs: Pick<Aggregations, 'chambers'> = {};
+
+        const chamberRows = db.prepare(
+          `SELECT chamber, COUNT(*) as count FROM generale_missiven ${appendNotNull(where, 'chamber')} GROUP BY chamber ORDER BY count DESC`
+        ).all(params) as { chamber: string; count: number }[];
+        if (chamberRows.length > 0) {
+          gmAggs.chambers = chamberRows;
+        }
+
+        if (where === '') {
+          dbState.gmUnfilteredAggregations = gmAggs;
+        }
+        Object.assign(aggregations, gmAggs);
       }
     }
   }
@@ -544,8 +575,8 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
       hasMore: totalCount > input.from + results.length,
     },
     databaseInfo: {
-      obpTotal,
-      gmTotal,
+      obpTotal: dbState.obpTotal,
+      gmTotal: dbState.gmTotal,
       available: true,
     },
     ...(notes.length > 0 ? { note: notes.join('; ') } : {}),

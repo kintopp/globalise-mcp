@@ -59,8 +59,20 @@ import {
   viewDocumentUiInputSchema,
 } from './tools/document-viewer.js';
 
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export const SERVER_NAME = 'globalise-mcp-server';
-export const SERVER_VERSION = '2.0.1';
+
+/**
+ * Single source of truth for the version (R15): package.json. Works from
+ * both dist/index.js and src/index.ts (tsx) — the package root is one level
+ * up either way.
+ */
+export const SERVER_VERSION = (
+  JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')) as { version: string }
+).version;
 
 /**
  * Structured output gate (R8): outputSchema + structuredContent are on by
@@ -273,10 +285,6 @@ const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
 const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
 const VIEW_DOCUMENT_UI_TOOL_NAME = 'globalise_view_document_ui';
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 /**
  * Load the Document Viewer UI HTML. The built file is static for the life of
  * the process, so successful reads are cached; only the not-yet-built case
@@ -348,11 +356,10 @@ export function createServer(): McpServer {
           _meta: {
             ui: {
               csp: {
-                // Static resources: IIIF images, CDN scripts/styles
+                // Static resources: IIIF images only — OpenSeadragon and the
+                // ext-apps SDK are bundled into the viewer HTML (R11)
                 resourceDomains: [
-                  'https://service.archief.nl',      // IIIF images
-                  'https://cdn.jsdelivr.net',        // OpenSeadragon
-                  'https://unpkg.com',               // ext-apps SDK
+                  'https://service.archief.nl',
                 ],
                 // Network requests: API endpoints
                 connectDomains: [

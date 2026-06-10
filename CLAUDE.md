@@ -63,12 +63,11 @@ Health check: `/health`
 
 Update ALL of these (they must match):
 
-1. `package.json`
-2. `src/index.ts` — `SERVER_VERSION` (also reported by the HTTP transport's `/health`)
-3. `CLAUDE.md` — Current Version below
-4. `CHANGELOG.md` — new entry with date
+1. `package.json` — the only code location; `SERVER_VERSION` (and `/health`) read it at startup
+2. `CLAUDE.md` — Current Version below
+3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.0.1 (worktree-p0-refactor; code-quality pass over the P0/P1 refactor)
+### Current Version: 2.1.0 (worktree-p0-refactor; P2 wave — bundled viewer, document-ID validation, DB caching, version single-sourcing, test harness)
 
 ---
 

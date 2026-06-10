@@ -10,15 +10,16 @@
  * Follows MCP Apps SDK patterns with all lifecycle handlers.
  */
 
+// Bundled from node_modules and inlined by Vite (R11) — the built viewer has
+// no runtime CDN dependencies. app-with-deps is upstream's self-contained
+// browser entry, so zod and the MCP SDK stay out of our bundle graph.
 import {
   App,
   applyDocumentTheme,
   applyHostStyleVariables,
   applyHostFonts,
-} from 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps';
-
-// OpenSeadragon is loaded globally via CDN
-declare const OpenSeadragon: typeof import('openseadragon');
+} from '@modelcontextprotocol/ext-apps/app-with-deps';
+import OpenSeadragon from 'openseadragon';
 
 // Archival context from OBP/GM databases
 interface ArchivalContext {
@@ -104,7 +105,8 @@ app.ontoolresult = (result) => {
 
   // Check for error
   if (result.isError) {
-    showError('Error loading document', result.content?.[0]?.text || 'Unknown error');
+    const first = result.content?.[0];
+    showError('Error loading document', (first?.type === 'text' ? first.text : undefined) || 'Unknown error');
     return;
   }
 
@@ -375,9 +377,10 @@ function initializeImageViewer(imageUrl: string): void {
 
   // IIPImage server at service.archief.nl doesn't support standard IIIF info.json
   // Use simple image mode instead
-  viewer = OpenSeadragon({
+  const osdViewer = OpenSeadragon({
     element: container,
-    prefixUrl: 'https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/images/',
+    // No prefixUrl: it only serves nav-button images, and every built-in
+    // control is disabled below — the custom .image-controls buttons are used
     tileSources: {
       type: 'image',
       url: imageUrl,
@@ -394,20 +397,21 @@ function initializeImageViewer(imageUrl: string): void {
     minZoomImageRatio: 0.8,
     visibilityRatio: 0.5,
   });
+  viewer = osdViewer;
 
   // Fit to page width on load, aligned to top
-  viewer.addHandler('open', () => {
+  osdViewer.addHandler('open', () => {
     // Fit to width
-    viewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, 0.001), true);
+    osdViewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, 0.001), true);
     // Get the current bounds after fit-to-width
-    const bounds = viewer.viewport.getBounds();
+    const bounds = osdViewer.viewport.getBounds();
     // Pan so top of image aligns with top of viewport
     // The viewport center needs to be at y = half the viewport height
-    viewer.viewport.panTo(new OpenSeadragon.Point(0.5, bounds.height / 2), true);
+    osdViewer.viewport.panTo(new OpenSeadragon.Point(0.5, bounds.height / 2), true);
   });
 
   // Handle image load error
-  viewer.addHandler('open-failed', () => {
+  osdViewer.addHandler('open-failed', () => {
     const viewerContainer = document.getElementById('openseadragon-viewer');
     if (viewerContainer) {
       viewerContainer.innerHTML = `

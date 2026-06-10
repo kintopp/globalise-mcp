@@ -20,10 +20,4 @@ export default defineConfig({
     assetsInlineLimit: 100000000, // 100MB - inline everything
     cssCodeSplit: false,
   },
-  // Resolve the ext-apps package from CDN to avoid bundling issues
-  resolve: {
-    alias: {
-      '@modelcontextprotocol/ext-apps': 'https://unpkg.com/@modelcontextprotocol/ext-apps@1.0.1/app-with-deps',
-    },
-  },
 });

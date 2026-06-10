@@ -10,6 +10,8 @@
  *   4. one cheap globalise_find_archival_documents call (local SQLite, no
  *      network), checking both the text channel and structuredContent
  *   5. incompatible-filter combo returns a structured tool error (R7)
+ *   6. malformed document ID returns a structured tool error before any
+ *      upstream call (R13)
  *
  * Run with: npm run test:smoke (requires a prior npm run build)
  */
@@ -133,6 +135,19 @@ async function main() {
   const conflictContent = conflict.content as Array<{ type: string; text?: string }>;
   const conflictPayload = JSON.parse(conflictContent[0]?.text ?? '{}');
   check(typeof conflictPayload.suggestion === 'string', 'error carries a suggestion');
+
+  console.log('6. tools/call with malformed document ID (R13, no network)');
+  const badId = await client.callTool({
+    name: 'globalise_retrieve_document',
+    arguments: { documentId: 'not-a-valid-id' },
+  });
+  check(badId.isError === true, 'malformed document ID returns a tool error');
+  const badIdContent = badId.content as Array<{ type: string; text?: string }>;
+  const badIdPayload = JSON.parse(badIdContent[0]?.text ?? '{}');
+  check(
+    typeof badIdPayload.suggestion === 'string' && badIdPayload.suggestion.includes('NL-HaNA'),
+    'error suggestion shows the expected ID format',
+  );
 
   await client.close();
 
