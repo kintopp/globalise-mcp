@@ -4,6 +4,28 @@
 
 GLOBALISE MCP Server for accessing Dutch East India Company (VOC) transcriptions. Main code in `globalise-mcp-server/`. API docs in `globalise-transcriptions-api/`.
 
+## Commands
+
+All commands run from `globalise-mcp-server/`:
+
+```bash
+npm run build      # 3 stages: vite UI build → tsc → ensure:db (decompress committed DB)
+npm run build:db   # regenerate data/archival-index.sqlite from source (slow; build uses ensure:db)
+npm run dev        # tsc --watch (npm run dev:ui rebuilds the viewer on change)
+npm run inspector  # build + MCP Inspector against dist/index.js
+npm start          # run the built server (node dist/index.js)
+npm test           # archival-index + viewer-build + smoke tests
+```
+
+## Structure (globalise-mcp-server/)
+
+- `src/index.ts` — entry point, tool registration
+- `src/tools/` — search, document, document-viewer, convenience, archival-index
+- `src/transports/http-server.ts` — HTTP transport (Railway deployment)
+- `src/utils/` — api-client, cache, database (SQLite), document-id, iiif, languages, errors
+- `apps/document-viewer/` — MCP Apps UI, bundled by vite during build
+- `scripts/build-archival-db.ts` — regenerates `data/archival-index.sqlite` (committed as `.gz`)
+
 ## Conventions
 
 - `offline/` is gitignored; ignore unless explicitly requested.
