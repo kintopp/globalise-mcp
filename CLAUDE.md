@@ -67,7 +67,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.2.1 (worktree-p0-refactor; /simplify pass over the full P0–P3 diff)
+### Current Version: 2.3.0 (worktree-p0-refactor; OpenSeadragon 4.1.1 → 6.0.2, WebGL-default rendering)
 
 ---
 

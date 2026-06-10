@@ -6,6 +6,14 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.3.0] - 2026-06-10
+
+### Changed
+- **OpenSeadragon upgraded 4.1.1 → 6.0.2** (the current release). The document viewer's image pane now defaults to **WebGL rendering** (introduced in OSD 5.0), with automatic canvas fallback where WebGL is unavailable. No viewer code changes were required: the viewer only uses OSD's stable core API (`OpenSeadragon()` options, `viewport.{fitBounds,panTo,zoomBy,setRotation,goHome}`, `Rect`/`Point`, and the `open`/`open-failed` events), none of which were affected by the 5.x/6.x breaking changes (Tile data-pipeline overhaul, removed `onPageChange`, deprecated `Tile.context2D`).
+- **Dropped the `@types/openseadragon` devDependency**: OSD 6 ships its own TypeScript definitions (`openseadragon/types/index.d.ts`), with the same `export = OpenSeadragon` / `export as namespace` shape, so the default-import + namespace usage in `viewer.ts` is unchanged. Verified `viewer.ts` type-checks cleanly against the bundled types (the main `tsc` build excludes `apps/`, so this was checked separately).
+
+The self-contained viewer bundle grew from ~0.4 MB to ~0.68 MB (the WebGL drawer); the `test:viewer-build` self-containment and inlining checks still pass.
+
 ## [2.2.1] - 2026-06-10
 
 Code-quality pass (`/simplify`) over the full P0–P3 diff: four parallel review agents (reuse, simplification, efficiency, altitude), fixes applied, no behavior changes intended.

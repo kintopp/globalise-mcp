@@ -13,6 +13,10 @@
 // Bundled from node_modules and inlined by Vite (R11) — the built viewer has
 // no runtime CDN dependencies. app-with-deps is upstream's self-contained
 // browser entry, so zod and the MCP SDK stay out of our bundle graph.
+//
+// OpenSeadragon 6.x renders the image pane with WebGL by default, falling back
+// to canvas when WebGL is unavailable (the OSD 5.0 change). Its WebGL drawer is
+// why the inlined single-file bundle is ~0.68 MB.
 import {
   App,
   applyDocumentTheme,
