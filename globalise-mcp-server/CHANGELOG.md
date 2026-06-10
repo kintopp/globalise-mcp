@@ -6,6 +6,22 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.2.1] - 2026-06-10
+
+Code-quality pass (`/simplify`) over the full P0–P3 diff: four parallel review agents (reuse, simplification, efficiency, altitude), fixes applied, no behavior changes intended.
+
+### Changed
+- **Structured errors formalized**: new `ToolError extends Error` class in `src/utils/errors.ts` replaces the duck-typed `throw { error, suggestion }` plain objects in `document-id.ts` and `archival-index.ts` — compiler-checked shape, stack traces preserved. `formatError` narrows via `instanceof`; the duck-typed branch remains for the pre-existing `ApiError` objects from `api-client.ts`.
+- **Archival-index source-skip logic computed once**: the R7 "skip the other source on one-sided filters" decision and the OBP/GM where-clauses are now derived a single time and shared by the result queries and the aggregations (previously two hand-synchronized copies under a "mirror the logic above" comment; clauses were built twice).
+- **DB path single-sourced**: `build-archival-db.ts` and `ensure-archival-db.ts` now resolve the SQLite path via `getDatabasePath()` instead of three independent copies. Fixes a latent drift bug: with `ARCHIVAL_DB_PATH` set, the CSV-rebuild fallback wrote the DB to the default path (which the server never reads) while reporting success.
+- **`/health` server name plumbed through**: `HttpServerOptions.name` carries `SERVER_NAME` from `index.ts` instead of a second hardcoded `'globalise-mcp-server'` string (same pattern as the R15 version fix).
+- **HTTP 405 handlers deduplicated**: GET/DELETE `/mcp` share one `methodNotAllowed` handler factory.
+- **Origin guard simplified and bounded**: dropped the never-used `OriginGuardOptions.allowedOrigins` injection parameter; the deny-log rate-limit map is capped at 1000 entries (origins are attacker-controlled, so it could previously grow without bound).
+- **Viewer zoom factors centralized**: shared `zoomIn()`/`zoomOut()` helpers used by both the toolbar buttons and the keyboard shortcuts (the 1.5/0.67 factors lived in two places).
+- **Minor**: redundant double condition around `sanitizeFtsQuery` collapsed (`note` set ⇔ query rewritten); unreachable "empty response" debug branch removed; the `STRUCTURED_CONTENT` gate extracted to one `structuredPayload()` helper used by `toolResponse` and the viewer app tool.
+
+---
+
 ## [2.2.0] - 2026-06-10
 
 P3 wave per `MCP-SERVER-REFACTOR-REVIEW.md` (items R17, R18, R19; the review's optional PageXML word-coordinates project under R19 is not included). Closes out the review.

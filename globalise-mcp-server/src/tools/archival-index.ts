@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import type { Statement } from 'better-sqlite3';
 import { getDatabase, isDatabaseAvailable } from '../utils/database.js';
+import { ToolError } from '../utils/errors.js';
 
 // Input schema for archival index queries
 export const findArchivalDocumentsInputSchema = z.object({
@@ -411,10 +412,10 @@ function sanitizeFtsQuery(
         note: `query contained FTS5 syntax characters and was searched as the exact phrase ${escaped}`,
       };
     } catch {
-      throw {
-        error: `Invalid full-text query: ${query}`,
-        suggestion: 'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
-      };
+      throw new ToolError(
+        `Invalid full-text query: ${query}`,
+        'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
+      );
     }
   }
 }
@@ -440,22 +441,22 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   const hasGmOnlyFilters = input.chamber !== undefined || input.htrAvailable !== undefined;
 
   if (hasObpOnlyFilters && hasGmOnlyFilters) {
-    throw {
-      error: 'Incompatible filters: settlement applies only to OBP, while chamber/htrAvailable apply only to GM (Generale Missiven)',
-      suggestion: 'Run two queries: source "obp" with settlement, and source "gm" with chamber/htrAvailable.',
-    };
+    throw new ToolError(
+      'Incompatible filters: settlement applies only to OBP, while chamber/htrAvailable apply only to GM (Generale Missiven)',
+      'Run two queries: source "obp" with settlement, and source "gm" with chamber/htrAvailable.',
+    );
   }
   if (input.source === 'obp' && hasGmOnlyFilters) {
-    throw {
-      error: 'chamber and htrAvailable filters apply only to GM (Generale Missiven), not to source "obp"',
-      suggestion: 'Use source "gm" or "all" with these filters.',
-    };
+    throw new ToolError(
+      'chamber and htrAvailable filters apply only to GM (Generale Missiven), not to source "obp"',
+      'Use source "gm" or "all" with these filters.',
+    );
   }
   if (input.source === 'gm' && hasObpOnlyFilters) {
-    throw {
-      error: 'The settlement filter applies only to OBP (Digitized Indexes), not to source "gm"',
-      suggestion: 'Use source "obp" or "all" with the settlement filter.',
-    };
+    throw new ToolError(
+      'The settlement filter applies only to OBP (Digitized Indexes), not to source "gm"',
+      'Use source "obp" or "all" with the settlement filter.',
+    );
   }
 
   const db = getDatabase();
@@ -465,11 +466,27 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   let effectiveInput = input;
   if (input.query) {
     const sanitized = sanitizeFtsQuery(db, input.query);
-    if (sanitized.query !== input.query) {
+    if (sanitized.note) {
       effectiveInput = { ...input, query: sanitized.query };
-      if (sanitized.note) notes.push(sanitized.note);
+      notes.push(sanitized.note);
     }
   }
+
+  // Which sources does this query cover? On source "all", a one-sided filter
+  // skips the other source with a note (R7). Decided once here — the result
+  // queries and the aggregations below share these clauses, so the two
+  // phases cannot drift apart.
+  const skipObp = input.source === 'all' && hasGmOnlyFilters;
+  const skipGm = input.source === 'all' && hasObpOnlyFilters;
+  if (skipObp) notes.push('chamber/htrAvailable filters apply only to GM, so the OBP source was skipped');
+  if (skipGm) notes.push('the settlement filter applies only to OBP, so the GM (Generale Missiven) source was skipped');
+
+  const obpClause = (input.source === 'obp' || input.source === 'all') && !skipObp
+    ? buildObpWhereClause(effectiveInput)
+    : undefined;
+  const gmClause = (input.source === 'gm' || input.source === 'all') && !skipGm
+    ? buildGmWhereClause(effectiveInput)
+    : undefined;
 
   const results: FindArchivalDocumentsOutput['results'] = [];
   let totalCount = 0;
@@ -477,90 +494,69 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   // Cached per-connection totals (R14)
   const dbState = getStaticDbState(db);
 
-  // Query OBP if source includes it (skipped when a GM-only filter is set)
-  if (input.source === 'obp' || input.source === 'all') {
-    if (input.source === 'all' && hasGmOnlyFilters) {
-      notes.push('chamber/htrAvailable filters apply only to GM, so the OBP source was skipped');
-    } else {
-      const { where, params } = buildObpWhereClause(effectiveInput);
+  if (obpClause) {
+    const { where, params } = obpClause;
 
-      // Count total (an unfiltered count is the cached table total)
-      const obpCount = where === ''
-        ? dbState.obpTotal
-        : (db.prepare(`SELECT COUNT(*) as count FROM obp_documents ${where}`).get(params) as { count: number }).count;
-      totalCount += obpCount;
+    // Count total (an unfiltered count is the cached table total)
+    const obpCount = where === ''
+      ? dbState.obpTotal
+      : (db.prepare(`SELECT COUNT(*) as count FROM obp_documents ${where}`).get(params) as { count: number }).count;
+    totalCount += obpCount;
 
-      // OBP results come first in combined pagination, so the offset is input.from
-      const offset = input.from;
-      const limit = input.size;
+    // OBP results come first in combined pagination, so the offset is input.from
+    const offset = input.from;
+    const limit = input.size;
 
-      if (offset < obpCount) {
-        const selectSql = `SELECT * FROM obp_documents ${where} ORDER BY year_earliest, inventory_number, folio_start LIMIT @limit OFFSET @offset`;
-        const rows = db.prepare(selectSql).all({ ...params, limit, offset }) as ObpDbRow[];
+    if (offset < obpCount) {
+      const selectSql = `SELECT * FROM obp_documents ${where} ORDER BY year_earliest, inventory_number, folio_start LIMIT @limit OFFSET @offset`;
+      const rows = db.prepare(selectSql).all({ ...params, limit, offset }) as ObpDbRow[];
 
-        results.push(...rows.map(mapObpRow));
-      }
+      results.push(...rows.map(mapObpRow));
     }
   }
 
-  // Query GM if source includes it (skipped when an OBP-only filter is set)
-  if (input.source === 'gm' || input.source === 'all') {
-    if (input.source === 'all' && hasObpOnlyFilters) {
-      notes.push('the settlement filter applies only to OBP, so the GM (Generale Missiven) source was skipped');
-    } else {
-      const { where, params } = buildGmWhereClause(effectiveInput);
+  if (gmClause) {
+    const { where, params } = gmClause;
 
-      // Count total (an unfiltered count is the cached table total)
-      const gmCount = where === ''
-        ? dbState.gmTotal
-        : (db.prepare(`SELECT COUNT(*) as count FROM generale_missiven ${where}`).get(params) as { count: number }).count;
+    // Count total (an unfiltered count is the cached table total)
+    const gmCount = where === ''
+      ? dbState.gmTotal
+      : (db.prepare(`SELECT COUNT(*) as count FROM generale_missiven ${where}`).get(params) as { count: number }).count;
 
-      // Calculate offset for GM results
-      let gmOffset = 0;
-      if (input.source === 'all') {
-        // If querying all, GM results come after OBP
-        const obpCountForPaging = totalCount; // OBP count before adding GM
-        gmOffset = Math.max(0, input.from - obpCountForPaging);
-      } else {
-        gmOffset = input.from;
-      }
+    // In combined pagination GM results come after OBP, so the offset shifts
+    // down by the OBP count accumulated above
+    const gmOffset = input.source === 'all'
+      ? Math.max(0, input.from - totalCount)
+      : input.from;
 
-      totalCount += gmCount;
+    totalCount += gmCount;
 
-      // Get results with pagination
-      const limit = input.size - results.length;
-      if (gmOffset < gmCount && limit > 0) {
-        const selectSql = `SELECT * FROM generale_missiven ${where} ORDER BY date_numeric, inventory_number LIMIT @limit OFFSET @offset`;
-        const rows = db.prepare(selectSql).all({ ...params, limit, offset: gmOffset }) as GmDbRow[];
+    // Get results with pagination
+    const limit = input.size - results.length;
+    if (gmOffset < gmCount && limit > 0) {
+      const selectSql = `SELECT * FROM generale_missiven ${where} ORDER BY date_numeric, inventory_number LIMIT @limit OFFSET @offset`;
+      const rows = db.prepare(selectSql).all({ ...params, limit, offset: gmOffset }) as GmDbRow[];
 
-        results.push(...rows.map(mapGmRow));
-      }
+      results.push(...rows.map(mapGmRow));
     }
   }
 
   let aggregations: FindArchivalDocumentsOutput['aggregations'];
   if (input.includeAggregations) {
     aggregations = {};
-    // Mirror the query skip logic above: no aggregations for a skipped source
-    const includesObp = (input.source === 'obp' || input.source === 'all') &&
-      !(input.source === 'all' && hasGmOnlyFilters);
-    const includesGm = (input.source === 'gm' || input.source === 'all') &&
-      !(input.source === 'all' && hasObpOnlyFilters);
 
     // Unfiltered GROUP BYs scan all ~227K rows — cache them (R14)
-    if (includesObp) {
-      const clause = buildObpWhereClause(effectiveInput);
-      const obpAggs = clause.where === ''
-        ? (dbState.obpUnfilteredAggregations ??= computeObpAggregations(db, clause))
-        : computeObpAggregations(db, clause);
+    if (obpClause) {
+      const obpAggs = obpClause.where === ''
+        ? (dbState.obpUnfilteredAggregations ??= computeObpAggregations(db, obpClause))
+        : computeObpAggregations(db, obpClause);
       Object.assign(aggregations, obpAggs);
     }
 
-    if (includesGm) {
-      const clause = buildGmWhereClause(effectiveInput);
-      const gmAggs = clause.where === ''
-        ? (dbState.gmUnfilteredAggregations ??= computeGmAggregations(db, clause))
-        : computeGmAggregations(db, clause);
+    if (gmClause) {
+      const gmAggs = gmClause.where === ''
+        ? (dbState.gmUnfilteredAggregations ??= computeGmAggregations(db, gmClause))
+        : computeGmAggregations(db, gmClause);
       Object.assign(aggregations, gmAggs);
     }
   }

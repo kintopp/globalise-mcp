@@ -20,6 +20,7 @@ import {
   FindArchivalDocumentsOutput,
 } from '../src/tools/archival-index.js';
 import { isDatabaseAvailable, closeDatabase, getDatabasePath } from '../src/utils/database.js';
+import { ToolError } from '../src/utils/errors.js';
 import { check, finish } from './test-utils.js';
 
 /** Parse args through the tool schema (applies defaults) and run the query. */
@@ -32,8 +33,7 @@ async function expectStructuredError(args: Record<string, unknown>, label: strin
     await call(args);
     check(false, `${label} (no error thrown)`);
   } catch (e) {
-    const err = e as { error?: string; suggestion?: string };
-    check(typeof err.error === 'string' && typeof err.suggestion === 'string', label);
+    check(e instanceof ToolError && typeof e.suggestion === 'string', label);
   }
 }
 
@@ -67,8 +67,7 @@ async function main() {
     const unclosed = await call({ query: '"unclosed', size: 3, includeAggregations: false });
     check(typeof unclosed.total.value === 'number', 'unbalanced quote rescued by phrase-escape');
   } catch (e) {
-    const err = e as { suggestion?: string };
-    check(typeof err.suggestion === 'string', 'unbalanced quote → structured error with suggestion');
+    check(e instanceof ToolError && typeof e.suggestion === 'string', 'unbalanced quote → structured error with suggestion');
   }
 
   console.log('4. combined OBP→GM pagination boundary');

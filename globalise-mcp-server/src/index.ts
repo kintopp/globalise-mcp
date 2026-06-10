@@ -53,6 +53,7 @@ import {
   findArchivalDocumentsOutputSchema,
 } from './tools/archival-index.js';
 import { closeDatabase } from './utils/database.js';
+import { ToolError } from './utils/errors.js';
 import { VIEWER_URL_PREFIX } from './utils/api-client.js';
 import {
   viewDocumentUi,
@@ -81,6 +82,13 @@ export const SERVER_VERSION = (
  * payload either way.
  */
 const STRUCTURED_CONTENT_ENABLED = process.env.STRUCTURED_CONTENT !== 'false';
+
+/** structuredContent mirror of a tool result, behind the R8 gate — spread into every non-error CallToolResult. */
+function structuredPayload(result: unknown): Pick<CallToolResult, 'structuredContent'> {
+  return STRUCTURED_CONTENT_ENABLED
+    ? { structuredContent: result as Record<string, unknown> }
+    : {};
+}
 
 /**
  * Corpus-level caveats, stated once per connection instead of duplicated
@@ -143,12 +151,17 @@ const searchViewerLinks: ViewerLinksBuilder = (result) => {
 /**
  * Extract a readable message and optional suggestion from thrown values.
  *
- * Handles three error shapes:
- * - Error instances (Zod validation, standard errors)
+ * Handles four error shapes:
+ * - ToolError (message + suggestion, thrown by tool input validation)
+ * - other Error instances (Zod validation, standard errors)
  * - ApiError plain objects from api-client.ts (thrown as { type, error, suggestion, ... })
  * - Any other thrown values (coerced to string)
  */
 function formatError(error: unknown): { message: string; suggestion?: string } {
+  if (error instanceof ToolError) {
+    return { message: error.message, suggestion: error.suggestion };
+  }
+
   if (error instanceof Error) {
     return { message: error.message };
   }
@@ -172,9 +185,6 @@ function toolResponse(toolName: string, result: unknown, viewerLinks: string[]):
   // Debug logging (enable with DEBUG=true environment variable)
   if (process.env.DEBUG === 'true') {
     console.error(`[TOOL] ${toolName} - Response length: ${responseText.length} chars`);
-    if (!responseText || responseText.length === 0) {
-      console.error(`[TOOL] WARNING: Empty response for ${toolName}!`);
-    }
   }
 
   const content: CallToolResult['content'] = [
@@ -197,9 +207,7 @@ function toolResponse(toolName: string, result: unknown, viewerLinks: string[]):
 
   return {
     content,
-    ...(STRUCTURED_CONTENT_ENABLED
-      ? { structuredContent: result as Record<string, unknown> }
-      : {}),
+    ...structuredPayload(result),
   };
 }
 
@@ -486,9 +494,7 @@ export function createServer(): McpServer {
                 { type: 'text', text: humanReadable },
                 { type: 'text', text: JSON.stringify(docResult) },
               ],
-          ...(STRUCTURED_CONTENT_ENABLED
-            ? { structuredContent: docResult as unknown as Record<string, unknown> }
-            : {}),
+          ...structuredPayload(docResult),
         };
       } catch (error) {
         return errorResponse(VIEW_DOCUMENT_UI_TOOL_NAME, error);
@@ -512,7 +518,7 @@ async function main() {
     const port = parseInt(process.env.PORT || '3000', 10);
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 
-    createHttpServer({ port, allowedOrigins, version: SERVER_VERSION, createServer });
+    createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, createServer });
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const server = createServer();

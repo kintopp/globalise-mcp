@@ -17,13 +17,16 @@ import { dirname, join } from 'path';
 import { pipeline } from 'stream/promises';
 import { fileURLToPath } from 'url';
 import { createGzip } from 'zlib';
+import { getDatabasePath } from '../src/utils/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const DATA_DIR = join(__dirname, '..', 'data');
 const SOURCES_DIR = join(DATA_DIR, 'sources');
-const DB_PATH = join(DATA_DIR, 'archival-index.sqlite');
+// Same resolution the server uses (ARCHIVAL_DB_PATH override included), so
+// the build always writes the DB where the server will look for it
+const DB_PATH = getDatabasePath();
 
 const OBP_CSV = join(SOURCES_DIR, 'obp-indexes.csv');
 const GM_CSV = join(SOURCES_DIR, 'generale-missiven.csv');

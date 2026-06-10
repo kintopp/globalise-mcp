@@ -5,6 +5,8 @@
  * URNs follow the format: urn:globalise:NL-HaNA_{archive}_{inventory}_{scan}
  */
 
+import { ToolError } from './errors.js';
+
 export interface ParsedDocumentId {
   archive: string;
   inventoryNumber: string;
@@ -37,10 +39,10 @@ export function parseDocumentId(docId: string): ParsedDocumentId {
   const match = cleanId.match(DOCUMENT_ID_PATTERN);
 
   if (!match) {
-    throw {
-      error: `Invalid document ID: ${docId}`,
-      suggestion: 'Expected NL-HaNA_{archive}_{inventory}_{scan}, e.g. "NL-HaNA_1.04.02_9966_0106" (optionally prefixed with "urn:globalise:").',
-    };
+    throw new ToolError(
+      `Invalid document ID: ${docId}`,
+      'Expected NL-HaNA_{archive}_{inventory}_{scan}, e.g. "NL-HaNA_1.04.02_9966_0106" (optionally prefixed with "urn:globalise:").',
+    );
   }
 
   return {

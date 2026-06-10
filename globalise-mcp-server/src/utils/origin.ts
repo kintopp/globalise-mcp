@@ -34,22 +34,6 @@ const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 /** One deny log line per origin per minute, so a misbehaving client can't flood logs. */
 const DENY_LOG_INTERVAL_MS = 60_000;
 
-export interface OriginGuardOptions {
-  /** Allowlist entries: exact origins or hostname globs. Defaults to MCP_ALLOWED_ORIGINS env or built-in hosts. */
-  allowedOrigins?: string[];
-}
-
-function parseAllowlist(options: OriginGuardOptions): string[] {
-  if (options.allowedOrigins) return options.allowedOrigins;
-
-  const env = process.env.MCP_ALLOWED_ORIGINS;
-  if (env) {
-    return env.split(',').map((s) => s.trim()).filter(Boolean);
-  }
-
-  return DEFAULT_ALLOWED_ORIGINS;
-}
-
 /**
  * Check an http(s) origin against an allowlist entry.
  * - "*.example.com" matches example.com and any subdomain (any scheme).
@@ -66,8 +50,11 @@ function matchesEntry(origin: string, hostname: string, entry: string): boolean 
 /**
  * Create the Express middleware. Logs the effective policy once at creation.
  */
-export function createOriginGuard(options: OriginGuardOptions = {}) {
-  const allowlist = parseAllowlist(options);
+export function createOriginGuard() {
+  const env = process.env.MCP_ALLOWED_ORIGINS;
+  const allowlist = env
+    ? env.split(',').map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_ALLOWED_ORIGINS;
   const disabled = allowlist.includes('*');
   const lastDenyLog = new Map<string, number>();
 
@@ -117,6 +104,9 @@ export function createOriginGuard(options: OriginGuardOptions = {}) {
     const now = Date.now();
     const last = lastDenyLog.get(origin) ?? 0;
     if (now - last > DENY_LOG_INTERVAL_MS) {
+      // Origins are attacker-controlled, so bound the map; the occasional
+      // duplicate log line after a reset is harmless
+      if (lastDenyLog.size >= 1000) lastDenyLog.clear();
       lastDenyLog.set(origin, now);
       console.error(`[ORIGIN] Denied request from disallowed origin: ${origin}`);
     }

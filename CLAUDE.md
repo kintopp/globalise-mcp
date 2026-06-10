@@ -67,7 +67,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.2.0 (worktree-p0-refactor; P3 wave R17–R19 — closes out MCP-SERVER-REFACTOR-REVIEW.md)
+### Current Version: 2.2.1 (worktree-p0-refactor; /simplify pass over the full P0–P3 diff)
 
 ---
 

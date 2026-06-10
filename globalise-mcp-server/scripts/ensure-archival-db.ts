@@ -23,11 +23,14 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { createGunzip } from 'node:zlib';
+import { getDatabasePath } from '../src/utils/database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, '..');
 const DATA_DIR = join(PACKAGE_ROOT, 'data');
-const DB_PATH = process.env.ARCHIVAL_DB_PATH || join(DATA_DIR, 'archival-index.sqlite');
+// Same resolution the server uses (ARCHIVAL_DB_PATH override included), so
+// this script always materializes the DB where the server will look for it
+const DB_PATH = getDatabasePath();
 const GZ_PATH = join(DATA_DIR, 'archival-index.sqlite.gz');
 const CSV_PATH = join(DATA_DIR, 'sources', 'obp-indexes.csv');
 const TMP_PATH = `${DB_PATH}.tmp`;

@@ -488,6 +488,17 @@ function renderTranscription(lines: string[], highlightTerms: string[]): string 
 }
 
 /**
+ * Zoom steps shared by the toolbar buttons and the keyboard shortcuts
+ */
+function zoomIn(): void {
+  viewer?.viewport.zoomBy(1.5);
+}
+
+function zoomOut(): void {
+  viewer?.viewport.zoomBy(0.67);
+}
+
+/**
  * Rotate the image by the specified degrees
  */
 function rotateImage(degrees: number): void {
@@ -545,8 +556,8 @@ function attachEventListeners(doc: DocumentData): void {
   }
 
   // Image controls
-  document.getElementById('zoom-in')?.addEventListener('click', () => viewer?.viewport.zoomBy(1.5));
-  document.getElementById('zoom-out')?.addEventListener('click', () => viewer?.viewport.zoomBy(0.67));
+  document.getElementById('zoom-in')?.addEventListener('click', zoomIn);
+  document.getElementById('zoom-out')?.addEventListener('click', zoomOut);
   document.getElementById('reset-view')?.addEventListener('click', resetView);
   document.getElementById('rotate-left')?.addEventListener('click', () => rotateImage(-90));
   document.getElementById('rotate-right')?.addEventListener('click', () => rotateImage(90));
@@ -601,10 +612,10 @@ document.addEventListener('keydown', (e) => {
   switch (e.key) {
     case '+':
     case '=':
-      viewer.viewport.zoomBy(1.5);
+      zoomIn();
       break;
     case '-':
-      viewer.viewport.zoomBy(0.67);
+      zoomOut();
       break;
     case '0':
       resetView();

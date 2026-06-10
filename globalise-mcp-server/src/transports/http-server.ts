@@ -18,6 +18,8 @@ export interface HttpServerOptions {
   port?: number;
   /** CORS allowlist for browser-facing routes (response headers only). */
   allowedOrigins?: string[];
+  /** Server name reported by /health. */
+  name?: string;
   /** Server version reported by /health and the startup log. */
   version?: string;
   /** Factory producing a fully configured MCP server, called per connection. */
@@ -28,7 +30,7 @@ export interface HttpServerOptions {
  * Create and start the HTTP server.
  */
 export function createHttpServer(options: HttpServerOptions) {
-  const { port = 3000, allowedOrigins = ['*'], version = 'unknown', createServer } = options;
+  const { port = 3000, allowedOrigins = ['*'], name = 'mcp-server', version = 'unknown', createServer } = options;
 
   const app = express();
 
@@ -51,7 +53,7 @@ export function createHttpServer(options: HttpServerOptions) {
   app.get('/health', (_req: Request, res: Response) => {
     res.json({
       status: 'healthy',
-      name: 'globalise-mcp-server',
+      name,
       version,
     });
   });
@@ -94,33 +96,20 @@ export function createHttpServer(options: HttpServerOptions) {
   });
 
   /**
-   * GET /mcp - no server-initiated notification stream in stateless mode
-   * (spec-legal: servers MAY return 405 for GET on the MCP endpoint).
+   * GET /mcp (no server-initiated notification stream in stateless mode) and
+   * DELETE /mcp (no sessions to terminate) both get a JSON-RPC 405
+   * (spec-legal: servers MAY return 405 for these on the MCP endpoint).
    */
-  app.get('/mcp', originGuard, (_req: Request, res: Response) => {
+  const methodNotAllowed = (message: string) => (_req: Request, res: Response) => {
     res.status(405).set('Allow', 'POST').json({
       jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Method Not Allowed: this server runs stateless Streamable HTTP (POST only)',
-      },
+      error: { code: -32000, message },
       id: null,
     });
-  });
+  };
 
-  /**
-   * DELETE /mcp - nothing to terminate in stateless mode.
-   */
-  app.delete('/mcp', originGuard, (_req: Request, res: Response) => {
-    res.status(405).set('Allow', 'POST').json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Method Not Allowed: stateless server, no sessions to terminate',
-      },
-      id: null,
-    });
-  });
+  app.get('/mcp', originGuard, methodNotAllowed('Method Not Allowed: this server runs stateless Streamable HTTP (POST only)'));
+  app.delete('/mcp', originGuard, methodNotAllowed('Method Not Allowed: stateless server, no sessions to terminate'));
 
   // ==========================================================================
   // Start Server
