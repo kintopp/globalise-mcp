@@ -1,90 +1,53 @@
 /**
  * HTTP transport for MCP server
- * Supports both Streamable HTTP (recommended) and SSE (legacy)
  *
- * Session Lifecycle:
- * 1. Client sends InitializeRequest (no session ID)
- * 2. Server creates transport, stores in pendingTransports
- * 3. After initialize completes, onsessioninitialized moves to streamableSessions
- * 4. Subsequent requests use mcp-session-id header to reuse session
+ * Streamable HTTP in stateless mode: every POST /mcp gets a fresh server
+ * instance and a fresh transport (sessionIdGenerator: undefined), both torn
+ * down when the response closes. No session IDs, no session maps, nothing to
+ * expire — and immune to proxies killing long-lived connections or clients
+ * caching stale session IDs.
  *
- * This prevents race conditions where tool calls arrive before initialization completes.
+ * The legacy SSE transport (/sse + /messages) is retained for backward
+ * compatibility; each SSE connection gets its own server instance. Slated
+ * for removal (refactor item R5).
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { randomUUID } from 'crypto';
+import { createOriginGuard } from '../utils/origin.js';
 
-const VERSION = '1.23.0';
+const VERSION = '1.25.0';
 
 export interface HttpServerOptions {
   port?: number;
+  /** CORS allowlist for browser-facing routes (response headers only). */
   allowedOrigins?: string[];
+  /** Factory producing a fully configured MCP server, called per connection. */
+  createServer: () => McpServer;
 }
 
 /**
- * Create and start an HTTP server with both Streamable HTTP and SSE transports
- *
- * @param mcpServer The MCP server instance to connect
- * @param options Configuration options (port, CORS origins)
+ * Create and start the HTTP server.
  */
-export function createHttpServer(
-  mcpServer: Server,
-  options: HttpServerOptions = {}
-) {
-  const { port = 3000, allowedOrigins = ['*'] } = options;
+export function createHttpServer(options: HttpServerOptions) {
+  const { port = 3000, allowedOrigins = ['*'], createServer } = options;
 
   const app = express();
+
+  // Behind Railway's proxy: required so express (and the SDK's rate limiter)
+  // reads the client IP from X-Forwarded-For instead of throwing
+  app.set('trust proxy', 1);
 
   // Middleware
   app.use(cors({ origin: allowedOrigins }));
   app.use(express.json({ limit: '1mb' }));
 
-  // Session storage for both transports
-  // - streamableSessions: fully initialized sessions ready for tool calls
-  // - pendingTransports: sessions being initialized (prevent race conditions)
-  const streamableSessions = new Map<string, StreamableHTTPServerTransport>();
-  const pendingTransports = new Map<string, StreamableHTTPServerTransport>();
-  const sseSessions = new Map<string, SSEServerTransport>();
-
-  /**
-   * Create a new StreamableHTTPServerTransport, register it as pending,
-   * wire up lifecycle callbacks, and connect it to the MCP server.
-   */
-  async function createStreamableSession(sessionId: string): Promise<StreamableHTTPServerTransport> {
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => sessionId,
-      onsessioninitialized: (id: string) => {
-        const t = pendingTransports.get(id);
-        if (t) {
-          pendingTransports.delete(id);
-          streamableSessions.set(id, t);
-          console.error(`[MCP] Session initialized: ${id}`);
-        }
-      },
-    });
-
-    pendingTransports.set(sessionId, transport);
-
-    transport.onclose = () => {
-      console.error(`[MCP] Session closed: ${sessionId}`);
-      pendingTransports.delete(sessionId);
-      streamableSessions.delete(sessionId);
-    };
-
-    try {
-      await mcpServer.connect(transport);
-    } catch (error) {
-      pendingTransports.delete(sessionId);
-      throw error;
-    }
-
-    return transport;
-  }
+  // Origin validation on MCP endpoints (spec MUST: 403 on invalid origins).
+  // Separate from CORS, which only sets response headers and rejects nothing.
+  const originGuard = createOriginGuard();
 
   // ==========================================================================
   // Health Check Endpoint
@@ -98,157 +61,98 @@ export function createHttpServer(
       transports: {
         streamableHttp: {
           endpoint: '/mcp',
-          status: 'active',
-          description: 'Recommended for new integrations'
+          status: 'active (stateless)',
+          description: 'Recommended for new integrations',
         },
         sse: {
           endpoint: '/sse',
           status: 'active (legacy)',
-          description: 'For backward compatibility'
-        }
+          description: 'For backward compatibility',
+        },
       },
-      activeSessions: {
-        streamableHttp: streamableSessions.size,
-        streamableHttpPending: pendingTransports.size,
-        sse: sseSessions.size
-      }
     });
   });
 
   // ==========================================================================
-  // Streamable HTTP Transport (Recommended)
-  // Single /mcp endpoint handling POST, GET, DELETE
+  // Streamable HTTP Transport (stateless)
   // ==========================================================================
 
   /**
    * POST /mcp - Handle MCP requests
-   * Creates new session or uses existing one via mcp-session-id header
    *
-   * Session lifecycle:
-   * 1. InitializeRequest (no session ID): creates pending transport
-   * 2. onsessioninitialized callback: moves to streamableSessions
-   * 3. Tool calls (with session ID): uses initialized session
-   *
-   * This prevents race conditions where tool calls arrive before initialization.
+   * Stateless: fresh server + transport per request, closed when the
+   * response ends. Initialize requests get no session ID, so clients
+   * never send one back; every request is self-contained.
    */
-  app.post('/mcp', async (req: Request, res: Response) => {
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  app.post('/mcp', originGuard, async (req: Request, res: Response) => {
+    const server = createServer();
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless mode
+    });
 
-    let transport: StreamableHTTPServerTransport;
+    res.on('close', () => {
+      transport.close();
+      server.close();
+    });
 
-    // Case 1: Existing initialized session
-    if (sessionId && streamableSessions.has(sessionId)) {
-      transport = streamableSessions.get(sessionId)!;
-      console.error(`[MCP] Reusing initialized session: ${sessionId}`);
-    }
-    // Case 2: Session exists but still pending initialization
-    else if (sessionId && pendingTransports.has(sessionId)) {
-      transport = pendingTransports.get(sessionId)!;
-      console.error(`[MCP] Reusing pending session: ${sessionId}`);
-    }
-    // Case 3: New session needed
-    else {
-      // Parse request body to check if this is an initialization request
-      const body = req.body;
-      const messages = Array.isArray(body) ? body : [body];
-      const hasInitRequest = messages.some(isInitializeRequest);
-
-      if (!hasInitRequest && !sessionId) {
-        // Non-init request without session ID - client error
-        console.error('[MCP] Rejected: tool call without session (client must initialize first)');
-        res.status(400).json({
+    try {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch (error) {
+      console.error('[MCP] Error handling request:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
           jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Bad Request: Session required. Send InitializeRequest first.',
-          },
+          error: { code: -32603, message: 'Internal server error' },
           id: null,
         });
-        return;
       }
-
-      // Create new session (for init request, or stale session recovery)
-      const newSessionId = sessionId || randomUUID();
-
-      if (sessionId) {
-        console.error(`[MCP] Auto-recovering stale session: ${sessionId}`);
-      } else {
-        console.error(`[MCP] New session (pending init): ${newSessionId}`);
-      }
-
-      transport = await createStreamableSession(newSessionId);
     }
-
-    // Handle the request
-    await transport.handleRequest(req, res, req.body);
   });
 
   /**
-   * GET /mcp - SSE stream for server-initiated messages (notifications)
-   * Requires mcp-session-id header
-   *
-   * Auto-recovery: If session doesn't exist, creates a new one with the same ID.
+   * GET /mcp - no server-initiated notification stream in stateless mode
+   * (spec-legal: servers MAY return 405 for GET on the MCP endpoint).
    */
-  app.get('/mcp', async (req: Request, res: Response) => {
-    const sessionId = req.headers['mcp-session-id'] as string;
-
-    if (!sessionId) {
-      res.status(400).json({
-        error: 'Missing mcp-session-id header',
-        suggestion: 'First make a POST request to /mcp to establish a session'
-      });
-      return;
-    }
-
-    // Check both initialized and pending sessions
-    let transport = streamableSessions.get(sessionId) || pendingTransports.get(sessionId);
-
-    // Auto-recover stale session for SSE stream
-    if (!transport) {
-      console.error(`[MCP] Auto-recovering stale session for SSE: ${sessionId}`);
-      transport = await createStreamableSession(sessionId);
-    }
-
-    console.error(`[MCP] SSE stream requested for session: ${sessionId}`);
-    await transport.handleRequest(req, res);
+  app.get('/mcp', originGuard, (_req: Request, res: Response) => {
+    res.status(405).set('Allow', 'POST').json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Method Not Allowed: this server runs stateless Streamable HTTP (POST only)',
+      },
+      id: null,
+    });
   });
 
   /**
-   * DELETE /mcp - Terminate a session
-   * Requires mcp-session-id header
+   * DELETE /mcp - nothing to terminate in stateless mode.
    */
-  app.delete('/mcp', async (req: Request, res: Response) => {
-    const sessionId = req.headers['mcp-session-id'] as string;
-
-    if (!sessionId) {
-      res.status(400).json({ error: 'Missing mcp-session-id header' });
-      return;
-    }
-
-    const transport = streamableSessions.get(sessionId) || pendingTransports.get(sessionId);
-
-    if (!transport) {
-      res.status(404).json({ error: 'Session not found', sessionId });
-      return;
-    }
-
-    console.error(`[MCP] Terminating session: ${sessionId}`);
-    await transport.close();
-    streamableSessions.delete(sessionId);
-    pendingTransports.delete(sessionId);
-    res.status(200).json({ message: 'Session terminated', sessionId });
+  app.delete('/mcp', originGuard, (_req: Request, res: Response) => {
+    res.status(405).set('Allow', 'POST').json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Method Not Allowed: stateless server, no sessions to terminate',
+      },
+      id: null,
+    });
   });
 
   // ==========================================================================
   // Legacy SSE Transport (Backward Compatibility)
   // ==========================================================================
 
+  const sseSessions = new Map<string, SSEServerTransport>();
+
   /**
    * GET /sse - Establish SSE connection (legacy)
+   * Each connection gets its own server instance (one transport per server).
    */
-  app.get('/sse', async (req: Request, res: Response) => {
+  app.get('/sse', originGuard, async (_req: Request, res: Response) => {
     console.error('[SSE] New legacy SSE connection (consider using /mcp instead)');
 
+    const server = createServer();
     const transport = new SSEServerTransport('/messages', res);
     const sessionId = transport.sessionId;
 
@@ -257,10 +161,11 @@ export function createHttpServer(
     transport.onclose = () => {
       console.error(`[SSE] Connection closed: ${sessionId}`);
       sseSessions.delete(sessionId);
+      server.close();
     };
 
     try {
-      await mcpServer.connect(transport);
+      await server.connect(transport);
     } catch (error) {
       console.error('[SSE] Error connecting transport:', error);
       sseSessions.delete(sessionId);
@@ -270,7 +175,7 @@ export function createHttpServer(
   /**
    * POST /messages - Handle SSE client messages (legacy)
    */
-  app.post('/messages', async (req: Request, res: Response) => {
+  app.post('/messages', originGuard, async (req: Request, res: Response) => {
     const sessionId = req.query.sessionId as string;
 
     if (!sessionId) {
@@ -306,10 +211,8 @@ export function createHttpServer(
     console.error('='.repeat(65));
     console.error('[HTTP] Endpoints:');
     console.error('');
-    console.error('  Streamable HTTP (recommended):');
+    console.error('  Streamable HTTP (recommended, stateless):');
     console.error(`    POST   http://localhost:${port}/mcp`);
-    console.error(`    GET    http://localhost:${port}/mcp  (SSE notifications)`);
-    console.error(`    DELETE http://localhost:${port}/mcp  (terminate session)`);
     console.error('');
     console.error('  Legacy SSE (backward compatible):');
     console.error(`    GET    http://localhost:${port}/sse`);
