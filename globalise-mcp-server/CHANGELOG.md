@@ -6,6 +6,11 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.3.1] - 2026-06-10
+
+### Fixed
+- **`globalise_search_transcriptions` crashed on result sets containing blank pages** with `Cannot read properties of undefined (reading 'map')`. Upstream omits `langIso`/`langLabel` entirely on zero-token (blank) scans rather than returning empty arrays, and the result mapper called `result.langIso.map(...)` unguarded (`src/tools/search.ts`). Such pages surface whenever a query matches text-free scans — most visibly `query: "*"` combined with `sortBy: "document"`, which returns an inventory from its (often blank) opening scans; keyword queries never hit it because only text-bearing pages match. Now guarded (`(result.langIso ?? []).map(...)`, `result.langLabel?.[i]`), so blank pages yield `languages: []`. The `SearchResult` type now marks `_hits`, `langIso`, and `langLabel` optional so the compiler enforces guarding. Verified live against the bug-report inputs (inv 7535/4293, wildcard ± inventory, and the keyword control).
+
 ## [2.3.0] - 2026-06-10
 
 ### Changed

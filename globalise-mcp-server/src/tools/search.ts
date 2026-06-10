@@ -204,9 +204,13 @@ async function search(input: SearchInput): Promise<SearchOutput> {
     inventoryNumber: result.invNr,
     highlightedFragments: result._hits?.text || [],
     tokenCount: result.textTokenCount,
-    languages: result.langIso.map((code, i) => ({
+    // Zero-token pages (blank scans) come back from upstream with langIso /
+    // langLabel omitted entirely — a wildcard or document-sorted query surfaces
+    // those, so guard both. Keyword queries never hit this (only text-bearing
+    // pages match), which is why this only crashed on query:"*" + filters.
+    languages: (result.langIso ?? []).map((code, i) => ({
       code,
-      label: result.langLabel[i] || code,
+      label: result.langLabel?.[i] || code,
     })),
   }));
 

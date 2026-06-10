@@ -18,14 +18,17 @@ export interface SearchResponse {
 
 export interface SearchResult {
   _id: string;
-  _hits: {
+  // Upstream omits these on zero-token (blank) pages — and `_hits` whenever
+  // there are no highlight fragments — rather than returning empty arrays.
+  // Optional here so consumers are forced to guard them (see search.ts).
+  _hits?: {
     text: string[];
   };
   textTokenCount: number;
   invNr: string;
   document: string;
-  langIso: string[];
-  langLabel: string[];
+  langIso?: string[];
+  langLabel?: string[];
 }
 
 export interface DocumentResponse {

@@ -67,7 +67,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.3.0 (worktree-p0-refactor; OpenSeadragon 4.1.1 → 6.0.2, WebGL-default rendering)
+### Current Version: 2.3.1 (worktree-p0-refactor; fix search crash on blank pages with missing langIso/langLabel)
 
 ---
 
