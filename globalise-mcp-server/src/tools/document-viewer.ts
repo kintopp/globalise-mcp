@@ -10,7 +10,7 @@ import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
 import { DocumentResponse } from '../utils/types.js';
-import { type Language, mapPageLanguages } from '../utils/languages.js';
+import { languageSchema, mapPageLanguages } from '../utils/languages.js';
 import { findArchivalDocuments } from './archival-index.js';
 
 /**
@@ -27,54 +27,53 @@ export const viewDocumentUiInputSchema = z.object({
 export type ViewDocumentUiInput = z.infer<typeof viewDocumentUiInputSchema>;
 
 /**
- * Archival context from OBP/GM databases
+ * Archival context from OBP/GM databases. A Zod schema (not a bare interface)
+ * so it composes into viewDocumentUiOutputSchema and is validated when emitted
+ * as structuredContent.
  */
-export interface ArchivalContext {
-  /** Which database(s) have entries for this inventory */
-  source: 'obp' | 'gm' | 'both' | 'none';
-  /** Total entries in archival index for this inventory */
-  inventoryTotal: number;
-  /** Top settlements (OBP only) */
-  settlements?: string[];
-  /** Date range across all entries */
-  yearRange?: { from: number; to: number };
-  /** VOC chamber (GM only) */
-  chamber?: string;
-  /** Whether HTR transcriptions are available (GM only) */
-  htrAvailable?: boolean;
-  /** Specific location from TANAP (e.g., "Colombo", "Madurese") */
-  locationTanap?: string;
-  /** Geographic coverage/scope */
-  geographicalCoverage?: string;
-  /** Finding aid description text */
-  description?: string;
-}
+export const archivalContextSchema = z.object({
+  source: z.enum(['obp', 'gm', 'both', 'none']).describe('Which database(s) have entries for this inventory'),
+  inventoryTotal: z.number().describe('Total entries in archival index for this inventory'),
+  settlements: z.array(z.string()).optional().describe('Top settlements (OBP only)'),
+  yearRange: z.object({ from: z.number(), to: z.number() }).optional().describe('Date range across all entries'),
+  chamber: z.string().optional().describe('VOC chamber (GM only)'),
+  htrAvailable: z.boolean().optional().describe('Whether HTR transcriptions are available (GM only)'),
+  locationTanap: z.string().optional().describe('Specific location from TANAP (e.g., "Colombo", "Madurese")'),
+  geographicalCoverage: z.string().optional().describe('Geographic coverage/scope'),
+  description: z.string().optional().describe('Finding aid description text'),
+});
+
+export type ArchivalContext = z.infer<typeof archivalContextSchema>;
 
 /**
- * Output structure for the document viewer UI
+ * Output structure for the document viewer UI. Declared as a Zod schema (not a
+ * bare interface) so registerAppTool can advertise and validate it as
+ * structuredContent — parity with the four data tools.
  */
-export interface ViewDocumentUiOutput {
-  id: string;
-  iiifImageUrl: string;
-  transcription: string[];
-  metadata: {
-    inventory: string;
-    scan: string;
-    languages: Language[];
-    license?: string;
-  };
-  navigation: {
-    prev: string | null;
-    next: string | null;
-  };
-  urls: {
-    viewer: string;
-    archive: string | null;
-  };
-  highlight: string[];
+export const viewDocumentUiOutputSchema = z.object({
+  id: z.string(),
+  iiifImageUrl: z.string(),
+  transcription: z.array(z.string()),
+  metadata: z.object({
+    inventory: z.string(),
+    scan: z.string(),
+    languages: z.array(languageSchema),
+    license: z.string().optional(),
+  }),
+  navigation: z.object({
+    prev: z.string().nullable(),
+    next: z.string().nullable(),
+  }),
+  urls: z.object({
+    viewer: z.string(),
+    archive: z.string().nullable(),
+  }),
+  highlight: z.array(z.string()),
   /** Archival context from OBP/GM databases (if available) */
-  archivalContext?: ArchivalContext;
-}
+  archivalContext: archivalContextSchema.optional(),
+});
+
+export type ViewDocumentUiOutput = z.infer<typeof viewDocumentUiOutputSchema>;
 
 /**
  * Determine which database source(s) are represented in the results.

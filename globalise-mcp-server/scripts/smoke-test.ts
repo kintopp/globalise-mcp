@@ -36,9 +36,6 @@ const EXPECTED_TOOLS = [
 // Consolidated into globalise_search_transcriptions (R6)
 const REMOVED_TOOLS = ['globalise_search_by_inventory', 'globalise_search_by_language'];
 
-// Data tools registered via registerJsonTool (strict input + output schema)
-const DATA_TOOLS = EXPECTED_TOOLS.filter((t) => t !== 'globalise_view_document_ui');
-
 /** Recursively assert a JSON schema contains no $ref keys (claude.ai rejects them). */
 function hasRef(node: unknown): boolean {
   if (Array.isArray(node)) return node.some(hasRef);
@@ -75,15 +72,16 @@ async function main() {
   for (const tool of tools) {
     check(!hasRef(tool.inputSchema), `$ref-free inputSchema: ${tool.name}`);
     check(tool.annotations?.readOnlyHint === true, `readOnlyHint: ${tool.name}`);
-  }
-  // Strict schemas: unknown params rejected, not stripped (viewer tool uses a
-  // raw shape via registerAppTool, so strictness applies to the data tools)
-  for (const tool of tools.filter((t) => DATA_TOOLS.includes(t.name))) {
+    // Strict schemas: unknown params rejected, not stripped. All five tools are
+    // strict — the four data tools via registerJsonTool's .strict() variants,
+    // and the viewer via the strict schema passed through registerAppTool
+    // (v2.5.4; it previously shipped a non-strict raw shape).
     check(
       (tool.inputSchema as { additionalProperties?: boolean }).additionalProperties === false,
       `strict (additionalProperties: false): ${tool.name}`,
     );
-    // R8: structured output on by default (STRUCTURED_CONTENT=false strips it)
+    // R8: structured output on by default (STRUCTURED_CONTENT=false strips it);
+    // the viewer's outputSchema is registered behind the same gate (v2.5.4).
     check(tool.outputSchema !== undefined, `outputSchema registered: ${tool.name}`);
     check(!hasRef(tool.outputSchema), `$ref-free outputSchema: ${tool.name}`);
   }

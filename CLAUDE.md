@@ -22,7 +22,7 @@ npm test           # archival-index + viewer-build + smoke tests
 - `src/index.ts` — entry point, tool registration
 - `src/tools/` — search, document, document-viewer, convenience, archival-index
 - `src/transports/http-server.ts` — HTTP transport (Railway deployment)
-- `src/utils/` — api-client, cache, database (SQLite), document-id, iiif, languages, errors
+- `src/utils/` — api-client, cache, database (SQLite), document-id, iiif, languages, errors, origin (Origin-header validation, spec MUST), types
 - `apps/document-viewer/` — MCP Apps UI, bundled by vite during build
 - `scripts/build-archival-db.ts` — regenerates `data/archival-index.sqlite` (committed as `.gz`)
 
@@ -38,6 +38,10 @@ npm test           # archival-index + viewer-build + smoke tests
 ## Shell Best Practices (Lesson Learned)
 
 Complex curl commands fail due to shell parsing. Write JSON to a temp file instead of inline `-d '{...}'`. If curl fails with parsing errors, restructure rather than retry.
+
+## Common Errors
+
+- **Vite UI build fails with `Rollup failed to resolve import "openseadragon"`:** the local `node_modules` is stale (predates a dep the committed `package-lock.json` already pins — e.g. an old tree still on vite 5 with no `openseadragon`). Run `npm install` (or `npm ci` for a clean slate) before `npm run build`; do **not** add the import to `rollupOptions.external` (the viewer bundle must inline it). The committed lockfile is correct; only the on-disk install drifted.
 
 ---
 
@@ -90,8 +94,9 @@ Update ALL of these (they must match):
 1. `package.json` — the only code location; `SERVER_VERSION` (and `/health`) read it at startup
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
+4. `package-lock.json` — run `npm install` (no args) after bumping `package.json` so its two `version` fields follow; don't hand-edit. It has silently lagged before (was stuck at 2.4.0 through v2.5.3).
 
-### Current Version: 2.5.3 (worktree-p0-refactor; Document Viewer Safari fix — the viewer advertised a bogus `tools` capability it never implements, which on Safari triggered a `tools/list` round-trip that raced the `ui/initialize` handshake and suppressed `ontoolresult` delivery, hanging the widget on "Fetching document". Now declares `availableDisplayModes: ['inline','fullscreen']` only. UI bundle rebuilt; no API/output/server-behavior change)
+### Current Version: 2.5.4 (worktree-p0-refactor; mcp-builder review consistency pass on `globalise_view_document_ui` and search — three findings: (1) the viewer tool now declares an `outputSchema` (new `viewDocumentUiOutputSchema`/`archivalContextSchema` Zod schemas in `document-viewer.ts`, replacing the bare TS interfaces) so its `structuredContent` contract is advertised and validated like the four data tools; (2) the viewer's input schema is now `.strict()` (rejects unknown params) for parity with the data tools — passed as the strict value with a compile-time shape cast because `registerAppTool`'s generics collide with a full ZodObject; (3) `search_transcriptions` `sortBy` is now a `z.enum(['_score','document','invNr'])` instead of a free string, so invalid sort fields are rejected at the schema instead of forwarded upstream. No change to normal-path output)
 
 ---
 

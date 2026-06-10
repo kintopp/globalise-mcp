@@ -6,6 +6,15 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.5.4] - 2026-06-10
+
+`mcp-builder` review consistency pass — three findings on `globalise_view_document_ui` and `globalise_search_transcriptions`. No change to normal-path output or server behavior; the viewer's `structuredContent` and the search results are byte-for-byte the same. UI bundle unaffected (no viewer-side code changed).
+
+### Changed
+- **`globalise_view_document_ui` now declares an `outputSchema`** (`src/tools/document-viewer.ts`, `src/index.ts`). It was the only tool emitting `structuredContent` (the iframe reads it, R19) without a declared/validated output schema — `ViewDocumentUiOutput` was a bare TS `interface`, so the viewer's data contract was validated nowhere and a handler-shape regression would have shipped silently. Replaced the `ViewDocumentUiOutput` and `ArchivalContext` interfaces with Zod schemas (`viewDocumentUiOutputSchema`, `archivalContextSchema`) and derive the types via `z.infer`, making the schema the single source of truth. The schema is registered as `outputSchema` only behind the `STRUCTURED_CONTENT_ENABLED` gate, matching `registerJsonTool` — once an `outputSchema` is set the SDK requires a matching `structuredContent` on every non-error result, which the `STRUCTURED_CONTENT=false` branch does not emit.
+- **`globalise_view_document_ui` input schema is now `.strict()`** (`src/index.ts`). The four data tools derive `.strict()` input variants so unknown params are rejected, not silently stripped; the viewer passed `viewDocumentUiInputSchema.shape` directly, which the SDK rebuilds as a non-strict `z.object()`. Now passes the strict schema value (forwarded verbatim to `registerTool`, which honors `.strict()`); typed via a compile-time cast to a raw shape because `registerAppTool`'s generics infer `InputArgs` from both the schema value and the `ToolCallback` arg, and a full `ZodObject` collides with the `ZodRawShapeCompat` arm of the union constraint — the same wrapper friction `registerJsonTool` already casts around.
+- **`globalise_search_transcriptions` `sortBy` is now `z.enum(['_score', 'document', 'invNr'])`** (`src/tools/search.ts`), previously a free `z.string()` with the valid values documented only in prose. Because `.strict()` guards keys not values, an invalid `sortBy` passed validation and was forwarded upstream; the enum rejects it at the schema and self-documents — matching how `sortOrder`, `direction`, and `source` are already typed. The three values are unchanged, so every valid existing call behaves identically.
+
 ## [2.5.3] - 2026-06-10
 
 Document Viewer fix — the interactive viewer now loads in Safari (chatgpt.com in Safari, and any Safari/WebKit MCP Apps host). No API, output, or server-behavior change; UI bundle (`dist/apps/index.html`) rebuilt.

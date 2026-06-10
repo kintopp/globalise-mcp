@@ -104,7 +104,7 @@ export const searchTranscriptionsInputSchema = z.object({
     .optional()
     .default(10)
     .describe('Results per page (1-500, default: 10). Large result sets consume more context.'),
-  sortBy: z.string()
+  sortBy: z.enum(['_score', 'document', 'invNr'])
     .optional()
     .default('_score')
     .describe('Sort by: "_score" (relevance), "document" (doc ID), "invNr" (inventory). Default: "_score"'),

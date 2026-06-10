@@ -58,6 +58,7 @@ import { VIEWER_URL_PREFIX } from './utils/api-client.js';
 import {
   viewDocumentUi,
   viewDocumentUiInputSchema,
+  viewDocumentUiOutputSchema,
 } from './tools/document-viewer.js';
 
 // Get __dirname equivalent for ES modules
@@ -288,6 +289,7 @@ const searchToolInputSchema = searchTranscriptionsInputSchema.strict();
 const retrieveToolInputSchema = getDocumentInputSchema.strict();
 const navigateToolInputSchema = navigateInputSchema.strict();
 const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
+const viewDocumentUiToolInputSchema = viewDocumentUiInputSchema.strict();
 
 // UI Resource URI and tool name for the Document Viewer MCP App
 const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
@@ -456,7 +458,19 @@ export function createServer(): McpServer {
         'Display a VOC page in an interactive viewer: IIIF scan image (zoom/pan/rotate) and the transcription with line numbers, side-by-side, with optional search-term highlighting. ' +
         'Takes a document ID or URN. ' +
         'When the user selects text in the transcription panel they typically want a translation of those words from 17th/18th-century Dutch to modern English.',
-      inputSchema: viewDocumentUiInputSchema.shape,
+      // Pass the strict schema at runtime (registerAppTool forwards it verbatim
+      // to registerTool, which honors .strict() and rejects unknown params),
+      // but type it as a raw shape: the wrapper's generics infer InputArgs from
+      // both this value and the ToolCallback arg, and a full ZodObject collides
+      // with the ZodRawShapeCompat arm. registerJsonTool casts for the same
+      // reason. A plain .shape would be non-strict — hence the strict value.
+      inputSchema: viewDocumentUiToolInputSchema as unknown as typeof viewDocumentUiInputSchema.shape,
+      // outputSchema only when structured output is enabled: once set, the SDK
+      // requires a matching structuredContent on every non-error result, and
+      // the STRUCTURED_CONTENT=false branch below emits none.
+      ...(STRUCTURED_CONTENT_ENABLED
+        ? { outputSchema: viewDocumentUiOutputSchema as unknown as typeof viewDocumentUiOutputSchema.shape }
+        : {}),
       annotations: READ_ONLY_ANNOTATIONS,
       _meta: {
         ui: {
