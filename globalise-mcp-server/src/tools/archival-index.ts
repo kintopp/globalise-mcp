@@ -114,6 +114,7 @@ export const findArchivalDocumentsOutputSchema = z.object({
     gmTotal: z.number(),
     available: z.boolean(),
   }),
+  note: z.string().optional().describe('Caveats about how this result was computed (e.g. a source skipped because a filter does not apply to it)'),
 });
 
 export type FindArchivalDocumentsInput = z.infer<typeof findArchivalDocumentsInputSchema>;
@@ -313,6 +314,41 @@ function appendNotNull(where: string, column: string): string {
 }
 
 /**
+ * Validate an FTS5 query against the database, since raw user input like
+ * "oost-indie" or an unbalanced quote makes SQLite throw a syntax error (R7).
+ * On a syntax error, retry with the whole query phrase-escaped in double
+ * quotes; if even that fails, throw a structured error with a suggestion.
+ *
+ * Returns the query to use plus a note when it was rewritten.
+ */
+function sanitizeFtsQuery(
+  db: ReturnType<typeof getDatabase>,
+  query: string,
+): { query: string; note?: string } {
+  // Syntax errors are query-side, so probing one FTS table covers both
+  const probe = db.prepare('SELECT rowid FROM obp_fts WHERE obp_fts MATCH @query LIMIT 1');
+
+  try {
+    probe.get({ query });
+    return { query };
+  } catch {
+    const escaped = `"${query.replace(/"/g, '""')}"`;
+    try {
+      probe.get({ query: escaped });
+      return {
+        query: escaped,
+        note: `query contained FTS5 syntax characters and was searched as the exact phrase ${escaped}`,
+      };
+    } catch {
+      throw {
+        error: `Invalid full-text query: ${query}`,
+        suggestion: 'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
+      };
+    }
+  }
+}
+
+/**
  * Query the archival index database.
  */
 export async function findArchivalDocuments(input: FindArchivalDocumentsInput): Promise<FindArchivalDocumentsOutput> {
@@ -326,7 +362,44 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
     };
   }
 
+  // Source-specific filters: combining filters that exclude every source
+  // would silently return total: 0 and mislead the model into concluding
+  // no documents exist (R7) — reject the combination instead.
+  const hasObpOnlyFilters = input.settlement !== undefined;
+  const hasGmOnlyFilters = input.chamber !== undefined || input.htrAvailable !== undefined;
+
+  if (hasObpOnlyFilters && hasGmOnlyFilters) {
+    throw {
+      error: 'Incompatible filters: settlement applies only to OBP, while chamber/htrAvailable apply only to GM (Generale Missiven)',
+      suggestion: 'Run two queries: source "obp" with settlement, and source "gm" with chamber/htrAvailable.',
+    };
+  }
+  if (input.source === 'obp' && hasGmOnlyFilters) {
+    throw {
+      error: 'chamber and htrAvailable filters apply only to GM (Generale Missiven), not to source "obp"',
+      suggestion: 'Use source "gm" or "all" with these filters.',
+    };
+  }
+  if (input.source === 'gm' && hasObpOnlyFilters) {
+    throw {
+      error: 'The settlement filter applies only to OBP (Digitized Indexes), not to source "gm"',
+      suggestion: 'Use source "obp" or "all" with the settlement filter.',
+    };
+  }
+
   const db = getDatabase();
+  const notes: string[] = [];
+
+  // Reject or phrase-escape FTS5 queries that SQLite cannot parse
+  let effectiveInput = input;
+  if (input.query) {
+    const sanitized = sanitizeFtsQuery(db, input.query);
+    if (sanitized.query !== input.query) {
+      effectiveInput = { ...input, query: sanitized.query };
+      if (sanitized.note) notes.push(sanitized.note);
+    }
+  }
+
   const results: FindArchivalDocumentsOutput['results'] = [];
   let totalCount = 0;
 
@@ -334,38 +407,37 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   const obpTotal = (db.prepare('SELECT COUNT(*) as count FROM obp_documents').get() as { count: number }).count;
   const gmTotal = (db.prepare('SELECT COUNT(*) as count FROM generale_missiven').get() as { count: number }).count;
 
-  // Query OBP if source includes it
+  // Query OBP if source includes it (skipped when a GM-only filter is set)
   if (input.source === 'obp' || input.source === 'all') {
-    // Skip OBP if settlement filter is invalid for GM-only query
-    if (!(input.source === 'all' && (input.chamber || input.htrAvailable !== undefined))) {
-      const { where, params } = buildObpWhereClause(input);
+    if (input.source === 'all' && hasGmOnlyFilters) {
+      notes.push('chamber/htrAvailable filters apply only to GM, so the OBP source was skipped');
+    } else {
+      const { where, params } = buildObpWhereClause(effectiveInput);
 
       // Count total
       const countSql = `SELECT COUNT(*) as count FROM obp_documents ${where}`;
       const countResult = db.prepare(countSql).get(params) as { count: number };
       totalCount += countResult.count;
 
-      // Get results with pagination (only if we have room in results)
-      if (input.source === 'obp' || results.length < input.size) {
-        // For OBP, offset is simply input.from (OBP results come first in combined pagination)
-        const offset = input.from;
-        const limit = input.size - results.length;
+      // OBP results come first in combined pagination, so the offset is input.from
+      const offset = input.from;
+      const limit = input.size;
 
-        if (offset < countResult.count && limit > 0) {
-          const selectSql = `SELECT * FROM obp_documents ${where} ORDER BY year_earliest, inventory_number, folio_start LIMIT @limit OFFSET @offset`;
-          const rows = db.prepare(selectSql).all({ ...params, limit, offset }) as ObpDbRow[];
+      if (offset < countResult.count) {
+        const selectSql = `SELECT * FROM obp_documents ${where} ORDER BY year_earliest, inventory_number, folio_start LIMIT @limit OFFSET @offset`;
+        const rows = db.prepare(selectSql).all({ ...params, limit, offset }) as ObpDbRow[];
 
-          results.push(...rows.map(mapObpRow));
-        }
+        results.push(...rows.map(mapObpRow));
       }
     }
   }
 
-  // Query GM if source includes it
+  // Query GM if source includes it (skipped when an OBP-only filter is set)
   if (input.source === 'gm' || input.source === 'all') {
-    // Skip GM if OBP-only filters are set
-    if (!(input.source === 'all' && input.settlement)) {
-      const { where, params } = buildGmWhereClause(input);
+    if (input.source === 'all' && hasObpOnlyFilters) {
+      notes.push('the settlement filter applies only to OBP, so the GM (Generale Missiven) source was skipped');
+    } else {
+      const { where, params } = buildGmWhereClause(effectiveInput);
 
       // Count total
       const countSql = `SELECT COUNT(*) as count FROM generale_missiven ${where}`;
@@ -398,11 +470,14 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   let aggregations: FindArchivalDocumentsOutput['aggregations'];
   if (input.includeAggregations) {
     aggregations = {};
-    const includesObp = input.source === 'obp' || input.source === 'all';
-    const includesGm = input.source === 'gm' || input.source === 'all';
+    // Mirror the query skip logic above: no aggregations for a skipped source
+    const includesObp = (input.source === 'obp' || input.source === 'all') &&
+      !(input.source === 'all' && hasGmOnlyFilters);
+    const includesGm = (input.source === 'gm' || input.source === 'all') &&
+      !(input.source === 'all' && hasObpOnlyFilters);
 
     if (includesObp) {
-      const { where, params } = buildObpWhereClause(input);
+      const { where, params } = buildObpWhereClause(effectiveInput);
 
       const settlementRows = db.prepare(
         `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
@@ -420,7 +495,7 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
     }
 
     if (includesGm) {
-      const { where, params } = buildGmWhereClause(input);
+      const { where, params } = buildGmWhereClause(effectiveInput);
 
       const chamberRows = db.prepare(
         `SELECT chamber, COUNT(*) as count FROM generale_missiven ${appendNotNull(where, 'chamber')} GROUP BY chamber ORDER BY count DESC`
@@ -445,5 +520,6 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
       gmTotal,
       available: true,
     },
+    ...(notes.length > 0 ? { note: notes.join('; ') } : {}),
   };
 }
