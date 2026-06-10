@@ -6,6 +6,28 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.2.0] - 2026-06-10
+
+P3 wave per `MCP-SERVER-REFACTOR-REVIEW.md` (items R17, R18, R19; the review's optional PageXML word-coordinates project under R19 is not included). Closes out the review.
+
+### Added
+- **R18 — Prebuilt DB ships as a compressed artifact**: `data/archival-index.sqlite.gz` (~25 MB, gzip −9) is committed to the repo, and a new `npm run ensure:db` step (now the last stage of `npm run build`) materializes `archival-index.sqlite` from it in seconds instead of re-parsing 78 MB of CSV on every Railway deploy. Resolution order: existing DB → `ARCHIVAL_DB_URL` download (optional `ARCHIVAL_DB_TOKEN` bearer auth, gunzip when the URL ends in `.gz`) → committed `.gz` artifact → CSV rebuild → graceful absence. `npm run build:db` regenerates the `.gz` alongside the DB so the artifact cannot drift. Verified byte-identical via both the local-artifact and URL-download paths.
+- **R19 — Viewer keyboard shortcuts wired**: the control-button title hints (`+`/`=` zoom in, `−` zoom out, `0` reset view, `R` rotate left, `Shift+R` rotate right) now have a matching `keydown` handler instead of being decorative.
+
+### Changed
+- **R19 — Viewer reads `structuredContent`**: `globalise_view_document_ui` returns the document as `structuredContent` plus a single human-readable text block; the fragile "second text block should be the JSON" dual-content contract is retired. The viewer parses `structuredContent` first and keeps content-sniffing only as a fallback; with `STRUCTURED_CONTENT=false` the server still emits the legacy dual-content shape (verified both ways via SDK client).
+- **R19 — IIIF deep-zoom enabled**: the "IIPImage at service.archief.nl doesn't support standard IIIF info.json" assumption was re-checked (2026-06-10) and no longer holds — the service answers IIIF Image API v3 `info.json` with a 256px tile pyramid (level2, CORS `*`). The viewer now fetches `info.json` and feeds the tile pyramid to OpenSeadragon, cutting initial bandwidth ~10× on large scans; the full-resolution single JPEG remains as fallback when the fetch fails. `https://service.archief.nl` was added to the CSP `connectDomains` for the `info.json` fetch.
+- **R17 — `TRANSPORT=sse` alias dropped**: the deprecation shim (warn + run HTTP) is gone; use `TRANSPORT=http`.
+- **R17 — Build-only deps out of the production tree**: `csv-parse` (DB build script) and `n3` (offline commodity script) moved to `devDependencies`.
+
+### Removed
+- **R17 — Dead code & strays**: the unused `getDocumentInputSchema`/`getDocumentSimpleInputSchema` duality collapsed to one public input schema plus a plain internal options type (`navigate()` keeps its `includeText: false` optimization for the current page); the tracked 0-byte `data/archival-index.db` stray deleted. (The review's other hygiene items — committed `.DS_Store` files, nested empty `globalise-mcp-server/globalise-mcp-server/` dir — were already absent from the tracked tree.)
+
+### Tests
+- Viewer build check extended: asserts the bundle reads `structuredContent` and fetches IIIF `info.json` (R19). Full suite: 65 checks passing.
+
+---
+
 ## [2.1.1] - 2026-06-10
 
 Code-quality pass over the 2.1.0 P2 wave (no behavior changes intended).

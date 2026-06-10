@@ -110,12 +110,18 @@ app.ontoolresult = (result) => {
     return;
   }
 
-  // Parse document data from JSON in content
-  // The tool returns [human-readable text, JSON data]
   let data: DocumentData | null = null;
 
-  if (result.content && result.content.length >= 2) {
-    // Second content item should be the JSON data
+  // Primary channel (R19): the server mirrors the document as
+  // structuredContent. Content-sniffing below survives only as a fallback
+  // for STRUCTURED_CONTENT=false servers.
+  const structured = (result as { structuredContent?: unknown }).structuredContent;
+  if (structured && typeof structured === 'object' && 'id' in structured) {
+    data = structured as DocumentData;
+  }
+
+  // Fallback: legacy dual-content shape [human-readable text, JSON data]
+  if (!data && result.content && result.content.length >= 2) {
     const jsonContent = result.content[1];
     if (jsonContent?.type === 'text') {
       try {
@@ -341,8 +347,8 @@ function renderDocument(doc: DocumentData): void {
     </div>
   `;
 
-  // Initialize OpenSeadragon viewer
-  initializeImageViewer(doc.iiifImageUrl);
+  // Initialize OpenSeadragon viewer (async: fetches IIIF info.json first)
+  void initializeImageViewer(doc.iiifImageUrl);
 
   // Attach event listeners
   attachEventListeners(doc);
@@ -363,28 +369,64 @@ function renderDocument(doc: DocumentData): void {
 }
 
 /**
+ * Derive the IIIF Image API info.json URL from a full-image URL like
+ * .../{id}.jp2/full/max/0/default.jpg → .../{id}.jp2/info.json
+ */
+function infoJsonUrl(imageUrl: string): string | null {
+  const match = imageUrl.match(/^(.+)\/full\/[^/]+\/\d+\/default\.\w+$/);
+  return match ? `${match[1]}/info.json` : null;
+}
+
+/**
+ * Prefer tiled deep-zoom via IIIF info.json; fall back to single-image mode.
+ *
+ * service.archief.nl answers IIIF Image API v3 info.json with a 256px tile
+ * pyramid (level2 profile, CORS *) — re-verified 2026-06-10. The old "IIP
+ * doesn't support info.json" assumption no longer holds, so the
+ * full-resolution JPEG is only the fallback when the fetch fails.
+ */
+async function buildTileSources(imageUrl: string): Promise<object | string> {
+  const infoUrl = infoJsonUrl(imageUrl);
+  if (infoUrl) {
+    try {
+      const response = await fetch(infoUrl);
+      if (response.ok) {
+        return (await response.json()) as object;
+      }
+      app.sendLog({ level: 'warning', data: `info.json ${response.status}; using single-image mode` });
+    } catch (e) {
+      app.sendLog({ level: 'warning', data: `info.json fetch failed (${e}); using single-image mode` });
+    }
+  }
+  return { type: 'image', url: imageUrl };
+}
+
+// Guards against an older in-flight init clobbering a newer one (the
+// info.json fetch makes initialization asynchronous)
+let viewerInitSeq = 0;
+
+/**
  * Initialize OpenSeadragon for IIIF image viewing
  */
-function initializeImageViewer(imageUrl: string): void {
+async function initializeImageViewer(imageUrl: string): Promise<void> {
   // Destroy previous viewer if exists
   if (viewer) {
     viewer.destroy();
     viewer = null;
   }
 
+  const seq = ++viewerInitSeq;
+  const tileSources = await buildTileSources(imageUrl);
+  if (seq !== viewerInitSeq) return;
+
   const container = document.getElementById('openseadragon-viewer');
   if (!container) return;
 
-  // IIPImage server at service.archief.nl doesn't support standard IIIF info.json
-  // Use simple image mode instead
   const osdViewer = OpenSeadragon({
     element: container,
     // No prefixUrl: it only serves nav-button images, and every built-in
     // control is disabled below — the custom .image-controls buttons are used
-    tileSources: {
-      type: 'image',
-      url: imageUrl,
-    },
+    tileSources: tileSources as OpenSeadragon.Options['tileSources'],
     showNavigationControl: false,
     showZoomControl: false,
     showHomeControl: false,
@@ -546,6 +588,39 @@ function attachEventListeners(doc: DocumentData): void {
     });
   }
 }
+
+/**
+ * Keyboard shortcuts matching the control-button title hints:
+ * + / = zoom in, − zoom out, 0 reset view, R rotate left, Shift+R rotate
+ * right. Registered once at module scope (renderDocument re-creates the
+ * buttons, but this listener lives on document).
+ */
+document.addEventListener('keydown', (e) => {
+  if (!viewer || e.metaKey || e.ctrlKey || e.altKey) return;
+
+  switch (e.key) {
+    case '+':
+    case '=':
+      viewer.viewport.zoomBy(1.5);
+      break;
+    case '-':
+      viewer.viewport.zoomBy(0.67);
+      break;
+    case '0':
+      resetView();
+      break;
+    case 'r':
+      rotateImage(-90);
+      break;
+    case 'R':
+      rotateImage(90);
+      break;
+    default:
+      return;
+  }
+
+  e.preventDefault();
+});
 
 /**
  * Set up IntersectionObserver for visibility-based pause/play

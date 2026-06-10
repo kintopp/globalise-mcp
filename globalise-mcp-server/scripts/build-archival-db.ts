@@ -12,9 +12,11 @@
 
 import Database from 'better-sqlite3';
 import { parse } from 'csv-parse';
-import { createReadStream, existsSync, unlinkSync } from 'fs';
+import { createReadStream, createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
+import { pipeline } from 'stream/promises';
 import { fileURLToPath } from 'url';
+import { createGzip } from 'zlib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -371,6 +373,13 @@ async function main(): Promise<void> {
   } finally {
     db.close();
   }
+
+  // Refresh the deploy artifact (R18) so the committed .gz never drifts from
+  // the DB it was built from — ensure-archival-db.ts decompresses it on deploy
+  const gzPath = `${DB_PATH}.gz`;
+  console.log('\nCompressing deploy artifact...');
+  await pipeline(createReadStream(DB_PATH), createGzip({ level: 9 }), createWriteStream(gzPath));
+  console.log(`  Artifact: ${gzPath} (${(statSync(gzPath).size / 1024 / 1024).toFixed(1)} MB)`);
 }
 
 main().catch((err) => {

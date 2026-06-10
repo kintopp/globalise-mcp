@@ -39,7 +39,7 @@ import {
 } from './tools/search.js';
 import {
   getDocument,
-  getDocumentSimpleInputSchema,
+  getDocumentInputSchema,
   getDocumentOutputSchema,
 } from './tools/document.js';
 import {
@@ -277,7 +277,7 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
  * work on every request.
  */
 const searchToolInputSchema = searchTranscriptionsInputSchema.strict();
-const retrieveToolInputSchema = getDocumentSimpleInputSchema.strict();
+const retrieveToolInputSchema = getDocumentInputSchema.strict();
 const navigateToolInputSchema = navigateInputSchema.strict();
 const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
 
@@ -361,11 +361,13 @@ export function createServer(): McpServer {
                 resourceDomains: [
                   'https://service.archief.nl',
                 ],
-                // Network requests: API endpoints
+                // Network requests: API endpoints, plus service.archief.nl for
+                // the viewer's IIIF info.json fetch (deep-zoom, R19)
                 connectDomains: [
                   'https://gloccoli.tt.di.huc.knaw.nl',
                   'https://annorepo.globalise.huygens.knaw.nl',
                   'https://globalise.tt.di.huc.knaw.nl',
+                  'https://service.archief.nl',
                 ],
               },
             },
@@ -404,7 +406,7 @@ export function createServer(): McpServer {
       'To search by keywords use globalise_search_transcriptions; for sequential browsing use globalise_navigate.',
     retrieveToolInputSchema,
     getDocumentOutputSchema,
-    (input) => getDocument({ ...input, includeAnnotations: true, includeText: true }),
+    getDocument,
     documentViewerLinks,
   );
 
@@ -433,8 +435,9 @@ export function createServer(): McpServer {
   );
 
   // ==========================================================================
-  // Document viewer MCP App tool (dual-content response: human-readable
-  // summary + full JSON for the viewer iframe; retired only by R19)
+  // Document viewer MCP App tool. The viewer iframe reads structuredContent
+  // (R19); the legacy dual-content shape (summary + full JSON as a second
+  // text block) is kept only for STRUCTURED_CONTENT=false clients.
   // ==========================================================================
 
   registerAppTool(
@@ -474,12 +477,18 @@ export function createServer(): McpServer {
           .filter(Boolean)
           .join('\n');
 
-        // Return both human-readable and JSON for compatibility
+        // Viewer reads structuredContent; the JSON-as-second-text-block shape
+        // survives only behind the STRUCTURED_CONTENT=false gate
         return {
-          content: [
-            { type: 'text', text: humanReadable },
-            { type: 'text', text: JSON.stringify(docResult) },
-          ],
+          content: STRUCTURED_CONTENT_ENABLED
+            ? [{ type: 'text', text: humanReadable }]
+            : [
+                { type: 'text', text: humanReadable },
+                { type: 'text', text: JSON.stringify(docResult) },
+              ],
+          ...(STRUCTURED_CONTENT_ENABLED
+            ? { structuredContent: docResult as unknown as Record<string, unknown> }
+            : {}),
         };
       } catch (error) {
         return errorResponse(VIEW_DOCUMENT_UI_TOOL_NAME, error);
@@ -496,11 +505,7 @@ export function createServer(): McpServer {
 async function main() {
   const transportMode = process.env.TRANSPORT || 'stdio';
 
-  if (transportMode === 'http' || transportMode === 'sse') {
-    if (transportMode === 'sse') {
-      console.error('[WARN] TRANSPORT=sse is deprecated: the legacy SSE endpoints were removed (R5); running Streamable HTTP.');
-    }
-
+  if (transportMode === 'http') {
     // Streamable HTTP transport for remote access (stateless; fresh server per request)
     const { createHttpServer } = await import('./transports/http-server.js');
 

@@ -7,10 +7,11 @@ import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { DocumentResponse } from '../utils/types.js';
 
+// Public tool input: just the document ID; annotations and text are always included
 export const getDocumentInputSchema = z.object({
-  documentId: z.string().describe('Document ID or URN. Can be either "urn:globalise:NL-HaNA_1.04.02_9966_0106" or just "NL-HaNA_1.04.02_9966_0106"'),
-  includeAnnotations: z.boolean().optional().default(true).describe('Include W3C annotations with metadata (default: true)'),
-  includeText: z.boolean().optional().default(true).describe('Include full transcribed text (default: true)'),
+  documentId: z.string()
+    .min(1, "Document ID cannot be empty")
+    .describe('Document ID or URN (e.g., "NL-HaNA_1.04.02_9966_0106" or "urn:globalise:NL-HaNA_1.04.02_9966_0106")'),
 });
 
 export const getDocumentOutputSchema = z.object({
@@ -44,27 +45,31 @@ export const getDocumentOutputSchema = z.object({
   }).optional(),
 });
 
-// Public tool input: just the document ID; annotations and text are always included
-export const getDocumentSimpleInputSchema = z.object({
-  documentId: z.string()
-    .min(1, "Document ID cannot be empty")
-    .describe('Document ID or URN (e.g., "NL-HaNA_1.04.02_9966_0106" or "urn:globalise:NL-HaNA_1.04.02_9966_0106")'),
-});
+/**
+ * Internal call options: the public tool always includes annotations and
+ * text; navigate() skips text for the current page (it only needs the
+ * prev/next pointers).
+ */
+export interface GetDocumentOptions {
+  documentId: string;
+  includeAnnotations?: boolean;
+  includeText?: boolean;
+}
 
-export type GetDocumentInput = z.infer<typeof getDocumentInputSchema>;
 export type GetDocumentOutput = z.infer<typeof getDocumentOutputSchema>;
 
 /**
  * Get detailed document information
  */
-export async function getDocument(input: GetDocumentInput): Promise<GetDocumentOutput> {
-  const documentUrn = normalizeDocumentId(input.documentId);
+export async function getDocument(options: GetDocumentOptions): Promise<GetDocumentOutput> {
+  const { documentId, includeAnnotations = true, includeText = true } = options;
+  const documentUrn = normalizeDocumentId(documentId);
   const { archive, inventoryNumber, scanNumber } = parseDocumentId(documentUrn);
 
   // Build include list
   const include: string[] = [];
-  if (input.includeAnnotations) include.push('anno');
-  if (input.includeText) include.push('text');
+  if (includeAnnotations) include.push('anno');
+  if (includeText) include.push('text');
 
   // Build URL with query parameters
   const url = buildUrl(
@@ -88,7 +93,7 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
   // Build output
   const output: GetDocumentOutput = {
     id: documentUrn,
-    document: metadata?.document || input.documentId,
+    document: metadata?.document || documentId,
     archive,
     inventoryNumber,
     scanNumber,
@@ -96,7 +101,7 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
 
   // Add text if requested (lines only — the joined fullText duplicated
   // every transcription's token cost and was dropped in R9)
-  if (input.includeText && response.views?.self?.lines) {
+  if (includeText && response.views?.self?.lines) {
     output.text = {
       lines: response.views.self.lines,
     };

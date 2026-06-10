@@ -24,6 +24,9 @@ if (htmlExists) {
   check(!html.includes('cdn.jsdelivr.net'), 'no cdn.jsdelivr.net references (OpenSeadragon is bundled)');
   check(html.includes('OpenSeadragon'), 'OpenSeadragon is inlined');
   check(html.length > 400_000, `bundle is self-contained (${html.length} bytes — a CDN-importing build is far smaller)`);
+  // R19: the viewer reads structuredContent first and deep-zooms via IIIF
+  check(html.includes('structuredContent'), 'viewer reads structuredContent (R19)');
+  check(html.includes('info.json'), 'viewer fetches IIIF info.json for deep-zoom (R19)');
 }
 
 finish('Viewer build check');
