@@ -21,7 +21,6 @@ export const getDocumentOutputSchema = z.object({
   archive: z.string().optional(),
   text: z.object({
     lines: z.array(z.string()),
-    fullText: z.string(),
   }).optional(),
   metadata: z.object({
     created: z.string(),
@@ -96,11 +95,11 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
     scanNumber,
   };
 
-  // Add text if requested
+  // Add text if requested (lines only — the joined fullText duplicated
+  // every transcription's token cost and was dropped in R9)
   if (input.includeText && response.views?.self?.lines) {
     output.text = {
       lines: response.views.self.lines,
-      fullText: response.views.self.lines.join('\n'),
     };
   }
 

@@ -1,5 +1,8 @@
 /**
  * Search tools for GLOBALISE API
+ *
+ * One consolidated search tool (R6): free-text query plus composable
+ * inventory and language filters, with matchAll for bilingual documents.
  */
 
 import { z } from 'zod';
@@ -8,7 +11,7 @@ import { SearchResponse } from '../utils/types.js';
 
 /**
  * ISO 639-3 code to human-readable label mapping for languages in the GLOBALISE corpus.
- * Used for aggregation display. Falls back to the ISO code if not found.
+ * Used for aggregation display and for normalizing user-supplied language names.
  */
 const ISO_TO_LABEL: Record<string, string> = {
   nld: 'Dutch',
@@ -37,36 +40,69 @@ const ISO_TO_LABEL: Record<string, string> = {
   unknown: 'Unknown',
 };
 
+/** Lowercased label → ISO code, derived from ISO_TO_LABEL. */
+const LABEL_TO_ISO: Record<string, string> = Object.fromEntries(
+  Object.entries(ISO_TO_LABEL).map(([code, label]) => [label.toLowerCase(), code]),
+);
+
+/**
+ * Normalize a user-supplied language (ISO 639-3 code or English label,
+ * any case) to an ISO code. Unrecognized values pass through lowercased,
+ * which simply matches nothing upstream. Replaces the old `length <= 3`
+ * heuristic that misrouted mixed input like ["Dutch", "eng"] (R12).
+ */
+function normalizeLanguage(entry: string): string {
+  const lower = entry.toLowerCase();
+  if (ISO_TO_LABEL[lower]) return lower;
+  return LABEL_TO_ISO[lower] || lower;
+}
+
+/** Cap on raw candidates scanned when post-filtering for matchAll. */
+const MATCH_ALL_SCAN_CAP = 500;
+
+// Internal full-featured search input (not exposed as a tool schema)
 export const searchInputSchema = z.object({
-  query: z.string().describe('Search query text. Supports Boolean operators (AND, OR, NOT), wildcards (* and ?), fuzzy matching (~N for edit distance), and exact phrases in quotes. Example: "peper AND koffie", "schip*", "voorschreven~1"'),
-  from: z.number().min(0).optional().default(0).describe('Pagination offset - starting result index (default: 0)'),
-  size: z.number().min(1).max(1000).optional().default(10).describe('Number of results per page (1-1000, default: 10). Use pagination for larger result sets.'),
-  fragmentSize: z.number().min(50).max(1000).optional().default(500).describe('Size of text fragments with highlights (default: 500)'),
-  sortBy: z.string().optional().default('_score').describe('Field to sort by. Valid options: "_score" (relevance, default), "document" (document ID alphabetically), "invNr" (inventory number), "langLabel" (language name)'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc').describe('Sort order: "asc" (ascending) or "desc" (descending, default)'),
-  includeAggregations: z.boolean().optional().default(true).describe('Include aggregation counts for inventory numbers, documents, and languages (default: true)'),
-  indexName: z.string().optional().describe('Search index name (defaults to current index from config)'),
-  languages: z.array(z.string()).optional().describe('Filter by language ISO codes. Example: ["nld"] for Dutch, ["fas"] for Persian, ["ben"] for Bengali. Common codes: "nld" (Dutch), "eng" (English), "fas" (Persian), "ben" (Bengali), "unknown"'),
-  languageLabels: z.array(z.string()).optional().describe('Filter by human-readable language names. Example: ["Dutch"], ["Persian"], ["Bengali"]. Use this for user-friendly language names instead of ISO codes.'),
-  filters: z.record(z.array(z.string())).optional().describe('Advanced filters for term matching. Object with field names as keys and arrays of values. Example: {"langIso": ["nld"], "invNr": ["9966"]}'),
+  query: z.string().describe('Search query text'),
+  from: z.number().min(0).optional().default(0),
+  size: z.number().min(1).max(1000).optional().default(10),
+  fragmentSize: z.number().min(50).max(1000).optional().default(500),
+  sortBy: z.string().optional().default('_score'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  includeAggregations: z.boolean().optional().default(true),
+  indexName: z.string().optional(),
+  languages: z.array(z.string()).optional().describe('Filter by language ISO codes'),
+  languageLabels: z.array(z.string()).optional().describe('Filter by human-readable language names'),
+  filters: z.record(z.array(z.string())).optional().describe('Advanced term filters, field name → values'),
 });
 
-// Simplified search schema without complex features (for testing Claude Desktop filtering)
-export const searchSimpleInputSchema = z.object({
+// Consolidated public tool schema (R6): one search tool with composable filters
+export const searchTranscriptionsInputSchema = z.object({
   query: z.string()
-    .min(1, "Search query cannot be empty")
-    .describe('Search query. Supports Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes, proximity ("phrase"~N)'),
+    .min(1, 'Search query cannot be empty')
+    .optional()
+    .default('*')
+    .describe('Search query. Supports Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes, proximity ("phrase"~N). Defaults to "*" (match everything) — combine with filters and size=1 to get aggregation statistics cheaply.'),
+  inventoryNumber: z.union([z.string(), z.array(z.string())])
+    .optional()
+    .describe('Restrict to inventory number(s). Single: "9966" or multiple: ["9966", "4293"]'),
+  languages: z.array(z.string())
+    .optional()
+    .describe('Filter by language(s), as ISO 639-3 codes ("nld", "fas") or English names ("Dutch", "Persian"); mixing is fine. Default: documents matching ANY listed language.'),
+  matchAll: z.boolean()
+    .optional()
+    .default(false)
+    .describe('With 2+ languages: require pages to contain ALL of them (bilingual/multilingual). Post-filters a capped candidate window (500 raw hits), so totals are a lower bound — see the note field in the response.'),
   from: z.number()
-    .min(0, "Pagination offset must be 0 or greater")
+    .min(0, 'Pagination offset must be 0 or greater')
     .optional()
     .default(0)
     .describe('Pagination offset (default: 0)'),
   size: z.number()
-    .min(1, "Results per page must be at least 1")
-    .max(500, "Results per page cannot exceed 500")
+    .min(1, 'Results per page must be at least 1')
+    .max(500, 'Results per page cannot exceed 500')
     .optional()
     .default(10)
-    .describe('Results per page (1-500, default: 10). For large-scale analysis, up to 500 results can be requested.'),
+    .describe('Results per page (1-500, default: 10). Large result sets consume more context.'),
   sortBy: z.string()
     .optional()
     .default('_score')
@@ -75,12 +111,6 @@ export const searchSimpleInputSchema = z.object({
     .optional()
     .default('desc')
     .describe('Sort order: "asc" or "desc" (default: "desc")'),
-  languages: z.array(z.string())
-    .optional()
-    .describe('Filter by language codes: ["nld"], ["fas"], ["ben"], etc.'),
-  inventoryNumber: z.union([z.string(), z.array(z.string())])
-    .optional()
-    .describe('Filter by inventory number(s). Single: "9966" or multiple: ["9966", "4293"]'),
 });
 
 export const searchOutputSchema = z.object({
@@ -98,7 +128,6 @@ export const searchOutputSchema = z.object({
       code: z.string(),
       label: z.string(),
     })).describe('Languages detected on this page with ISO codes and labels'),
-    viewerUrl: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
   })),
   aggregations: z.object({
     topInventoryNumbers: z.array(z.object({
@@ -120,14 +149,15 @@ export const searchOutputSchema = z.object({
     size: z.number(),
     hasMore: z.boolean(),
   }),
+  note: z.string().optional().describe('Caveats about how this result was computed (e.g. matchAll scan cap)'),
 });
 
 export type SearchInput = z.infer<typeof searchInputSchema>;
 export type SearchOutput = z.infer<typeof searchOutputSchema>;
-export type SearchSimpleInput = z.infer<typeof searchSimpleInputSchema>;
+export type SearchTranscriptionsInput = z.infer<typeof searchTranscriptionsInputSchema>;
 
 /**
- * Search GLOBALISE transcriptions
+ * Core search against the upstream Broccoli API.
  */
 export async function search(input: SearchInput): Promise<SearchOutput> {
   const indexName = input.indexName || API_CONFIG.DEFAULT_INDEX;
@@ -178,7 +208,6 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
       code,
       label: result.langLabel[i] || code,
     })),
-    viewerUrl: `https://transcriptions.globalise.huygens.knaw.nl/detail/${result._id}`,
   }));
 
   let aggregations: SearchOutput['aggregations'];
@@ -217,23 +246,64 @@ export async function search(input: SearchInput): Promise<SearchOutput> {
 }
 
 /**
- * Simplified search function (maps to full search with reduced parameters)
- * For testing Claude Desktop filtering issues
+ * Consolidated search tool (R6): replaces the former search_transcriptions /
+ * search_by_inventory / search_by_language trio. Inventory and language
+ * filters compose with the free-text query.
+ *
+ * matchAll (AND across languages) is not expressible upstream (the terms
+ * filter is OR-within-field), so it filters at the API on one language —
+ * preferring a non-Dutch one, since Dutch is ~97% of the corpus — then
+ * post-filters a capped candidate window to require all of them (R12:
+ * the cap is reported honestly in `note`).
  */
-export async function searchSimple(input: SearchSimpleInput): Promise<SearchOutput> {
-  const invNrFilter = input.inventoryNumber
+export async function searchTranscriptions(input: SearchTranscriptionsInput): Promise<SearchOutput> {
+  const languages = input.languages?.map(normalizeLanguage);
+  const useMatchAll = input.matchAll && (languages?.length ?? 0) > 1;
+
+  const filters = input.inventoryNumber
     ? { invNr: Array.isArray(input.inventoryNumber) ? input.inventoryNumber : [input.inventoryNumber] }
     : undefined;
 
-  return search({
+  // For matchAll, filter upstream on the rarest plausible language (first
+  // non-Dutch entry) to avoid a candidate window dominated by Dutch pages.
+  const filterLanguages = useMatchAll
+    ? [languages!.find(code => code !== 'nld') ?? languages![0]]
+    : languages;
+
+  const searchResult = await search({
     query: input.query,
-    from: input.from,
-    size: input.size,
+    from: useMatchAll ? 0 : input.from,
+    size: useMatchAll ? Math.min(input.size * 10, MATCH_ALL_SCAN_CAP) : input.size,
     fragmentSize: 500,
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
     includeAggregations: true,
-    languages: input.languages,
-    filters: invNrFilter,
+    languages: filterLanguages,
+    filters,
   });
+
+  if (!useMatchAll) {
+    return searchResult;
+  }
+
+  // Post-filter: keep only pages containing ALL requested languages
+  const scanned = searchResult.results.length;
+  const matched = searchResult.results.filter(result => {
+    const docLangCodes = result.languages.map(l => l.code.toLowerCase());
+    return languages!.every(code => docLangCodes.includes(code));
+  });
+
+  const pageResults = matched.slice(input.from, input.from + input.size);
+
+  return {
+    total: { value: matched.length, relation: 'gte' },
+    results: pageResults,
+    aggregations: searchResult.aggregations,
+    pagination: {
+      from: input.from,
+      size: input.size,
+      hasMore: input.from + input.size < matched.length,
+    },
+    note: `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); the total is a lower bound and pages beyond the scanned window are unreachable.`,
+  };
 }

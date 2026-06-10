@@ -7,10 +7,10 @@
  * historical transcriptions from the GLOBALISE project.
  *
  * Provides tools to:
- * - Search across ~4.8M transcriptions
+ * - Search across ~4.8M transcriptions (with inventory/language filters)
  * - Retrieve detailed document information
  * - Navigate between document pages
- * - Filter by inventory numbers
+ * - Query the local archival index (OBP + Generale Missiven)
  * - View documents with interactive UI (MCP Apps)
  *
  * All registration lives in createServer() so every transport connection
@@ -33,24 +33,24 @@ import { fileURLToPath } from 'node:url';
 
 // Import tool implementations
 import {
-  searchSimple,
-  searchSimpleInputSchema,
+  searchTranscriptions,
+  searchTranscriptionsInputSchema,
+  searchOutputSchema,
 } from './tools/search.js';
 import {
   getDocumentSimple,
   getDocumentSimpleInputSchema,
+  getDocumentOutputSchema,
 } from './tools/document.js';
 import {
-  searchByInventory,
-  searchByInventoryInputSchema,
   navigate,
   navigateInputSchema,
-  searchByLanguage,
-  searchByLanguageInputSchema,
+  navigateOutputSchema,
 } from './tools/convenience.js';
 import {
   findArchivalDocuments,
   findArchivalDocumentsInputSchema,
+  findArchivalDocumentsOutputSchema,
 } from './tools/archival-index.js';
 import { closeDatabase } from './utils/database.js';
 import {
@@ -59,14 +59,34 @@ import {
 } from './tools/document-viewer.js';
 
 export const SERVER_NAME = 'globalise-mcp-server';
-export const SERVER_VERSION = '1.25.0';
-
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export const SERVER_VERSION = '2.0.0';
 
 /**
- * Extract viewer URLs from tool results and format as markdown links
+ * Structured output gate (R8): outputSchema + structuredContent are on by
+ * default; set STRUCTURED_CONTENT=false for clients that reject them
+ * (observed with MSTY and Jan.ai). The text channel stays the primary
+ * payload either way.
+ */
+const STRUCTURED_CONTENT_ENABLED = process.env.STRUCTURED_CONTENT !== 'false';
+
+const VIEWER_URL_PREFIX = 'https://transcriptions.globalise.huygens.knaw.nl/detail/';
+
+/**
+ * Corpus-level caveats, stated once per connection instead of duplicated
+ * across tool descriptions (R10).
+ */
+const SERVER_INSTRUCTIONS = `GLOBALISE serves machine transcriptions (HTR) of ~4.8M pages of Dutch East India Company (VOC) records, 17th-18th century, mostly early-modern Dutch. Document IDs look like NL-HaNA_1.04.02_9966_0106 ({archive}_{inventory}_{scan}); any page can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}.
+
+Corpus caveats that apply to every tool:
+- Language metadata: "unknown" means not yet classified, not unidentifiable. The code "art" ("Cipher") marks encrypted Dutch text, not an artificial language.
+- The HTR model was trained on Latin script only: transcriptions of non-Roman-script languages (Persian, Bengali, Tamil, Sinhala, Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) are unreliable gibberish — offer the user the National Archives page-scan link from the document metadata instead. Malay ("msa") is a macrolanguage with no script metadata, so offer scan links for it too.
+- The search tokenizer strips punctuation and treats hyphens as word separators ("oost-indie" matches like "oost indie").
+- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages.`;
+
+/**
+ * Extract viewer URLs from tool results and format as markdown links.
+ * Search results carry no per-row viewerUrl field (R9) — links are built
+ * from the result id here, in the one place users actually click them.
  */
 function extractViewerLinks(result: Record<string, unknown>, toolName: string): string[] {
   const links: string[] = [];
@@ -86,19 +106,16 @@ function extractViewerLinks(result: Record<string, unknown>, toolName: string): 
       const label = target.document || 'Target page';
       links.push(`[${label}](${target.urls.transcriptionsViewer})`);
     }
-  } else if (toolName === 'globalise_search_transcriptions' ||
-             toolName === 'globalise_search_by_inventory' ||
-             toolName === 'globalise_search_by_language') {
-    // Search results: array of results with viewerUrl
-    const results = result.results as Array<{ document?: string; viewerUrl?: string }> | undefined;
+  } else if (toolName === 'globalise_search_transcriptions') {
+    // Search results: build links from result ids (limit to first 10)
+    const results = result.results as Array<{ id?: string; document?: string }> | undefined;
     if (results && results.length > 0) {
-      // Limit to first 10 results to avoid overwhelming output
       const maxLinks = Math.min(results.length, 10);
       for (let i = 0; i < maxLinks; i++) {
         const r = results[i];
-        if (r.viewerUrl) {
+        if (r.id) {
           const label = r.document || `Result ${i + 1}`;
-          links.push(`[${label}](${r.viewerUrl})`);
+          links.push(`[${label}](${VIEWER_URL_PREFIX}${r.id})`);
         }
       }
       if (results.length > 10) {
@@ -133,10 +150,11 @@ function formatError(error: unknown): { message: string; suggestion?: string } {
 
 /**
  * Cross-cutting post-processing applied to every data tool's result:
- * serialize to JSON and append the clickable viewer-links markdown block.
+ * serialize to compact JSON (R9), append the clickable viewer-links
+ * markdown block, and mirror the result as structuredContent (R8).
  */
 function toolResponse(toolName: string, result: unknown): CallToolResult {
-  const responseText = JSON.stringify(result, null, 2);
+  const responseText = JSON.stringify(result);
 
   // Debug logging (enable with DEBUG=true environment variable)
   if (process.env.DEBUG === 'true') {
@@ -167,7 +185,12 @@ function toolResponse(toolName: string, result: unknown): CallToolResult {
     });
   }
 
-  return { content };
+  return {
+    content,
+    ...(STRUCTURED_CONTENT_ENABLED
+      ? { structuredContent: result as Record<string, unknown> }
+      : {}),
+  };
 }
 
 /**
@@ -183,7 +206,7 @@ function errorResponse(toolName: string, error: unknown): CallToolResult {
         error: message,
         ...(suggestion && { suggestion }),
         tool: toolName,
-      }, null, 2),
+      }),
     }],
     isError: true,
   };
@@ -197,17 +220,21 @@ const READ_ONLY_ANNOTATIONS = {
 
 /**
  * Register a read-only JSON tool, wrapping its handler with the shared
- * post-processing (viewer links block) and error formatting.
+ * post-processing (viewer links block, structuredContent) and error
+ * formatting.
  *
- * The schema is registered with .strict() so unknown params are rejected
- * instead of silently stripped; the SDK validates input (and applies Zod
- * defaults) before the handler runs.
+ * The input schema is registered with .strict() so unknown params are
+ * rejected instead of silently stripped; the SDK validates input (and
+ * applies Zod defaults) before the handler runs. The output schema is
+ * registered only when structured output is enabled — the SDK then
+ * requires and validates structuredContent on every non-error result.
  */
 function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
   server: McpServer,
   name: string,
   description: string,
   schema: Schema,
+  outputSchema: z.ZodTypeAny,
   handler: (input: z.output<Schema>) => Promise<unknown>,
 ): void {
   server.registerTool(
@@ -215,6 +242,7 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
     {
       description,
       inputSchema: schema.strict(),
+      ...(STRUCTURED_CONTENT_ENABLED ? { outputSchema } : {}),
       annotations: READ_ONLY_ANNOTATIONS,
     },
     async (args): Promise<CallToolResult> => {
@@ -229,6 +257,10 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
 
 // UI Resource URI for Document Viewer
 const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Load the Document Viewer UI HTML
@@ -261,10 +293,15 @@ function loadDocumentViewerHtml(): string {
  * module-scope singletons shared across instances.
  */
 export function createServer(): McpServer {
-  const server = new McpServer({
-    name: SERVER_NAME,
-    version: SERVER_VERSION,
-  });
+  const server = new McpServer(
+    {
+      name: SERVER_NAME,
+      version: SERVER_VERSION,
+    },
+    {
+      instructions: SERVER_INSTRUCTIONS,
+    },
+  );
 
   // ==========================================================================
   // MCP Apps UI resource (document viewer HTML with CSP metadata)
@@ -314,121 +351,56 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_search_transcriptions',
-    '**PRIMARY SEARCH TOOL** - Search across all 4.8M Dutch East India Company (VOC) historical transcriptions by keywords, phrases, or patterns. ' +
-      '\n\n**USE WHEN:** User wants to find documents containing specific text, names, places, or terms. ' +
-      'Examples: "find documents about pepper", "search for mentions of Batavia", "documents containing coffee trade". ' +
-      '\n\n**FEATURES:** Boolean operators (AND/OR/NOT for combining terms), wildcards (* for multiple chars, ? for single char), ' +
-      'fuzzy matching (~N for similar spellings), exact phrases in quotes. ' +
-      '\n\n**FILTERS:** Language codes (e.g., ["nld"] for Dutch, ["fas"] for Persian, ["art"] for Cipher), inventory numbers (e.g., "9966"). ' +
-      '\n\n**LANGUAGE CLASSIFICATION NOTES:** ' +
-      '(1) "unknown" means the language has not yet been classified, not that it is unidentifiable. ' +
-      '(2) "Cipher" (code "art") refers to encrypted Dutch text. The code "art" is ISO 639-3 for artificial/constructed languages, but GLOBALISE uses it for encrypted documents which are actually Dutch (nld) written in cipher. ' +
-      '\n\n**NON-ROMAN SCRIPT WARNING:** This corpus was machine-transcribed using a model trained only on Latin (Roman) characters. ' +
-      'Transcriptions of languages with non-Roman scripts (Persian, Bengali, Tamil, Sinhala, Classical Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) will be unreliable/gibberish. ' +
-      'For these languages, always offer the user the National Archives page scan link from the document metadata. ' +
-      '\n\n**MALAY NOTE:** The code "msa" refers to a macrolanguage (multiple Malay varieties), and some pages may be in romanized Malay while others use non-Roman script. No script metadata is available, so always offer page scan links for Malay documents. ' +
-      '\n\n**TOKENIZER:** Standard tokenizer - punctuation is stripped automatically (so "peper" finds "peper,"), and special characters like hyphens are word separators (so "oost-indie" = "oost indie"). ' +
-      '\n\n**RETURNS:** Paginated results with highlighted text fragments PLUS aggregations showing language distribution, inventory counts, and document counts. ' +
-      '\n\n**RESULT LIMITS:** Default: 10 results. For larger analysis, explicitly request up to 500 results (e.g., size=100, size=250, size=500). ' +
-      'Note: Large result sets consume more context window. ' +
-      '\n\n**GETTING STATISTICS:** To get language distribution or metadata for an inventory without retrieving full documents, use query="*" with size=1. ' +
-      'Example: For inventory 4293 language breakdown, use query="*", inventoryNumber="4293", size=1. Returns aggregations with language counts while minimizing result payload. ' +
-      '\n\n**DO NOT USE FOR:** (1) Retrieving a known document by ID → use globalise_retrieve_document instead. ' +
-      '(2) Sequential page browsing → use globalise_navigate instead.',
-    searchSimpleInputSchema,
-    searchSimple,
+    'Search the ~4.8M transcribed VOC pages by free text, with composable filters for inventory number(s) and language(s). ' +
+      'Query syntax: Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes; query defaults to "*" (match everything). ' +
+      'Languages accept ISO 639-3 codes or English names; matchAll=true requires pages to contain ALL listed languages (bilingual documents) by post-filtering a capped candidate window — totals are then a lower bound, see the response note. ' +
+      'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +
+      'For statistics only (e.g. the language breakdown of an inventory), use query="*" with size=1. ' +
+      `Each result id can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}. ` +
+      'For a known document ID use globalise_retrieve_document.',
+    searchTranscriptionsInputSchema,
+    searchOutputSchema,
+    searchTranscriptions,
   );
 
   registerJsonTool(
     server,
     'globalise_retrieve_document',
-    '**GET SPECIFIC DOCUMENT** - Retrieve complete details for a document when you have its ID or URN. ' +
-      '\n\n**USE WHEN:** User provides a document ID (e.g., "NL-HaNA_1.04.02_9966_0106") or wants full text/metadata for a known document. ' +
-      'Examples: "get document NL-HaNA_1.04.02_9966_0106", "show me the full text of urn:globalise:...", "retrieve metadata for document X". ' +
-      '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN "urn:globalise:...". ' +
-      '\n\n**RETURNS:** (1) Full transcribed text line-by-line and concatenated, (2) Metadata including languages, dates, creator, license, ' +
-      '(3) Navigation links to previous/next page IDs, (4) National Archives URL for viewing page scan (always present as clickable link). ' +
-      '\n\n**DO NOT USE FOR:** (1) Searching by keywords → use globalise_search_transcriptions instead. ' +
-      '(2) Navigating to next/previous page → use globalise_navigate instead (it handles retrieval automatically).',
+    'Retrieve one page by document ID ("NL-HaNA_{archive}_{inventory}_{scan}") or URN ("urn:globalise:..."). ' +
+      'Returns the full transcription line-by-line, metadata (languages, dates, license), previous/next page IDs, ' +
+      'and links to the web viewer and the National Archives page scan. ' +
+      'To search by keywords use globalise_search_transcriptions; for sequential browsing use globalise_navigate.',
     getDocumentSimpleInputSchema,
+    getDocumentOutputSchema,
     getDocumentSimple,
   );
 
   registerJsonTool(
     server,
     'globalise_navigate',
-    '**PAGE NAVIGATION** - Move to the previous or next page from a given document for sequential browsing through archival materials. ' +
-      '\n\n**USE WHEN:** User wants to browse pages sequentially, explore neighboring scans, or navigate through a document page-by-page. ' +
-      'Examples: "show me the next page", "go to the previous page from document X", "navigate forward in this inventory". ' +
-      '\n\n**REQUIRES:** (1) Current document ID or URN, (2) Direction: "next", "previous", or "prev". ' +
-      '\n\n**RETURNS:** Full details of the target page including text, metadata, and navigation links. ' +
-      'If no next/previous page exists, returns error message. ' +
-      '\n\n**DO NOT USE FOR:** (1) Searching by keywords → use globalise_search_transcriptions. ' +
-      '(2) Getting a specific known document → use globalise_retrieve_document.',
+    'Fetch the previous or next page relative to a given document ID, for reading through archival materials sequentially. ' +
+      'Returns the target page\'s full details (text, metadata, links); errors if no page exists in that direction.',
     navigateInputSchema,
+    navigateOutputSchema,
     navigate,
   );
 
   registerJsonTool(
     server,
-    'globalise_search_by_inventory',
-    '**INVENTORY-SCOPED SEARCH** - Search within a specific inventory number. Inventories contain hundreds of documents (e.g., inventory 4293 has 535 documents). ' +
-      '\n\n**USE WHEN:** User mentions an inventory number and wants to search within it or get statistics about it. ' +
-      'Examples: "search inventory 9966 for coffee", "find documents in inventory 2174 about trade", "what languages are in inventory 4293?". ' +
-      '\n\n**REQUIRES:** Inventory number (e.g., "9966", "4293"). Optional: search query, language filters. ' +
-      '\n\n**RETURNS:** Paginated results showing only documents from the specified inventory, with highlighted text fragments and aggregations including language distribution. ' +
-      '\n\n**FOR STATISTICS ONLY:** Use query="*" with size=1 to get language counts without retrieving full documents.',
-    searchByInventoryInputSchema,
-    searchByInventory,
-  );
-
-  registerJsonTool(
-    server,
-    'globalise_search_by_language',
-    '**LANGUAGE-SPECIFIC SEARCH** - Find documents in one or more languages across all inventories. ' +
-      '\n\n**USE WHEN:** User wants only documents in a particular language, or bilingual/multilingual documents. ' +
-      'Examples: "find all Persian documents", "search for Dutch documents about pepper", "find bilingual Dutch-English documents", "documents in both Portuguese and Dutch". ' +
-      '\n\n**REQUIRES:** Language(s) as ISO code (e.g., "fas", "nld", "ben") OR human-readable name (e.g., "Persian", "Dutch", "Bengali"). ' +
-      'Single: "Persian" or ["Persian"]. Multiple: ["Dutch", "English"] or ["nld", "eng"]. ' +
-      '\n\n**MULTI-LANGUAGE:** Use matchAll=true to find documents containing ALL specified languages (bilingual/multilingual). ' +
-      'Default (matchAll=false) finds documents with ANY of the specified languages. ' +
-      'IMPORTANT: Put the non-Dutch language FIRST (Dutch is 97% of the corpus, so any other language is always rarer). ' +
-      'Example: language=["eng", "nld"], matchAll=true → finds English-Dutch bilingual docs. ' +
-      '\n\n**SUPPORTS:** Many languages including Western European (Dutch, French, English, Latin, Portuguese, Spanish, German, Danish, Italian), ' +
-      'South Asian (Persian, Bengali, Tamil, Sinhala, Gujarati), East Asian (Classical Chinese, Japanese, Malay, Buginese), and others (Old Church Slavonic, Ancient Greek, Ancient Hebrew). ' +
-      '\n\n**LANGUAGE CLASSIFICATION NOTES:** ' +
-      '(1) "unknown" means the language has not yet been classified, not that it is unidentifiable. ' +
-      '(2) "Cipher" (code "art") refers to encrypted Dutch text. The code "art" is ISO 639-3 for artificial/constructed languages, but GLOBALISE uses it for encrypted documents which are actually Dutch (nld) written in cipher. ' +
-      '\n\n**NON-ROMAN SCRIPT WARNING:** This corpus was machine-transcribed using a model trained only on Latin (Roman) characters. ' +
-      'Transcriptions of languages with non-Roman scripts (Persian, Bengali, Tamil, Sinhala, Classical Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) will be unreliable/gibberish. ' +
-      'For these languages, always offer the user the National Archives page scan link from the document metadata. ' +
-      '\n\n**MALAY NOTE:** The code "msa" refers to a macrolanguage (multiple Malay varieties), and some pages may be in romanized Malay while others use non-Roman script. No script metadata is available, so always offer page scan links for Malay documents. ' +
-      '\n\n**RETURNS:** Documents in specified language(s) with inventory distribution counts. When matchAll=true, includes only bilingual/multilingual documents.',
-    searchByLanguageInputSchema,
-    searchByLanguage,
-  );
-
-  registerJsonTool(
-    server,
     'globalise_find_archival_documents',
-    '**ARCHIVAL INDEX SEARCH** - Query local database of 228K+ VOC archival document indexes (OBP + Generale Missiven) to find documents by metadata before searching transcriptions. ' +
-      '\n\n**USE WHEN:** User wants to scope a search using archival metadata like settlement, year range, folio numbers, or needs finding aid information. ' +
-      'Examples: "find documents about Ceylon from 1720-1750", "what inventories have documents about Batavia?", "find Generale Missiven from Amsterdam chamber", ' +
-      '"locate documents near folio 700 in inventory 1543". ' +
-      '\n\n**DATA SOURCES:** ' +
-      '(1) OBP (Digitized Indexes): ~227K document entries with settlement, year, folio, inventory, description. ' +
-      '(2) GM (Generale Missiven): ~950 official letters with dates, chambers (Amsterdam/Zeeland), RGP references, scan URLs. ' +
-      '\n\n**WORKFLOW:** Use this tool first to identify relevant inventories/folios, then use globalise_search_transcriptions or globalise_retrieve_document to access actual transcribed text. ' +
-      '\n\n**FILTERS:** source (obp/gm/all), full-text query in descriptions, inventoryNumber, settlement (OBP), yearFrom/To, folioFrom/To (OBP, with inventory), chamber (GM), htrAvailable (GM). ' +
-      '\n\n**RETURNS:** Document metadata with inventory numbers, descriptions, year ranges, and aggregations for scoping. GM results include National Archives scan URLs. ' +
-      '\n\n**CONNECTION TO TRANSCRIPTIONS:** Inventory numbers link to transcription search. Use inventoryNumber from results with globalise_search_by_inventory to find transcribed pages.',
+    'Query a local index of 228K+ VOC archival document descriptions (finding aids) — useful for scoping by archival metadata before searching transcriptions. ' +
+      'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, RGP references, scan URLs). ' +
+      'The query field supports FTS5 syntax (AND/OR/NOT, prefix*, "exact phrase"). ' +
+      'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
+      'Inventory numbers in the results feed the inventoryNumber filter of globalise_search_transcriptions to reach the actual transcribed pages.',
     findArchivalDocumentsInputSchema,
+    findArchivalDocumentsOutputSchema,
     findArchivalDocuments,
   );
 
   // ==========================================================================
   // Document viewer MCP App tool (dual-content response: human-readable
-  // summary + full JSON for the viewer iframe; retired only by R8+R19)
+  // summary + full JSON for the viewer iframe; retired only by R19)
   // ==========================================================================
 
   registerAppTool(
@@ -436,14 +408,9 @@ export function createServer(): McpServer {
     'globalise_view_document_ui',
     {
       description:
-        '**INTERACTIVE DOCUMENT VIEWER** - Display a VOC document with scanned page image and transcription side-by-side. ' +
-        '\n\n**USE WHEN:** User wants to see a document visually with the page scan and transcription together. ' +
-        'Examples: "show me document NL-HaNA_1.04.02_9966_0106", "view this page with the image", "display the scan and text". ' +
-        '\n\n**REQUIRES:** Document ID in format "NL-HaNA_{archive}_{inventory}_{scan}" or full URN. ' +
-        '\n\n**FEATURES:** IIIF image viewer with zoom/pan/rotation, transcribed text with line numbers, search term highlighting. ' +
-        '\n\n**TEXT SELECTION:** When the user selects text in the transcription panel, they typically want a translation of those words. ' +
-        'Provide a translation from 17th/18th century Dutch to modern English. ' +
-        '\n\n**RETURNS:** Interactive UI with split view showing scanned page and transcription.',
+        'Display a VOC page in an interactive viewer: IIIF scan image (zoom/pan/rotate) and the transcription with line numbers, side-by-side, with optional search-term highlighting. ' +
+        'Takes a document ID or URN. ' +
+        'When the user selects text in the transcription panel they typically want a translation of those words from 17th/18th-century Dutch to modern English.',
       inputSchema: viewDocumentUiInputSchema.shape,
       annotations: READ_ONLY_ANNOTATIONS,
       _meta: {
@@ -477,7 +444,7 @@ export function createServer(): McpServer {
         return {
           content: [
             { type: 'text', text: humanReadable },
-            { type: 'text', text: JSON.stringify(docResult, null, 2) },
+            { type: 'text', text: JSON.stringify(docResult) },
           ],
         };
       } catch (error) {
@@ -496,6 +463,10 @@ async function main() {
   const transportMode = process.env.TRANSPORT || 'stdio';
 
   if (transportMode === 'http' || transportMode === 'sse') {
+    if (transportMode === 'sse') {
+      console.error('[WARN] TRANSPORT=sse is deprecated: the legacy SSE endpoints were removed (R5); running Streamable HTTP.');
+    }
+
     // Streamable HTTP transport for remote access (stateless; fresh server per request)
     const { createHttpServer } = await import('./transports/http-server.js');
 
