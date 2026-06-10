@@ -93,10 +93,10 @@
       const message = messageInput.value || 'test';
       callBtn.disabled = true;
 
-      log(`Calling app.callServerTool('echo_message', { message: '${message}' })...`, 'info');
+      log(`Calling app.callServerTool({ name: 'echo_message', arguments: { message: '${message}' } })...`, 'info');
 
       try {
-        const result = await app.callServerTool('echo_message', { message });
+        const result = await app.callServerTool({ name: 'echo_message', arguments: { message } });
 
         log(`callServerTool returned:`, 'success');
         log(JSON.stringify(result, null, 2), 'success');
