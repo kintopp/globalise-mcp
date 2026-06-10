@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { getCachedApiGet, buildUrl, API_CONFIG, documentCache } from '../utils/api-client.js';
+import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache } from '../utils/api-client.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { DocumentResponse } from '../utils/types.js';
 
@@ -44,7 +44,7 @@ export const getDocumentOutputSchema = z.object({
   }).optional(),
 });
 
-// Simplified document schema (for testing Claude Desktop filtering)
+// Public tool input: just the document ID; annotations and text are always included
 export const getDocumentSimpleInputSchema = z.object({
   documentId: z.string()
     .min(1, "Document ID cannot be empty")
@@ -53,7 +53,6 @@ export const getDocumentSimpleInputSchema = z.object({
 
 export type GetDocumentInput = z.infer<typeof getDocumentInputSchema>;
 export type GetDocumentOutput = z.infer<typeof getDocumentOutputSchema>;
-export type GetDocumentSimpleInput = z.infer<typeof getDocumentSimpleInputSchema>;
 
 /**
  * Get detailed document information
@@ -126,23 +125,10 @@ export async function getDocument(input: GetDocumentInput): Promise<GetDocumentO
 
     // Include URLs for viewing the document
     output.urls = {
-      transcriptionsViewer: `https://transcriptions.globalise.huygens.knaw.nl/detail/${documentUrn}`,
+      transcriptionsViewer: `${VIEWER_URL_PREFIX}${documentUrn}`,
       nationalArchives: metadata.naUrl,
     };
   }
 
   return output;
-}
-
-/**
- * Simplified document retrieval (maps to full getDocument with all features enabled)
- * For testing Claude Desktop filtering issues
- */
-export async function getDocumentSimple(input: GetDocumentSimpleInput): Promise<GetDocumentOutput> {
-  // Map simple input to full input with all features enabled
-  return getDocument({
-    documentId: input.documentId,
-    includeAnnotations: true,
-    includeText: true,
-  });
 }

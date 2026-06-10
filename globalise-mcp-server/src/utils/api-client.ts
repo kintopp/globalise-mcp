@@ -14,6 +14,9 @@ export const API_CONFIG = {
   REQUEST_DELAY_MS: 100, // Minimum delay between API requests (throttling)
 };
 
+/** Deep-link prefix for opening a page in the Transcriptions Viewer web UI. */
+export const VIEWER_URL_PREFIX = `${API_CONFIG.FRONTEND_BASE_URL}/detail/`;
+
 /**
  * Throttle state - tracks when the last API request was made
  * and serializes concurrent requests to prevent race conditions.

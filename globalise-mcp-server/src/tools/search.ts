@@ -61,7 +61,7 @@ function normalizeLanguage(entry: string): string {
 const MATCH_ALL_SCAN_CAP = 500;
 
 // Internal full-featured search input (not exposed as a tool schema)
-export const searchInputSchema = z.object({
+const searchInputSchema = z.object({
   query: z.string().describe('Search query text'),
   from: z.number().min(0).optional().default(0),
   size: z.number().min(1).max(1000).optional().default(10),
@@ -152,14 +152,14 @@ export const searchOutputSchema = z.object({
   note: z.string().optional().describe('Caveats about how this result was computed (e.g. matchAll scan cap)'),
 });
 
-export type SearchInput = z.infer<typeof searchInputSchema>;
+type SearchInput = z.infer<typeof searchInputSchema>;
 export type SearchOutput = z.infer<typeof searchOutputSchema>;
 export type SearchTranscriptionsInput = z.infer<typeof searchTranscriptionsInputSchema>;
 
 /**
  * Core search against the upstream Broccoli API.
  */
-export async function search(input: SearchInput): Promise<SearchOutput> {
+async function search(input: SearchInput): Promise<SearchOutput> {
   const indexName = input.indexName || API_CONFIG.DEFAULT_INDEX;
 
   const aggs = input.includeAggregations ? {

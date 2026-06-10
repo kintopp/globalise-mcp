@@ -38,7 +38,7 @@ import {
   searchOutputSchema,
 } from './tools/search.js';
 import {
-  getDocumentSimple,
+  getDocument,
   getDocumentSimpleInputSchema,
   getDocumentOutputSchema,
 } from './tools/document.js';
@@ -53,13 +53,14 @@ import {
   findArchivalDocumentsOutputSchema,
 } from './tools/archival-index.js';
 import { closeDatabase } from './utils/database.js';
+import { VIEWER_URL_PREFIX } from './utils/api-client.js';
 import {
   viewDocumentUi,
   viewDocumentUiInputSchema,
 } from './tools/document-viewer.js';
 
 export const SERVER_NAME = 'globalise-mcp-server';
-export const SERVER_VERSION = '2.0.0';
+export const SERVER_VERSION = '2.0.1';
 
 /**
  * Structured output gate (R8): outputSchema + structuredContent are on by
@@ -68,8 +69,6 @@ export const SERVER_VERSION = '2.0.0';
  * payload either way.
  */
 const STRUCTURED_CONTENT_ENABLED = process.env.STRUCTURED_CONTENT !== 'false';
-
-const VIEWER_URL_PREFIX = 'https://transcriptions.globalise.huygens.knaw.nl/detail/';
 
 /**
  * Corpus-level caveats, stated once per connection instead of duplicated
@@ -84,48 +83,50 @@ Corpus caveats that apply to every tool:
 - Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages.`;
 
 /**
- * Extract viewer URLs from tool results and format as markdown links.
- * Search results carry no per-row viewerUrl field (R9) — links are built
- * from the result id here, in the one place users actually click them.
+ * Per-tool builders that turn a result into clickable viewer markdown links,
+ * passed to registerJsonTool so each registration declares its own links —
+ * no tool-name matching to keep in sync. Search results carry no per-row
+ * viewerUrl field (R9): links are built from the result id here, in the one
+ * place users actually click them.
  */
-function extractViewerLinks(result: Record<string, unknown>, toolName: string): string[] {
-  const links: string[] = [];
+type ViewerLinksBuilder = (result: Record<string, unknown>) => string[];
 
-  if (toolName === 'globalise_retrieve_document') {
-    // Document retrieval: single document with urls.transcriptionsViewer
-    const urls = result.urls as { transcriptionsViewer?: string } | undefined;
-    const docId = result.document as string | undefined;
-    if (urls?.transcriptionsViewer) {
-      const label = docId || 'Document';
-      links.push(`[${label}](${urls.transcriptionsViewer})`);
-    }
-  } else if (toolName === 'globalise_navigate') {
-    // Navigation: target document with urls.transcriptionsViewer
-    const target = result.targetDocument as { document?: string; urls?: { transcriptionsViewer?: string } } | undefined;
-    if (target?.urls?.transcriptionsViewer) {
-      const label = target.document || 'Target page';
-      links.push(`[${label}](${target.urls.transcriptionsViewer})`);
-    }
-  } else if (toolName === 'globalise_search_transcriptions') {
-    // Search results: build links from result ids (limit to first 10)
-    const results = result.results as Array<{ id?: string; document?: string }> | undefined;
-    if (results && results.length > 0) {
-      const maxLinks = Math.min(results.length, 10);
-      for (let i = 0; i < maxLinks; i++) {
-        const r = results[i];
-        if (r.id) {
-          const label = r.document || `Result ${i + 1}`;
-          links.push(`[${label}](${VIEWER_URL_PREFIX}${r.id})`);
-        }
+/** Single retrieved document with urls.transcriptionsViewer. */
+const documentViewerLinks: ViewerLinksBuilder = (result) => {
+  const urls = result.urls as { transcriptionsViewer?: string } | undefined;
+  const docId = result.document as string | undefined;
+  return urls?.transcriptionsViewer
+    ? [`[${docId || 'Document'}](${urls.transcriptionsViewer})`]
+    : [];
+};
+
+/** Navigation target document with urls.transcriptionsViewer. */
+const navigateViewerLinks: ViewerLinksBuilder = (result) => {
+  const target = result.targetDocument as { document?: string; urls?: { transcriptionsViewer?: string } } | undefined;
+  return target?.urls?.transcriptionsViewer
+    ? [`[${target.document || 'Target page'}](${target.urls.transcriptionsViewer})`]
+    : [];
+};
+
+/** Search results: build links from result ids (limit to first 10). */
+const searchViewerLinks: ViewerLinksBuilder = (result) => {
+  const links: string[] = [];
+  const results = result.results as Array<{ id?: string; document?: string }> | undefined;
+  if (results && results.length > 0) {
+    const maxLinks = Math.min(results.length, 10);
+    for (let i = 0; i < maxLinks; i++) {
+      const r = results[i];
+      if (r.id) {
+        const label = r.document || `Result ${i + 1}`;
+        links.push(`[${label}](${VIEWER_URL_PREFIX}${r.id})`);
       }
-      if (results.length > 10) {
-        links.push(`... and ${results.length - 10} more results`);
-      }
+    }
+    if (results.length > 10) {
+      links.push(`... and ${results.length - 10} more results`);
     }
   }
-
   return links;
-}
+};
 
 /**
  * Extract a readable message and optional suggestion from thrown values.
@@ -153,7 +154,7 @@ function formatError(error: unknown): { message: string; suggestion?: string } {
  * serialize to compact JSON (R9), append the clickable viewer-links
  * markdown block, and mirror the result as structuredContent (R8).
  */
-function toolResponse(toolName: string, result: unknown): CallToolResult {
+function toolResponse(toolName: string, result: unknown, viewerLinks: string[]): CallToolResult {
   const responseText = JSON.stringify(result);
 
   // Debug logging (enable with DEBUG=true environment variable)
@@ -170,9 +171,6 @@ function toolResponse(toolName: string, result: unknown): CallToolResult {
       text: responseText,
     },
   ];
-
-  // Extract viewer URLs and format as clickable markdown links
-  const viewerLinks = extractViewerLinks(result as Record<string, unknown>, toolName);
 
   if (viewerLinks.length > 0) {
     const linksSection = viewerLinks.length === 1
@@ -223,11 +221,12 @@ const READ_ONLY_ANNOTATIONS = {
  * post-processing (viewer links block, structuredContent) and error
  * formatting.
  *
- * The input schema is registered with .strict() so unknown params are
- * rejected instead of silently stripped; the SDK validates input (and
- * applies Zod defaults) before the handler runs. The output schema is
- * registered only when structured output is enabled — the SDK then
- * requires and validates structuredContent on every non-error result.
+ * The input schema must be pre-derived with .strict() (see the module-scope
+ * consts below) so unknown params are rejected instead of silently stripped;
+ * the SDK validates input (and applies Zod defaults) before the handler runs.
+ * The output schema is registered only when structured output is enabled —
+ * the SDK then requires and validates structuredContent on every non-error
+ * result.
  */
 function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
   server: McpServer,
@@ -236,18 +235,23 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
   schema: Schema,
   outputSchema: z.ZodTypeAny,
   handler: (input: z.output<Schema>) => Promise<unknown>,
+  viewerLinks?: ViewerLinksBuilder,
 ): void {
   server.registerTool(
     name,
     {
       description,
-      inputSchema: schema.strict(),
+      // Cast to the concrete constraint: the SDK's conditional callback type
+      // does not resolve against a bare generic type parameter
+      inputSchema: schema as z.ZodObject<z.ZodRawShape>,
       ...(STRUCTURED_CONTENT_ENABLED ? { outputSchema } : {}),
       annotations: READ_ONLY_ANNOTATIONS,
     },
     async (args): Promise<CallToolResult> => {
       try {
-        return toolResponse(name, await handler(args as z.output<Schema>));
+        const result = await handler(args as z.output<Schema>);
+        const links = viewerLinks?.(result as Record<string, unknown>) ?? [];
+        return toolResponse(name, result, links);
       } catch (error) {
         return errorResponse(name, error);
       }
@@ -255,21 +259,41 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
   );
 }
 
-// UI Resource URI for Document Viewer
+/**
+ * .strict() variants derived once at module scope: createServer() runs per
+ * HTTP request, so deriving them inside registerJsonTool would repeat the
+ * work on every request.
+ */
+const searchToolInputSchema = searchTranscriptionsInputSchema.strict();
+const retrieveToolInputSchema = getDocumentSimpleInputSchema.strict();
+const navigateToolInputSchema = navigateInputSchema.strict();
+const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
+
+// UI Resource URI and tool name for the Document Viewer MCP App
 const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
+const VIEW_DOCUMENT_UI_TOOL_NAME = 'globalise_view_document_ui';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Load the Document Viewer UI HTML
+ * Load the Document Viewer UI HTML. The built file is static for the life of
+ * the process, so successful reads are cached; only the not-yet-built case
+ * re-probes the disk (so a dev build is picked up without a restart).
  */
+let documentViewerHtml: string | undefined;
+
 function loadDocumentViewerHtml(): string {
+  if (documentViewerHtml !== undefined) {
+    return documentViewerHtml;
+  }
+
   const htmlPath = path.join(__dirname, '..', 'dist', 'apps', 'index.html');
 
   try {
-    return fs.readFileSync(htmlPath, 'utf-8');
+    documentViewerHtml = fs.readFileSync(htmlPath, 'utf-8');
+    return documentViewerHtml;
   } catch {
     // Fallback error message if UI hasn't been built
     return `<!DOCTYPE html>
@@ -358,9 +382,10 @@ export function createServer(): McpServer {
       'For statistics only (e.g. the language breakdown of an inventory), use query="*" with size=1. ' +
       `Each result id can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}. ` +
       'For a known document ID use globalise_retrieve_document.',
-    searchTranscriptionsInputSchema,
+    searchToolInputSchema,
     searchOutputSchema,
     searchTranscriptions,
+    searchViewerLinks,
   );
 
   registerJsonTool(
@@ -370,9 +395,10 @@ export function createServer(): McpServer {
       'Returns the full transcription line-by-line, metadata (languages, dates, license), previous/next page IDs, ' +
       'and links to the web viewer and the National Archives page scan. ' +
       'To search by keywords use globalise_search_transcriptions; for sequential browsing use globalise_navigate.',
-    getDocumentSimpleInputSchema,
+    retrieveToolInputSchema,
     getDocumentOutputSchema,
-    getDocumentSimple,
+    (input) => getDocument({ ...input, includeAnnotations: true, includeText: true }),
+    documentViewerLinks,
   );
 
   registerJsonTool(
@@ -380,9 +406,10 @@ export function createServer(): McpServer {
     'globalise_navigate',
     'Fetch the previous or next page relative to a given document ID, for reading through archival materials sequentially. ' +
       'Returns the target page\'s full details (text, metadata, links); errors if no page exists in that direction.',
-    navigateInputSchema,
+    navigateToolInputSchema,
     navigateOutputSchema,
     navigate,
+    navigateViewerLinks,
   );
 
   registerJsonTool(
@@ -393,7 +420,7 @@ export function createServer(): McpServer {
       'The query field supports FTS5 syntax (AND/OR/NOT, prefix*, "exact phrase"). ' +
       'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
       'Inventory numbers in the results feed the inventoryNumber filter of globalise_search_transcriptions to reach the actual transcribed pages.',
-    findArchivalDocumentsInputSchema,
+    findArchivalToolInputSchema,
     findArchivalDocumentsOutputSchema,
     findArchivalDocuments,
   );
@@ -405,7 +432,7 @@ export function createServer(): McpServer {
 
   registerAppTool(
     server,
-    'globalise_view_document_ui',
+    VIEW_DOCUMENT_UI_TOOL_NAME,
     {
       description:
         'Display a VOC page in an interactive viewer: IIIF scan image (zoom/pan/rotate) and the transcription with line numbers, side-by-side, with optional search-term highlighting. ' +
@@ -448,7 +475,7 @@ export function createServer(): McpServer {
           ],
         };
       } catch (error) {
-        return errorResponse('globalise_view_document_ui', error);
+        return errorResponse(VIEW_DOCUMENT_UI_TOOL_NAME, error);
       }
     },
   );
@@ -473,7 +500,7 @@ async function main() {
     const port = parseInt(process.env.PORT || '3000', 10);
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 
-    createHttpServer({ port, allowedOrigins, createServer });
+    createHttpServer({ port, allowedOrigins, version: SERVER_VERSION, createServer });
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const server = createServer();

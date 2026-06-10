@@ -14,12 +14,12 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createOriginGuard } from '../utils/origin.js';
 
-const VERSION = '2.0.0';
-
 export interface HttpServerOptions {
   port?: number;
   /** CORS allowlist for browser-facing routes (response headers only). */
   allowedOrigins?: string[];
+  /** Server version reported by /health and the startup log. */
+  version?: string;
   /** Factory producing a fully configured MCP server, called per connection. */
   createServer: () => McpServer;
 }
@@ -28,7 +28,7 @@ export interface HttpServerOptions {
  * Create and start the HTTP server.
  */
 export function createHttpServer(options: HttpServerOptions) {
-  const { port = 3000, allowedOrigins = ['*'], createServer } = options;
+  const { port = 3000, allowedOrigins = ['*'], version = 'unknown', createServer } = options;
 
   const app = express();
 
@@ -52,7 +52,7 @@ export function createHttpServer(options: HttpServerOptions) {
     res.json({
       status: 'healthy',
       name: 'globalise-mcp-server',
-      version: VERSION,
+      version,
     });
   });
 
@@ -129,7 +129,7 @@ export function createHttpServer(options: HttpServerOptions) {
   app.listen(port, () => {
     console.error('='.repeat(65));
     console.error('[HTTP] GLOBALISE MCP Server started');
-    console.error(`[HTTP] Version: ${VERSION}`);
+    console.error(`[HTTP] Version: ${version}`);
     console.error(`[HTTP] Listening on: http://localhost:${port}`);
     console.error('[HTTP] Endpoints:');
     console.error(`[HTTP]   POST http://localhost:${port}/mcp     (Streamable HTTP, stateless)`);

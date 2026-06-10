@@ -6,6 +6,20 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.0.1] - 2026-06-10
+
+Code-quality pass over the P0/P1 refactor commits (no behavior changes intended).
+
+### Changed
+- **Single viewer-URL constant**: `VIEWER_URL_PREFIX` now lives in `utils/api-client.ts` (derived from `API_CONFIG.FRONTEND_BASE_URL`) and is imported by `index.ts`, `document.ts`, and `document-viewer.ts`, replacing three independent copies of the URL string.
+- **Viewer links co-located with registrations**: the tool-name `if/else` chain in `extractViewerLinks` is gone; each `registerJsonTool` call now passes its own links-builder callback, so new tools can't silently miss link extraction.
+- **Version single-sourced**: `http-server.ts` no longer hardcodes its own `VERSION`; `/health` and the startup log report the version passed via `HttpServerOptions` (from `SERVER_VERSION` in `index.ts`). One fewer file in the version-bump lockstep list.
+- **Per-request hot path slimmed**: `.strict()` input-schema variants are derived once at module scope instead of inside every per-request `createServer()`; the document-viewer HTML is read from disk once and cached (the not-yet-built fallback still re-probes so a dev build is picked up without restart).
+- **Prepared statements reused**: the FTS5 probe and the two table-total `COUNT(*)` statements in `archival-index.ts` are prepared once per database connection instead of recompiled on every `findArchivalDocuments` call.
+- **Dead surface removed**: `getDocumentSimple` passthrough wrapper deleted (`globalise_retrieve_document` calls `getDocument` directly); `search`/`searchInputSchema`/`SearchInput` un-exported (file-private); unused `GetDocumentSimpleInput` type removed.
+
+---
+
 ## [2.0.0] - 2026-06-10
 
 P1 refactor per `MCP-SERVER-REFACTOR-REVIEW.md` (items R5–R10). Major version bump: this is the breaking-change wave for clients (tool consolidation, response-shape changes).

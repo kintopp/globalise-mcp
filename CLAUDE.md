@@ -64,12 +64,11 @@ Health check: `/health`
 Update ALL of these (they must match):
 
 1. `package.json`
-2. `src/index.ts` — server constructor version
-3. `src/transports/http-server.ts` — VERSION constant
-4. `CLAUDE.md` — Current Version below
-5. `CHANGELOG.md` — new entry with date
+2. `src/index.ts` — `SERVER_VERSION` (also reported by the HTTP transport's `/health`)
+3. `CLAUDE.md` — Current Version below
+4. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.0.0 (worktree-p0-refactor; major bump for the P1 breaking-change wave — tool consolidation and response-shape changes)
+### Current Version: 2.0.1 (worktree-p0-refactor; code-quality pass over the P0/P1 refactor)
 
 ---
 

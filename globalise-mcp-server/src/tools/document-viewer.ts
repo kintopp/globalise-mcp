@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import { getCachedApiGet, buildUrl, API_CONFIG, documentCache } from '../utils/api-client.js';
+import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache } from '../utils/api-client.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
 import { DocumentResponse } from '../utils/types.js';
@@ -189,7 +189,7 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
       next: metadata?.nextPageId || null,
     },
     urls: {
-      viewer: `https://transcriptions.globalise.huygens.knaw.nl/detail/${documentUrn}`,
+      viewer: `${VIEWER_URL_PREFIX}${documentUrn}`,
       archive: metadata?.naUrl || null,
     },
     highlight: input.highlightTerms || [],

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import type { Statement } from 'better-sqlite3';
 import { getDatabase, isDatabaseAvailable } from '../utils/database.js';
 
 // Input schema for archival index queries
@@ -313,6 +314,33 @@ function appendNotNull(where: string, column: string): string {
     : `WHERE ${column} IS NOT NULL`;
 }
 
+type Db = ReturnType<typeof getDatabase>;
+
+/**
+ * Constant-SQL statements, prepared once per database connection rather than
+ * re-compiled by db.prepare() on every call. Keyed by the db handle so a
+ * reopened database (closeDatabase + getDatabase) gets fresh statements.
+ */
+let staticStatements: {
+  db: Db;
+  ftsProbe: Statement;
+  obpTotal: Statement;
+  gmTotal: Statement;
+} | null = null;
+
+function getStaticStatements(db: Db) {
+  if (staticStatements?.db !== db) {
+    staticStatements = {
+      db,
+      // Syntax errors are query-side, so probing one FTS table covers both
+      ftsProbe: db.prepare('SELECT rowid FROM obp_fts WHERE obp_fts MATCH @query LIMIT 1'),
+      obpTotal: db.prepare('SELECT COUNT(*) as count FROM obp_documents'),
+      gmTotal: db.prepare('SELECT COUNT(*) as count FROM generale_missiven'),
+    };
+  }
+  return staticStatements;
+}
+
 /**
  * Validate an FTS5 query against the database, since raw user input like
  * "oost-indie" or an unbalanced quote makes SQLite throw a syntax error (R7).
@@ -322,11 +350,10 @@ function appendNotNull(where: string, column: string): string {
  * Returns the query to use plus a note when it was rewritten.
  */
 function sanitizeFtsQuery(
-  db: ReturnType<typeof getDatabase>,
+  db: Db,
   query: string,
 ): { query: string; note?: string } {
-  // Syntax errors are query-side, so probing one FTS table covers both
-  const probe = db.prepare('SELECT rowid FROM obp_fts WHERE obp_fts MATCH @query LIMIT 1');
+  const probe = getStaticStatements(db).ftsProbe;
 
   try {
     probe.get({ query });
@@ -404,8 +431,9 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   let totalCount = 0;
 
   // Get database totals
-  const obpTotal = (db.prepare('SELECT COUNT(*) as count FROM obp_documents').get() as { count: number }).count;
-  const gmTotal = (db.prepare('SELECT COUNT(*) as count FROM generale_missiven').get() as { count: number }).count;
+  const stmts = getStaticStatements(db);
+  const obpTotal = (stmts.obpTotal.get() as { count: number }).count;
+  const gmTotal = (stmts.gmTotal.get() as { count: number }).count;
 
   // Query OBP if source includes it (skipped when a GM-only filter is set)
   if (input.source === 'obp' || input.source === 'all') {
