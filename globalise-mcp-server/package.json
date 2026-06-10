@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -27,24 +27,28 @@
   ],
   "author": "Arno Bosse with Claude Code",
   "license": "MIT",
+  "engines": {
+    "node": ">=24.15.0 <25.0.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "better-sqlite3": "^11.7.0",
-    "cors": "^2.8.5",
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
     "express": "^5.1.0",
-    "zod": "^3.25.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.2",
-    "csv-parse": "^5.6.0",
-    "n3": "^1.26.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.1",
+    "csv-parse": "^6.2.1",
+    "n3": "^2.0.3",
     "openseadragon": "^6.0.2",
-    "typescript": "^5.7.2",
-    "vite": "^5.4.0",
-    "vite-plugin-singlefile": "^2.0.0"
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }

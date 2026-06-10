@@ -72,7 +72,7 @@ const searchInputSchema = z.object({
   indexName: z.string().optional(),
   languages: z.array(z.string()).optional().describe('Filter by language ISO codes'),
   languageLabels: z.array(z.string()).optional().describe('Filter by human-readable language names'),
-  filters: z.record(z.array(z.string())).optional().describe('Advanced term filters, field name → values'),
+  filters: z.record(z.string(), z.array(z.string())).optional().describe('Advanced term filters, field name → values'),
 });
 
 // Consolidated public tool schema (R6): one search tool with composable filters

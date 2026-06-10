@@ -6,6 +6,20 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.4.0] - 2026-06-10
+
+### Changed
+- **Pinned the Node runtime to the Claude Desktop line.** Added `"engines": { "node": ">=24.15.0 <25.0.0" }` to `package.json` and a `.nvmrc` (`24.16.0`), so local dev (nvm), CI, and Railway's nixpacks builder all select Node 24 — the version bundled inside Claude Desktop. This is the groundwork for distributing the server as an `.mcpb` (MCP Bundle), which runs on Claude Desktop's embedded Node 24 runtime.
+- **Dependency upgrades** (all majors taken; build + full test suite pass, `npm audit` clean):
+  - `zod` **3.25 → 4.4.3**. The MCP SDK and `ext-apps` already declare `zod: ^3.25 || ^4.0` as a peer dep, so only our own schemas needed touching. One breaking call site: `z.record(z.array(z.string()))` → `z.record(z.string(), z.array(z.string()))` in `src/tools/search.ts` (zod 4 makes the key schema mandatory). Verified the SDK still emits `$ref`-free, strict (`additionalProperties: false`) tool input/output JSON Schemas — zod 4 switches the SDK to zod's native `z.toJSONSchema()` emitter, and the smoke test confirms the tool contract is unchanged.
+  - `better-sqlite3` **11 → 12** (native module; prebuilt binary loads on Node 24, read-only query path verified by `test:archival`). Still the only native dependency — a follow-up `node:sqlite` migration is tracked for the `.mcpb` work.
+  - `vite` **5 → 7.3.5** and `vite-plugin-singlefile` **2.3.0 → 2.3.3** (build-only; single-file viewer bundle rebuilds and passes `test:viewer-build`).
+  - `typescript` **5.7 → 6.0.3**, `@types/node` **22 → 24.13.1** (matches the pinned runtime).
+  - `csv-parse` **5 → 6.2.1** and `n3` **1 → 2.0.3** (build/data-prep scripts only; APIs unchanged, validated directly).
+  - `cors` 2.8.5 → 2.8.6, `@types/better-sqlite3`/`@types/cors`/`@types/express` refreshed.
+- **Pinned `tsx`** (`^4.22.4`) as a devDependency. The `build` (`ensure:db`), `dev`, and all `test`/script commands invoke `npx tsx`, which previously fetched an unpinned tsx on each run — a build-reproducibility gap (it runs during Railway builds). Now resolved from the lockfile.
+- **`npm audit` → 0 vulnerabilities.** `npm audit fix` cleared 4 transitive advisories (`path-to-regexp`, `qs`, `postcss`, `picomatch`) via semver-compatible bumps; build + tests re-verified afterward.
+
 ## [2.3.1] - 2026-06-10
 
 ### Fixed

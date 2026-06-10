@@ -67,7 +67,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.3.1 (worktree-p0-refactor; fix search crash on blank pages with missing langIso/langLabel)
+### Current Version: 2.4.0 (worktree-p0-refactor; pin Node to >=24.15 <25 + .nvmrc, upgrade deps — zod 4, better-sqlite3 12, vite 7, TypeScript 6, csv-parse 6, n3 2 — pin tsx, audit clean; .mcpb groundwork)
 
 ---
 
