@@ -55,6 +55,11 @@ export function createHttpServer(options: HttpServerOptions) {
       status: 'healthy',
       name,
       version,
+      // Surfaces the runtime the platform actually selected, so the deployed
+      // Node version is verifiable via curl (the build pins Node 24 through
+      // package.json "engines" + .nvmrc, but Railway's builder ultimately
+      // chooses the patch). Expected: v24.x on Railway and in Claude Desktop.
+      node: process.version,
     });
   });
 

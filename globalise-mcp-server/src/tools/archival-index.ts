@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import type { Statement } from 'better-sqlite3';
+import type { StatementSync } from 'node:sqlite';
 import { getDatabase, isDatabaseAvailable } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
 
@@ -122,7 +122,7 @@ export const findArchivalDocumentsOutputSchema = z.object({
 export type FindArchivalDocumentsInput = z.infer<typeof findArchivalDocumentsInputSchema>;
 export type FindArchivalDocumentsOutput = z.infer<typeof findArchivalDocumentsOutputSchema>;
 
-interface ObpDbRow {
+type ObpDbRow = {
   id: number;
   id_csv: number | null;
   id_tanap: number | null;
@@ -139,7 +139,7 @@ interface ObpDbRow {
   document_type: string | null;
 }
 
-interface GmDbRow {
+type GmDbRow = {
   id: number;
   id_csv: number | null;
   id_tanap: number | null;
@@ -163,7 +163,7 @@ interface GmDbRow {
 
 interface WhereClause {
   where: string;
-  params: Record<string, unknown>;
+  params: Record<string, string | number>;
 }
 
 /**
@@ -173,9 +173,9 @@ interface WhereClause {
 function buildCommonConditions(
   input: FindArchivalDocumentsInput,
   ftsTable: string,
-): { conditions: string[]; params: Record<string, unknown> } {
+): { conditions: string[]; params: Record<string, string | number> } {
   const conditions: string[] = [];
-  const params: Record<string, unknown> = {};
+  const params: Record<string, string | number> = {};
 
   if (input.query) {
     conditions.push(`id IN (SELECT rowid FROM ${ftsTable} WHERE ${ftsTable} MATCH @query)`);
@@ -206,7 +206,7 @@ function buildCommonConditions(
 /**
  * Format conditions into a WHERE clause string.
  */
-function toWhereClause(conditions: string[], params: Record<string, unknown>): WhereClause {
+function toWhereClause(conditions: string[], params: Record<string, string | number>): WhereClause {
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   return { where, params };
 }
@@ -325,13 +325,13 @@ type Aggregations = NonNullable<FindArchivalDocumentsOutput['aggregations']>;
  * The database is read-only and rebuilt only at deploy, so these cannot
  * change for the life of a connection (R14) — without this, every call ran
  * two full-table COUNT(*)s, and unfiltered calls re-ran GROUP BYs over 227K
- * rows (better-sqlite3 is synchronous, so each blocks the event loop).
+ * rows (node:sqlite is synchronous, so each blocks the event loop).
  * Keyed by the db handle so a reopened database (closeDatabase +
  * getDatabase) gets fresh state.
  */
 let staticDbState: {
   db: Db;
-  ftsProbe: Statement;
+  ftsProbe: StatementSync;
   obpTotal: number;
   gmTotal: number;
   obpUnfilteredAggregations?: Pick<Aggregations, 'settlements' | 'inventories'>;

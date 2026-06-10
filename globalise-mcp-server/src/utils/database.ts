@@ -2,9 +2,13 @@
  * SQLite database wrapper for archival index data.
  * Provides lazy initialization with read-only mode for querying
  * pre-built archival index databases.
+ *
+ * Uses Node's built-in `node:sqlite` (stable, no flag on Node 24) rather than
+ * the native better-sqlite3 addon, so the server is pure JS — a prerequisite
+ * for packaging as an .mcpb bundle that runs on Claude Desktop's Node 24.
  */
 
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
@@ -18,7 +22,7 @@ const DEFAULT_DB_PATH = join(__dirname, '..', '..', 'data', 'archival-index.sqli
 const DB_PATH = process.env.ARCHIVAL_DB_PATH || DEFAULT_DB_PATH;
 
 // Lazy-initialized database instance
-let db: Database.Database | null = null;
+let db: DatabaseSync | null = null;
 
 /**
  * Get the SQLite database connection.
@@ -27,7 +31,7 @@ let db: Database.Database | null = null;
  *
  * @throws Error if database file doesn't exist
  */
-export function getDatabase(): Database.Database {
+export function getDatabase(): DatabaseSync {
   if (db) {
     return db;
   }
@@ -39,14 +43,14 @@ export function getDatabase(): Database.Database {
     );
   }
 
-  db = new Database(DB_PATH, {
-    readonly: true,
-    fileMustExist: true,
-  });
+  // existsSync above already guards the missing-file case, so we don't need
+  // better-sqlite3's fileMustExist; node:sqlite opens (open defaults to true).
+  db = new DatabaseSync(DB_PATH, { readOnly: true });
 
-  // Optimize for read-only queries (only set pragmas that don't require write access)
-  db.pragma('cache_size = -64000'); // 64MB cache
-  db.pragma('temp_store = MEMORY');
+  // Optimize for read-only queries (only set pragmas that don't require write
+  // access). node:sqlite has no .pragma() helper, so issue them via exec().
+  db.exec('PRAGMA cache_size = -64000'); // 64MB cache
+  db.exec('PRAGMA temp_store = MEMORY');
 
   return db;
 }

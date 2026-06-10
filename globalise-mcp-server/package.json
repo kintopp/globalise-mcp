@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -33,13 +33,11 @@
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "better-sqlite3": "^12.10.0",
     "cors": "^2.8.6",
     "express": "^5.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.13.1",
@@ -48,7 +46,7 @@
     "openseadragon": "^6.0.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vite": "^7.3.5",
+    "vite": "^8.0.16",
     "vite-plugin-singlefile": "^2.3.3"
   }
 }

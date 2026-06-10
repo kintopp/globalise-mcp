@@ -51,9 +51,11 @@ GET https://gloccoli.tt.di.huc.knaw.nl/projects/globalise/urn:globalise:{doc_id}
 | `main` | `https://globalise-mcp-production.up.railway.app/mcp` |
 | `feature/*` | `https://globalise-mcp-beta-production.up.railway.app/mcp` |
 
-Health check: `/health`
+Health check: `/health` — returns `{ status, name, version, node }`. The `node` field is the runtime version Railway actually selected; `curl <url>/health` to confirm it's `v24.x` after a deploy.
 
 **Auto-deployment:** Railway deploys automatically when pushed to GitHub. Production from `main`, beta from the active feature branch.
+
+**Node version:** Railway's builder selects Node from `globalise-mcp-server/package.json` `engines.node` (`>=24.15.0 <25.0.0`) and `.nvmrc` (`24.16.0`) — Node 24, matching Claude Desktop's bundled runtime. The builder pins the major; the patch is its choice. The code runs on any Node 24.x (the `>=24.15` floor is for Claude Desktop parity, not a hard requirement — `node:sqlite` is flagless from 24.0). To force the major, set the `NIXPACKS_NODE_VERSION=24` service variable. Verify post-deploy via `/health`.
 
 ---
 
@@ -67,7 +69,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.4.0 (worktree-p0-refactor; pin Node to >=24.15 <25 + .nvmrc, upgrade deps — zod 4, better-sqlite3 12, vite 7, TypeScript 6, csv-parse 6, n3 2 — pin tsx, audit clean; .mcpb groundwork)
+### Current Version: 2.5.0 (worktree-p0-refactor; migrate better-sqlite3 → built-in node:sqlite so the production tree is pure-JS for .mcpb; vite 7→8; /health reports node version)
 
 ---
 

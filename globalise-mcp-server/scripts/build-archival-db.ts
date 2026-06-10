@@ -10,7 +10,7 @@
  * 4. Creates indexes for common query patterns
  */
 
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import { parse } from 'csv-parse';
 import { createReadStream, createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
@@ -34,7 +34,7 @@ const GM_CSV = join(SOURCES_DIR, 'generale-missiven.csv');
 // Batch size for inserts
 const BATCH_SIZE = 5000;
 
-interface ObpRow {
+type ObpRow = {
   id_csv: number;
   id_tanap: number | null;
   description: string;
@@ -50,7 +50,7 @@ interface ObpRow {
   document_type: string | null;
 }
 
-interface GmRow {
+type GmRow = {
   id_csv: number;
   id_tanap: number | null;
   inventory_number: string;
@@ -168,7 +168,25 @@ async function parseGmCsv(): Promise<GmRow[]> {
   });
 }
 
-function createSchema(db: Database.Database): void {
+/**
+ * Run `fn` inside a transaction. node:sqlite (unlike better-sqlite3) has no
+ * .transaction() helper, so batch inserts wrap their loop manually: BEGIN,
+ * run, COMMIT — rolling back and rethrowing on error. Batching matters here:
+ * committing once per ~5K-row batch instead of per row keeps the 227K-row OBP
+ * insert fast.
+ */
+function runInTransaction(db: DatabaseSync, fn: () => void): void {
+  db.exec('BEGIN');
+  try {
+    fn();
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
+function createSchema(db: DatabaseSync): void {
   console.log('Creating database schema...');
 
   db.exec(`
@@ -217,7 +235,7 @@ function createSchema(db: Database.Database): void {
   console.log('  Tables created');
 }
 
-function insertObpData(db: Database.Database, rows: ObpRow[]): void {
+function insertObpData(db: DatabaseSync, rows: ObpRow[]): void {
   console.log(`Inserting ${rows.length} OBP rows...`);
 
   const stmt = db.prepare(`
@@ -234,12 +252,11 @@ function insertObpData(db: Database.Database, rows: ObpRow[]): void {
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
-    const insertBatch = db.transaction(() => {
+    runInTransaction(db, () => {
       for (const row of batch) {
         stmt.run(row);
       }
     });
-    insertBatch();
 
     if ((i + BATCH_SIZE) % 50000 === 0 || i + BATCH_SIZE >= rows.length) {
       console.log(`  Inserted ${Math.min(i + BATCH_SIZE, rows.length)} / ${rows.length} rows`);
@@ -247,7 +264,7 @@ function insertObpData(db: Database.Database, rows: ObpRow[]): void {
   }
 }
 
-function insertGmData(db: Database.Database, rows: GmRow[]): void {
+function insertGmData(db: DatabaseSync, rows: GmRow[]): void {
   console.log(`Inserting ${rows.length} GM rows...`);
 
   const stmt = db.prepare(`
@@ -266,17 +283,16 @@ function insertGmData(db: Database.Database, rows: GmRow[]): void {
     )
   `);
 
-  const insertAll = db.transaction(() => {
+  runInTransaction(db, () => {
     for (const row of rows) {
       stmt.run(row);
     }
   });
-  insertAll();
 
   console.log(`  Inserted ${rows.length} GM rows`);
 }
 
-function createFtsIndexes(db: Database.Database): void {
+function createFtsIndexes(db: DatabaseSync): void {
   console.log('Creating FTS5 full-text search indexes...');
 
   db.exec(`
@@ -308,7 +324,7 @@ function createFtsIndexes(db: Database.Database): void {
   console.log('  FTS indexes created');
 }
 
-function createIndexes(db: Database.Database): void {
+function createIndexes(db: DatabaseSync): void {
   console.log('Creating regular indexes...');
 
   db.exec(`
@@ -328,7 +344,7 @@ function createIndexes(db: Database.Database): void {
   console.log('  Indexes created');
 }
 
-function optimizeDatabase(db: Database.Database): void {
+function optimizeDatabase(db: DatabaseSync): void {
   console.log('Optimizing database...');
   db.exec('ANALYZE');
   db.exec('VACUUM');
@@ -356,7 +372,7 @@ async function main(): Promise<void> {
 
   console.log('');
 
-  const db = new Database(DB_PATH);
+  const db = new DatabaseSync(DB_PATH);
 
   try {
     createSchema(db);

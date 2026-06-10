@@ -6,6 +6,20 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.5.0] - 2026-06-10
+
+Closes out the two `.mcpb`-readiness follow-ups flagged in the v2.4.0 notes.
+
+### Changed
+- **Migrated the archival DB layer from `better-sqlite3` to Node 24's built-in `node:sqlite` (`DatabaseSync`).** Removes the project's only native dependency, so the production tree (`@modelcontextprotocol/{sdk,ext-apps}`, `cors`, `express`, `zod`) is now pure JavaScript — a pure-JS `.mcpb` bundle is possible without per-platform prebuilt binaries. Verified on Node 24.16: `node:sqlite` is flagless (no `--experimental-sqlite`, no `ExperimentalWarning`), and Node's bundled SQLite has FTS5 compiled in.
+  - `src/utils/database.ts`: `new DatabaseSync(path, { readOnly: true })`; pragmas issued via `db.exec('PRAGMA …')` (no `.pragma()` helper). `existsSync` already guards the missing-file case, so `fileMustExist` was dropped.
+  - `src/tools/archival-index.ts`: `Statement` → `StatementSync`; bind-params narrowed from `Record<string, unknown>` to `Record<string, string | number>` (`node:sqlite` rejects `unknown` and any named key absent from the SQL); `ObpDbRow`/`GmDbRow` converted from `interface` to `type` so the `Record<string, SQLOutputValue>` result casts compile. Read path validated by `test:archival` (FTS5 MATCH incl. phrase-escape rescue, settlement/chamber filters, OBP→GM pagination boundary, cached aggregations) — all green.
+  - `scripts/build-archival-db.ts`: `db.transaction()` (absent in `node:sqlite`) replaced with a `runInTransaction()` helper wrapping `BEGIN`/`COMMIT`/`ROLLBACK`, preserving batched inserts. Validated end-to-end to a temp path: parsed 227,526 OBP + 950 GM rows, built FTS5, `ANALYZE`/`VACUUM`, round-trip query confirmed. The committed deploy artifact (`data/archival-index.sqlite.gz`) is unchanged — the existing better-sqlite3-built DB reads identically under `node:sqlite` (same on-disk format).
+- **`vite` 7 → 8.0.16.** `vite-plugin-singlefile@2.3.3` declares vite 8 support; the single-file viewer bundle rebuilds (~686 KB) and `test:viewer-build` passes.
+
+### Added
+- **`/health` now reports the runtime Node version** (`{ status, name, version, node }`). `curl <url>/health` after a Railway deploy confirms which Node the platform's builder selected (expected `v24.x`). Railway selects Node from `engines.node` + `.nvmrc`; the major is pinned, the patch is the builder's choice. The code runs on any Node 24.x (the `>=24.15` floor is for Claude Desktop parity, not a hard requirement). CLAUDE.md's Deployment section documents the `NIXPACKS_NODE_VERSION` override.
+
 ## [2.4.0] - 2026-06-10
 
 ### Changed
