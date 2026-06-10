@@ -59,6 +59,10 @@ export function getDatabase(): Db {
   // access). node:sqlite has no .pragma() helper, so issue them via exec().
   db.exec('PRAGMA cache_size = -64000'); // 64MB cache
   db.exec('PRAGMA temp_store = MEMORY');
+  // Memory-map the (read-only, ~108MB) DB so cold-page reads skip read()
+  // syscalls. 256MB ceiling comfortably covers the whole file; safe on a
+  // read-only connection.
+  db.exec('PRAGMA mmap_size = 268435456');
 
   return db;
 }

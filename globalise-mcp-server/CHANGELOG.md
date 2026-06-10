@@ -6,6 +6,15 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.5.2] - 2026-06-10
+
+Database performance pass — no API, output, or behavior change; the deploy artifact (`data/archival-index.sqlite.gz`) is rebuilt (24.5 → 25.8 MB).
+
+### Changed
+- **Added `idx_obp_sort` on `obp_documents(year_earliest, inventory_number, folio_start)`** (`scripts/build-archival-db.ts`). This tuple is the default result `ORDER BY` for every OBP page (`src/tools/archival-index.ts`), and no existing index covered it — so each call did a full-table `SCAN` + `USE TEMP B-TREE FOR ORDER BY`, materializing and sorting all 227,526 rows to return one page. Measured in-engine (avg of 200 runs, M4): the default call (`from=0`) drops **45.2 ms → 0.08 ms** (~560×), and deep pagination (`from=200000`) drops **456 ms → 4.4 ms** (~100×). This matters disproportionately because `node:sqlite` is synchronous: the old sort blocked the Node event loop, stalling all concurrent requests for its duration. The new plan is `SCAN obp_documents USING INDEX idx_obp_sort` with no temp sort. Verified not to regress selective filters — `settlement=` and FTS queries still prefer their own indexes. Index cost: ~4 MB in the DB, ~1.8 MB in the `.gz`.
+- **Added `PRAGMA mmap_size = 268435456` (256 MB) to the read-only DB connection** (`src/utils/database.ts`). Memory-maps the ~108 MB DB so cold-page reads skip `read()` syscalls. Safe on a read-only connection; joins the existing `cache_size` / `temp_store` pragmas.
+- **Dropped `AUTOINCREMENT` from both table primary keys** (`scripts/build-archival-db.ts`) — now plain `INTEGER PRIMARY KEY` (rowid alias). The DB is built once and never deletes rows, so AUTOINCREMENT's monotonic-after-delete guarantee was irrelevant; it only added `sqlite_sequence` bookkeeping. `content_rowid='id'` on the FTS5 tables still aliases rowid, so FTS is unaffected. Full `test:archival` suite (FTS5 incl. phrase-escape rescue, filters, OBP→GM pagination boundary, cached aggregations) green against the rebuilt DB.
+
 ## [2.5.1] - 2026-06-10
 
 Post-v2.5.0 cleanup from two `/simplify` passes — no behavior change except one latent-crash fix.

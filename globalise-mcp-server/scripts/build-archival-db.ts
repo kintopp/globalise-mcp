@@ -189,9 +189,13 @@ function runInTransaction(db: DatabaseSync, fn: () => void): void {
 function createSchema(db: DatabaseSync): void {
   console.log('Creating database schema...');
 
+  // Plain INTEGER PRIMARY KEY (rowid alias), not AUTOINCREMENT: the DB is
+  // built once and never deletes rows, so the monotonic-after-delete guarantee
+  // AUTOINCREMENT provides is irrelevant — it would only add sqlite_sequence
+  // bookkeeping. content_rowid='id' on the FTS tables still aliases rowid.
   db.exec(`
     CREATE TABLE IF NOT EXISTS obp_documents (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER PRIMARY KEY,
       id_csv INTEGER,
       id_tanap INTEGER,
       description TEXT NOT NULL,
@@ -210,7 +214,7 @@ function createSchema(db: DatabaseSync): void {
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS generale_missiven (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER PRIMARY KEY,
       id_csv INTEGER,
       id_tanap INTEGER,
       inventory_number TEXT NOT NULL,
@@ -332,6 +336,12 @@ function createIndexes(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_obp_settlement ON obp_documents(settlement);
     CREATE INDEX IF NOT EXISTS idx_obp_year ON obp_documents(year_earliest, year_latest);
     CREATE INDEX IF NOT EXISTS idx_obp_folio ON obp_documents(inventory_number, folio_start, folio_end);
+    -- Covers the default result ORDER BY (archival-index.ts): without it every
+    -- OBP page does a full-table SCAN + TEMP B-TREE sort over all ~227K rows to
+    -- return one page (~45ms at offset 0, ~456ms deep). With it the planner
+    -- walks the index in order and stops after LIMIT+OFFSET (<1ms / ~4ms).
+    -- Selective filters (settlement=, FTS) still prefer their own indexes.
+    CREATE INDEX IF NOT EXISTS idx_obp_sort ON obp_documents(year_earliest, inventory_number, folio_start);
   `);
 
   db.exec(`

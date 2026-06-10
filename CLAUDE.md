@@ -69,7 +69,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.5.1 (worktree-p0-refactor; fix latent crash in retrieve_document on pages with no language metadata; consolidate language shape + mappers into utils/languages.ts; centralize node:sqlite driver types behind the database.ts wrapper)
+### Current Version: 2.5.2 (worktree-p0-refactor; DB performance pass — add idx_obp_sort covering the default OBP ORDER BY (default call 45ms→0.08ms, ~560×; deep pagination 456ms→4.4ms), add PRAGMA mmap_size to the read-only connection, drop pointless AUTOINCREMENT; deploy artifact rebuilt 24.5→25.8 MB; no API/output change)
 
 ---
 
