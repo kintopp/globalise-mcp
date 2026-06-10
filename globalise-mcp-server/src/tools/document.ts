@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache } from '../utils/api-client.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { DocumentResponse } from '../utils/types.js';
+import { languageSchema, mapPageLanguages } from '../utils/languages.js';
 
 // Public tool input: just the document ID; annotations and text are always included
 export const getDocumentInputSchema = z.object({
@@ -29,10 +30,7 @@ export const getDocumentOutputSchema = z.object({
     layoutAnalysis: z.string(),
     ocrSoftware: z.string().optional(),
     annotationGenerated: z.string().optional(),
-    languages: z.array(z.object({
-      code: z.string(),
-      label: z.string(),
-    })),
+    languages: z.array(languageSchema),
     license: z.string(),
   }).optional(),
   navigation: z.object({
@@ -115,10 +113,7 @@ export async function getDocument(options: GetDocumentOptions): Promise<GetDocum
       layoutAnalysis: metadata.creator,
       ocrSoftware: annotation?.generator?.name,
       annotationGenerated: annotation?.generated,
-      languages: metadata.lang.map(l => ({
-        code: l.iso,
-        label: l.label,
-      })),
+      languages: mapPageLanguages(metadata.lang),
       license: metadata.comment,
     };
 

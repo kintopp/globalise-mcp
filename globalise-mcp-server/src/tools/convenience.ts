@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { parseDocumentId } from '../utils/document-id.js';
 import { getDocument } from './document.js';
+import { languageSchema } from '../utils/languages.js';
 
 // Navigate Tool
 export const navigateInputSchema = z.object({
@@ -44,10 +45,7 @@ export const navigateOutputSchema = z.object({
       layoutAnalysis: z.string(),
       ocrSoftware: z.string().optional(),
       annotationGenerated: z.string().optional(),
-      languages: z.array(z.object({
-        code: z.string(),
-        label: z.string(),
-      })),
+      languages: z.array(languageSchema),
       license: z.string(),
     }).optional(),
     urls: z.object({

@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.5.1] - 2026-06-10
+
+Post-v2.5.0 cleanup from two `/simplify` passes — no behavior change except one latent-crash fix.
+
+### Fixed
+- **`globalise_retrieve_document` could crash on pages with no language metadata** — the same class of bug as the v2.3.1 search fix. `getDocument` mapped `metadata.lang.map(...)` unguarded (`src/tools/document.ts`), so any page where upstream omits `lang` would throw `Cannot read properties of undefined (reading 'map')`. Now routed through the shared `mapPageLanguages()` helper, which guards and yields `languages: []`. Its sibling `globalise_view_document_ui` already guarded this case; the guard is now uniform across both retrieval paths.
+
+### Changed
+- **Consolidated the page-language `{ code, label }` shape and its mappers into `src/utils/languages.ts`.** The shape had been hand-declared five times (Zod schemas in `search.ts` ×2, `document.ts`, `convenience.ts`; a TS type in `document-viewer.ts`) and the upstream→output mapping existed three times with inconsistent null-guarding. Now there is one `languageSchema` (with `type Language = z.infer<…>` as the single source of truth), one `mapPageLanguages(lang?)` for document metadata's `{ iso, label }[]` object-array shape, and one `zipLanguages(langIso?, langLabel?)` for search's parallel `langIso[]`/`langLabel[]` arrays. The guard lives inside the helpers, so a new consumer cannot reintroduce the unguarded crash. Net −31/+12 lines across the four consumers; typecheck and full test suite green.
+- **Centralized the `node:sqlite` driver types behind the `database.ts` wrapper.** `src/utils/database.ts` now exports `Db` / `DbStatement` type aliases; `src/tools/archival-index.ts` consumes them instead of importing `StatementSync` directly from `node:sqlite`, so the concrete driver is named in exactly one runtime file and a future driver swap stays a one-file change. Also converted the lone `interface WhereClause` to `type` for intra-file consistency. No runtime change.
+
 ## [2.5.0] - 2026-06-10
 
 Closes out the two `.mcpb`-readiness follow-ups flagged in the v2.4.0 notes.

@@ -8,10 +8,18 @@
  * for packaging as an .mcpb bundle that runs on Claude Desktop's Node 24.
  */
 
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
+
+/**
+ * Driver type aliases re-exported from the wrapper. Consumers reference these
+ * instead of importing from `node:sqlite` directly, so the concrete driver is
+ * named in exactly one runtime file and a future driver swap stays one-file.
+ */
+export type Db = DatabaseSync;
+export type DbStatement = StatementSync;
 
 // Get the directory of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -22,7 +30,7 @@ const DEFAULT_DB_PATH = join(__dirname, '..', '..', 'data', 'archival-index.sqli
 const DB_PATH = process.env.ARCHIVAL_DB_PATH || DEFAULT_DB_PATH;
 
 // Lazy-initialized database instance
-let db: DatabaseSync | null = null;
+let db: Db | null = null;
 
 /**
  * Get the SQLite database connection.
@@ -31,7 +39,7 @@ let db: DatabaseSync | null = null;
  *
  * @throws Error if database file doesn't exist
  */
-export function getDatabase(): DatabaseSync {
+export function getDatabase(): Db {
   if (db) {
     return db;
   }

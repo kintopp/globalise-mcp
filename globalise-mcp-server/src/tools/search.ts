@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { apiPost, buildUrl, API_CONFIG, validateSearchFields } from '../utils/api-client.js';
 import { SearchResponse } from '../utils/types.js';
+import { languageSchema, zipLanguages } from '../utils/languages.js';
 
 /**
  * ISO 639-3 code to human-readable label mapping for languages in the GLOBALISE corpus.
@@ -124,10 +125,7 @@ export const searchOutputSchema = z.object({
     inventoryNumber: z.string(),
     highlightedFragments: z.array(z.string()),
     tokenCount: z.number(),
-    languages: z.array(z.object({
-      code: z.string(),
-      label: z.string(),
-    })).describe('Languages detected on this page with ISO codes and labels'),
+    languages: z.array(languageSchema).describe('Languages detected on this page with ISO codes and labels'),
   })),
   aggregations: z.object({
     topInventoryNumbers: z.array(z.object({
@@ -138,11 +136,7 @@ export const searchOutputSchema = z.object({
       document: z.string(),
       count: z.number(),
     })).optional(),
-    languages: z.array(z.object({
-      code: z.string(),
-      label: z.string(),
-      count: z.number(),
-    })).optional(),
+    languages: z.array(languageSchema.extend({ count: z.number() })).optional(),
   }).optional(),
   pagination: z.object({
     from: z.number(),
@@ -204,14 +198,7 @@ async function search(input: SearchInput): Promise<SearchOutput> {
     inventoryNumber: result.invNr,
     highlightedFragments: result._hits?.text || [],
     tokenCount: result.textTokenCount,
-    // Zero-token pages (blank scans) come back from upstream with langIso /
-    // langLabel omitted entirely — a wildcard or document-sorted query surfaces
-    // those, so guard both. Keyword queries never hit this (only text-bearing
-    // pages match), which is why this only crashed on query:"*" + filters.
-    languages: (result.langIso ?? []).map((code, i) => ({
-      code,
-      label: result.langLabel?.[i] || code,
-    })),
+    languages: zipLanguages(result.langIso, result.langLabel),
   }));
 
   let aggregations: SearchOutput['aggregations'];

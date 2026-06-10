@@ -4,8 +4,7 @@
  */
 
 import { z } from 'zod';
-import type { StatementSync } from 'node:sqlite';
-import { getDatabase, isDatabaseAvailable } from '../utils/database.js';
+import { getDatabase, isDatabaseAvailable, type Db, type DbStatement } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
 
 // Input schema for archival index queries
@@ -161,10 +160,10 @@ type GmDbRow = {
   rgp_page: string | null;
 }
 
-interface WhereClause {
+type WhereClause = {
   where: string;
   params: Record<string, string | number>;
-}
+};
 
 /**
  * Build common WHERE conditions shared between OBP and GM queries:
@@ -315,8 +314,6 @@ function appendNotNull(where: string, column: string): string {
     : `WHERE ${column} IS NOT NULL`;
 }
 
-type Db = ReturnType<typeof getDatabase>;
-
 type Aggregations = NonNullable<FindArchivalDocumentsOutput['aggregations']>;
 
 /**
@@ -331,7 +328,7 @@ type Aggregations = NonNullable<FindArchivalDocumentsOutput['aggregations']>;
  */
 let staticDbState: {
   db: Db;
-  ftsProbe: StatementSync;
+  ftsProbe: DbStatement;
   obpTotal: number;
   gmTotal: number;
   obpUnfilteredAggregations?: Pick<Aggregations, 'settlements' | 'inventories'>;

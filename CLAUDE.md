@@ -69,7 +69,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.5.0 (worktree-p0-refactor; migrate better-sqlite3 → built-in node:sqlite so the production tree is pure-JS for .mcpb; vite 7→8; /health reports node version)
+### Current Version: 2.5.1 (worktree-p0-refactor; fix latent crash in retrieve_document on pages with no language metadata; consolidate language shape + mappers into utils/languages.ts; centralize node:sqlite driver types behind the database.ts wrapper)
 
 ---
 

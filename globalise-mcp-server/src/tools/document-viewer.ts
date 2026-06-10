@@ -10,6 +10,7 @@ import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
 import { DocumentResponse } from '../utils/types.js';
+import { type Language, mapPageLanguages } from '../utils/languages.js';
 import { findArchivalDocuments } from './archival-index.js';
 
 /**
@@ -59,7 +60,7 @@ export interface ViewDocumentUiOutput {
   metadata: {
     inventory: string;
     scan: string;
-    languages: Array<{ code: string; label: string }>;
+    languages: Language[];
     license?: string;
   };
   navigation: {
@@ -181,7 +182,7 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
     metadata: {
       inventory: inventoryNumber,
       scan: scanNumber,
-      languages: metadata?.lang?.map(l => ({ code: l.iso, label: l.label })) || [],
+      languages: mapPageLanguages(metadata?.lang),
       license: metadata?.comment?.replace('license: ', '') || undefined,
     },
     navigation: {
