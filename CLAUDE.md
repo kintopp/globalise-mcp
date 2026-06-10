@@ -67,7 +67,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.1.0 (worktree-p0-refactor; P2 wave — bundled viewer, document-ID validation, DB caching, version single-sourcing, test harness)
+### Current Version: 2.1.1 (worktree-p0-refactor; code-quality pass over the P2 wave)
 
 ---
 

@@ -6,6 +6,18 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.1.1] - 2026-06-10
+
+Code-quality pass over the 2.1.0 P2 wave (no behavior changes intended).
+
+### Changed
+- **Aggregation caching de-duplicated**: the unfiltered-aggregation cache logic in `archival-index.ts` (R14) is collapsed — the GROUP-BY queries move into pure `computeObpAggregations`/`computeGmAggregations` functions and the cacheable-or-not decision is a single `??=` expression per source, instead of separate read/write checks that had to stay synchronized by hand.
+- **Document-ID parse uses capture groups**: `parseDocumentId` matches one regex with capture groups instead of `test()` + `split('_')`, so the validation pattern and the segment extraction can no longer disagree.
+- **Shared test utilities**: the `check()`/failure-count/verdict boilerplate, previously copied verbatim into all three test scripts, lives once in `scripts/test-utils.ts` (`check` + `finish`). The smoke test's two structured-tool-error assertions (R7, R13) share a local `expectToolError` helper.
+- **Test-suite trims**: the one-sided-filter tests in `test:archival` pass `includeAggregations: false` (their aggregations were computed but never inspected); `test:viewer-build` stats the built HTML once instead of twice.
+
+---
+
 ## [2.1.0] - 2026-06-10
 
 P2 wave per `MCP-SERVER-REFACTOR-REVIEW.md` (items R11, R13, R14, R15, R16; R12 already landed inside R6's consolidation in 2.0.0). No breaking changes.

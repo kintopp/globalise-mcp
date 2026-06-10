@@ -350,6 +350,41 @@ function getStaticDbState(db: Db) {
   return staticDbState;
 }
 
+/** OBP aggregations (top settlements and inventories) for the given WHERE clause. */
+function computeObpAggregations(db: Db, { where, params }: WhereClause): Pick<Aggregations, 'settlements' | 'inventories'> {
+  const aggs: Pick<Aggregations, 'settlements' | 'inventories'> = {};
+
+  const settlementRows = db.prepare(
+    `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
+  ).all(params) as { settlement: string; count: number }[];
+  if (settlementRows.length > 0) {
+    aggs.settlements = settlementRows;
+  }
+
+  const invRows = db.prepare(
+    `SELECT inventory_number, COUNT(*) as count FROM obp_documents ${where} GROUP BY inventory_number ORDER BY count DESC LIMIT 20`
+  ).all(params) as { inventory_number: string; count: number }[];
+  if (invRows.length > 0) {
+    aggs.inventories = invRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
+  }
+
+  return aggs;
+}
+
+/** GM aggregations (chamber counts) for the given WHERE clause. */
+function computeGmAggregations(db: Db, { where, params }: WhereClause): Pick<Aggregations, 'chambers'> {
+  const aggs: Pick<Aggregations, 'chambers'> = {};
+
+  const chamberRows = db.prepare(
+    `SELECT chamber, COUNT(*) as count FROM generale_missiven ${appendNotNull(where, 'chamber')} GROUP BY chamber ORDER BY count DESC`
+  ).all(params) as { chamber: string; count: number }[];
+  if (chamberRows.length > 0) {
+    aggs.chambers = chamberRows;
+  }
+
+  return aggs;
+}
+
 /**
  * Validate an FTS5 query against the database, since raw user input like
  * "oost-indie" or an unbalanced quote makes SQLite throw a syntax error (R7).
@@ -512,56 +547,21 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
     const includesGm = (input.source === 'gm' || input.source === 'all') &&
       !(input.source === 'all' && hasObpOnlyFilters);
 
+    // Unfiltered GROUP BYs scan all ~227K rows — cache them (R14)
     if (includesObp) {
-      const { where, params } = buildObpWhereClause(effectiveInput);
-
-      // Unfiltered GROUP BYs scan all ~227K rows — cache them (R14)
-      if (where === '' && dbState.obpUnfilteredAggregations) {
-        Object.assign(aggregations, dbState.obpUnfilteredAggregations);
-      } else {
-        const obpAggs: Pick<Aggregations, 'settlements' | 'inventories'> = {};
-
-        const settlementRows = db.prepare(
-          `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
-        ).all(params) as { settlement: string; count: number }[];
-        if (settlementRows.length > 0) {
-          obpAggs.settlements = settlementRows;
-        }
-
-        const invRows = db.prepare(
-          `SELECT inventory_number, COUNT(*) as count FROM obp_documents ${where} GROUP BY inventory_number ORDER BY count DESC LIMIT 20`
-        ).all(params) as { inventory_number: string; count: number }[];
-        if (invRows.length > 0) {
-          obpAggs.inventories = invRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
-        }
-
-        if (where === '') {
-          dbState.obpUnfilteredAggregations = obpAggs;
-        }
-        Object.assign(aggregations, obpAggs);
-      }
+      const clause = buildObpWhereClause(effectiveInput);
+      const obpAggs = clause.where === ''
+        ? (dbState.obpUnfilteredAggregations ??= computeObpAggregations(db, clause))
+        : computeObpAggregations(db, clause);
+      Object.assign(aggregations, obpAggs);
     }
 
     if (includesGm) {
-      const { where, params } = buildGmWhereClause(effectiveInput);
-
-      if (where === '' && dbState.gmUnfilteredAggregations) {
-        Object.assign(aggregations, dbState.gmUnfilteredAggregations);
-      } else {
-        const gmAggs: Pick<Aggregations, 'chambers'> = {};
-
-        const chamberRows = db.prepare(
-          `SELECT chamber, COUNT(*) as count FROM generale_missiven ${appendNotNull(where, 'chamber')} GROUP BY chamber ORDER BY count DESC`
-        ).all(params) as { chamber: string; count: number }[];
-        if (chamberRows.length > 0) {
-          gmAggs.chambers = chamberRows;
-        }
-
-        if (where === '') {
-          dbState.gmUnfilteredAggregations = gmAggs;
-        }
-        Object.assign(aggregations, gmAggs);
-      }
+      const clause = buildGmWhereClause(effectiveInput);
+      const gmAggs = clause.where === ''
+        ? (dbState.gmUnfilteredAggregations ??= computeGmAggregations(db, clause))
+        : computeGmAggregations(db, clause);
+      Object.assign(aggregations, gmAggs);
     }
   }
 

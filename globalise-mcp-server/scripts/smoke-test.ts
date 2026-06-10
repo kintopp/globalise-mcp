@@ -20,6 +20,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { check, finish } from './test-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverEntry = path.join(__dirname, '..', 'dist', 'index.js');
@@ -37,17 +38,6 @@ const REMOVED_TOOLS = ['globalise_search_by_inventory', 'globalise_search_by_lan
 
 // Data tools registered via registerJsonTool (strict input + output schema)
 const DATA_TOOLS = EXPECTED_TOOLS.filter((t) => t !== 'globalise_view_document_ui');
-
-let failures = 0;
-
-function check(condition: boolean, label: string): void {
-  if (condition) {
-    console.log(`  ok: ${label}`);
-  } else {
-    failures++;
-    console.error(`  FAIL: ${label}`);
-  }
-}
 
 /** Recursively assert a JSON schema contains no $ref keys (claude.ai rejects them). */
 function hasRef(node: unknown): boolean {
@@ -126,24 +116,32 @@ async function main() {
     'structuredContent mirrors the result (R8)',
   );
 
+  /** Call a tool expecting a structured error; returns the parsed error payload. */
+  async function expectToolError(
+    name: string,
+    args: Record<string, unknown>,
+    label: string,
+  ): Promise<{ suggestion?: unknown }> {
+    const errResult = await client.callTool({ name, arguments: args });
+    check(errResult.isError === true, label);
+    const errContent = errResult.content as Array<{ type: string; text?: string }>;
+    return JSON.parse(errContent[0]?.text ?? '{}');
+  }
+
   console.log('5. tools/call with incompatible filters (R7)');
-  const conflict = await client.callTool({
-    name: 'globalise_find_archival_documents',
-    arguments: { source: 'all', settlement: 'Batavia', chamber: 'Amsterdam', size: 1 },
-  });
-  check(conflict.isError === true, 'incompatible settlement+chamber combo returns a tool error');
-  const conflictContent = conflict.content as Array<{ type: string; text?: string }>;
-  const conflictPayload = JSON.parse(conflictContent[0]?.text ?? '{}');
+  const conflictPayload = await expectToolError(
+    'globalise_find_archival_documents',
+    { source: 'all', settlement: 'Batavia', chamber: 'Amsterdam', size: 1 },
+    'incompatible settlement+chamber combo returns a tool error',
+  );
   check(typeof conflictPayload.suggestion === 'string', 'error carries a suggestion');
 
   console.log('6. tools/call with malformed document ID (R13, no network)');
-  const badId = await client.callTool({
-    name: 'globalise_retrieve_document',
-    arguments: { documentId: 'not-a-valid-id' },
-  });
-  check(badId.isError === true, 'malformed document ID returns a tool error');
-  const badIdContent = badId.content as Array<{ type: string; text?: string }>;
-  const badIdPayload = JSON.parse(badIdContent[0]?.text ?? '{}');
+  const badIdPayload = await expectToolError(
+    'globalise_retrieve_document',
+    { documentId: 'not-a-valid-id' },
+    'malformed document ID returns a tool error',
+  );
   check(
     typeof badIdPayload.suggestion === 'string' && badIdPayload.suggestion.includes('NL-HaNA'),
     'error suggestion shows the expected ID format',
@@ -151,11 +149,7 @@ async function main() {
 
   await client.close();
 
-  if (failures > 0) {
-    console.error(`\nSmoke test FAILED: ${failures} check(s) failed`);
-    process.exit(1);
-  }
-  console.log('\nSmoke test passed.');
+  finish('Smoke test');
 }
 
 main().catch((error) => {

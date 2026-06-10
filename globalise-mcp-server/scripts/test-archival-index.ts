@@ -20,17 +20,7 @@ import {
   FindArchivalDocumentsOutput,
 } from '../src/tools/archival-index.js';
 import { isDatabaseAvailable, closeDatabase, getDatabasePath } from '../src/utils/database.js';
-
-let failures = 0;
-
-function check(condition: boolean, label: string): void {
-  if (condition) {
-    console.log(`  ok: ${label}`);
-  } else {
-    failures++;
-    console.error(`  FAIL: ${label}`);
-  }
-}
+import { check, finish } from './test-utils.js';
 
 /** Parse args through the tool schema (applies defaults) and run the query. */
 async function call(args: Record<string, unknown>): Promise<FindArchivalDocumentsOutput> {
@@ -63,10 +53,10 @@ async function main() {
   await expectStructuredError({ source: 'gm', settlement: 'Batavia' }, 'gm+settlement rejected');
 
   console.log('2. one-sided filters on source "all" skip the other source with a note');
-  const gmOnly = await call({ source: 'all', chamber: 'Amsterdam', size: 5 });
+  const gmOnly = await call({ source: 'all', chamber: 'Amsterdam', size: 5, includeAggregations: false });
   check(gmOnly.results.length > 0 && gmOnly.results.every((r) => r.type === 'gm'), 'chamber on "all" → GM results only');
   check(Boolean(gmOnly.note?.includes('OBP')), 'chamber on "all" → note names the skipped OBP source');
-  const obpOnly = await call({ source: 'all', settlement: 'Batavia', size: 5 });
+  const obpOnly = await call({ source: 'all', settlement: 'Batavia', size: 5, includeAggregations: false });
   check(obpOnly.results.length > 0 && obpOnly.results.every((r) => r.type === 'obp'), 'settlement on "all" → OBP results only');
   check(Boolean(obpOnly.note?.includes('GM')), 'settlement on "all" → note names the skipped GM source');
 
@@ -114,11 +104,7 @@ async function main() {
 
   closeDatabase();
 
-  if (failures > 0) {
-    console.error(`\nArchival-index tests FAILED: ${failures} check(s) failed`);
-    process.exit(1);
-  }
-  console.log('\nArchival-index tests passed.');
+  finish('Archival-index tests');
 }
 
 main().catch((error) => {

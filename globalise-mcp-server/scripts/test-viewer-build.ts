@@ -10,24 +10,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { check, finish } from './test-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const htmlPath = path.join(__dirname, '..', 'dist', 'apps', 'index.html');
 
-let failures = 0;
+const htmlExists = fs.existsSync(htmlPath);
+check(htmlExists, 'dist/apps/index.html exists (run npm run build:ui first)');
 
-function check(condition: boolean, label: string): void {
-  if (condition) {
-    console.log(`  ok: ${label}`);
-  } else {
-    failures++;
-    console.error(`  FAIL: ${label}`);
-  }
-}
-
-check(fs.existsSync(htmlPath), 'dist/apps/index.html exists (run npm run build:ui first)');
-
-if (fs.existsSync(htmlPath)) {
+if (htmlExists) {
   const html = fs.readFileSync(htmlPath, 'utf-8');
   check(!html.includes('unpkg.com'), 'no unpkg.com references (ext-apps SDK is bundled)');
   check(!html.includes('cdn.jsdelivr.net'), 'no cdn.jsdelivr.net references (OpenSeadragon is bundled)');
@@ -35,8 +26,4 @@ if (fs.existsSync(htmlPath)) {
   check(html.length > 400_000, `bundle is self-contained (${html.length} bytes — a CDN-importing build is far smaller)`);
 }
 
-if (failures > 0) {
-  console.error(`\nViewer build check FAILED: ${failures} check(s) failed`);
-  process.exit(1);
-}
-console.log('\nViewer build check passed.');
+finish('Viewer build check');
