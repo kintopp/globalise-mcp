@@ -6,6 +6,13 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.5.3] - 2026-06-10
+
+Document Viewer fix — the interactive viewer now loads in Safari (chatgpt.com in Safari, and any Safari/WebKit MCP Apps host). No API, output, or server-behavior change; UI bundle (`dist/apps/index.html`) rebuilt.
+
+### Fixed
+- **Document Viewer hung on "Fetching document" in Safari** (`apps/document-viewer/src/viewer.ts`). The view advertised the MCP Apps `tools` capability (`{ tools: { listChanged: false } }`) despite never calling `app.registerTool()` — it exposes no app-side tools. A spec-conformant host that sees `appCapabilities.tools` issues a `tools/list` request to the view, which the ext-apps SDK answers with a "No handler for method tools/list registered" error. On Safari that stray error round-trip races the `ui/initialize` handshake and suppresses delivery of the `ontoolresult` notification: the viewer received the tool *input* (showed "Fetching document: …") but never the *result*, leaving it on the spinner forever. Chrome and the native ChatGPT app interleave the messages survivably, which is why it reproduced only on Safari. The tool itself ran and returned correctly throughout — this was purely a widget-side handshake bug. Fix: declare only the capability the view actually implements — `{ availableDisplayModes: ['inline', 'fullscreen'] }` (the view handles host `displayMode` changes, including fullscreen). Matches the resolution the sibling `rijksmuseum-mcp-plus` artwork viewer adopted for the same issue.
+
 ## [2.5.2] - 2026-06-10
 
 Database performance pass — no API, output, or behavior change; the deploy artifact (`data/archival-index.sqlite.gz`) is rebuilt (24.5 → 25.8 MB).

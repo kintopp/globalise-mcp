@@ -69,7 +69,7 @@ Update ALL of these (they must match):
 2. `CLAUDE.md` — Current Version below
 3. `CHANGELOG.md` — new entry with date
 
-### Current Version: 2.5.2 (worktree-p0-refactor; DB performance pass — add idx_obp_sort covering the default OBP ORDER BY (default call 45ms→0.08ms, ~560×; deep pagination 456ms→4.4ms), add PRAGMA mmap_size to the read-only connection, drop pointless AUTOINCREMENT; deploy artifact rebuilt 24.5→25.8 MB; no API/output change)
+### Current Version: 2.5.3 (worktree-p0-refactor; Document Viewer Safari fix — the viewer advertised a bogus `tools` capability it never implements, which on Safari triggered a `tools/list` round-trip that raced the `ui/initialize` handshake and suppressed `ontoolresult` delivery, hanging the widget on "Fetching document". Now declares `availableDisplayModes: ['inline','fullscreen']` only. UI bundle rebuilt; no API/output/server-behavior change)
 
 ---
 

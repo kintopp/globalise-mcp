@@ -67,10 +67,19 @@ let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
 let currentRotation = 0; // Track rotation in degrees
 
-// Initialize the MCP App with capabilities
+// Initialize the MCP App with capabilities.
+//
+// The view exposes no app-side tools (no app.registerTool calls), so it must
+// NOT advertise the `tools` capability: a spec-conformant host that sees
+// `appCapabilities.tools` may issue `tools/list` to the view, which the SDK
+// answers with "No handler for method tools/list registered". On Safari that
+// stray error round-trip races the handshake and suppresses delivery of the
+// ontoolresult notification, leaving the viewer stuck on "Fetching document"
+// (Chrome/native app happen to interleave the messages survivably). Declare
+// only what the view actually implements: the supported display modes.
 const app = new App(
   { name: 'GLOBALISE Document Viewer', version: '1.0.0' },
-  { tools: { listChanged: false } },
+  { availableDisplayModes: ['inline', 'fullscreen'] },
   { autoResize: true }
 );
 
