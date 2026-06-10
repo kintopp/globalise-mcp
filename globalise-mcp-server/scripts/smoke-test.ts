@@ -3,10 +3,13 @@
  *
  * Uses the SDK's Client + StdioClientTransport (never shell-piped JSON-RPC):
  *   1. initialize handshake against dist/index.js
- *   2. tools/list — expects all 7 tools, $ref-free input schemas,
- *      additionalProperties: false (strict), viewer tool UI metadata
+ *   2. tools/list — expects the 5 consolidated tools, $ref-free input AND
+ *      output schemas, additionalProperties: false (strict), viewer tool
+ *      UI metadata, and the absence of the tools removed in R6
  *   3. resources/list — expects the document-viewer UI resource
- *   4. one cheap globalise_find_archival_documents call (local SQLite, no network)
+ *   4. one cheap globalise_find_archival_documents call (local SQLite, no
+ *      network), checking both the text channel and structuredContent
+ *   5. incompatible-filter combo returns a structured tool error (R7)
  *
  * Run with: npm run test:smoke (requires a prior npm run build)
  */
@@ -23,11 +26,15 @@ const EXPECTED_TOOLS = [
   'globalise_search_transcriptions',
   'globalise_retrieve_document',
   'globalise_navigate',
-  'globalise_search_by_inventory',
-  'globalise_search_by_language',
   'globalise_find_archival_documents',
   'globalise_view_document_ui',
 ];
+
+// Consolidated into globalise_search_transcriptions (R6)
+const REMOVED_TOOLS = ['globalise_search_by_inventory', 'globalise_search_by_language'];
+
+// Data tools registered via registerJsonTool (strict input + output schema)
+const DATA_TOOLS = EXPECTED_TOOLS.filter((t) => t !== 'globalise_view_document_ui');
 
 let failures = 0;
 
@@ -61,24 +68,32 @@ async function main() {
   await client.connect(transport);
   const serverVersion = client.getServerVersion();
   check(serverVersion?.name === 'globalise-mcp-server', `server name (got: ${serverVersion?.name})`);
+  check(Boolean(client.getInstructions()), 'server instructions present');
 
   console.log('2. tools/list');
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name);
+  check(tools.length === EXPECTED_TOOLS.length, `exactly ${EXPECTED_TOOLS.length} tools (got: ${tools.length})`);
   for (const expected of EXPECTED_TOOLS) {
     check(names.includes(expected), `tool registered: ${expected}`);
+  }
+  for (const removed of REMOVED_TOOLS) {
+    check(!names.includes(removed), `tool removed (R6): ${removed}`);
   }
   for (const tool of tools) {
     check(!hasRef(tool.inputSchema), `$ref-free inputSchema: ${tool.name}`);
     check(tool.annotations?.readOnlyHint === true, `readOnlyHint: ${tool.name}`);
   }
   // Strict schemas: unknown params rejected, not stripped (viewer tool uses a
-  // raw shape via registerAppTool, so strictness applies to the 6 data tools)
-  for (const tool of tools.filter((t) => t.name !== 'globalise_view_document_ui')) {
+  // raw shape via registerAppTool, so strictness applies to the data tools)
+  for (const tool of tools.filter((t) => DATA_TOOLS.includes(t.name))) {
     check(
       (tool.inputSchema as { additionalProperties?: boolean }).additionalProperties === false,
       `strict (additionalProperties: false): ${tool.name}`,
     );
+    // R8: structured output on by default (STRUCTURED_CONTENT=false strips it)
+    check(tool.outputSchema !== undefined, `outputSchema registered: ${tool.name}`);
+    check(!hasRef(tool.outputSchema), `$ref-free outputSchema: ${tool.name}`);
   }
   const viewerTool = tools.find((t) => t.name === 'globalise_view_document_ui');
   const viewerMeta = viewerTool?._meta as { ui?: { resourceUri?: string } } | undefined;
@@ -103,6 +118,21 @@ async function main() {
   const content = result.content as Array<{ type: string; text?: string }>;
   const payload = JSON.parse(content[0]?.text ?? '{}');
   check(typeof payload.total?.value === 'number' && payload.total.value > 0, `GM results found (total: ${payload.total?.value})`);
+  const structured = result.structuredContent as { total?: { value?: number } } | undefined;
+  check(
+    typeof structured?.total?.value === 'number',
+    'structuredContent mirrors the result (R8)',
+  );
+
+  console.log('5. tools/call with incompatible filters (R7)');
+  const conflict = await client.callTool({
+    name: 'globalise_find_archival_documents',
+    arguments: { source: 'all', settlement: 'Batavia', chamber: 'Amsterdam', size: 1 },
+  });
+  check(conflict.isError === true, 'incompatible settlement+chamber combo returns a tool error');
+  const conflictContent = conflict.content as Array<{ type: string; text?: string }>;
+  const conflictPayload = JSON.parse(conflictContent[0]?.text ?? '{}');
+  check(typeof conflictPayload.suggestion === 'string', 'error carries a suggestion');
 
   await client.close();
 

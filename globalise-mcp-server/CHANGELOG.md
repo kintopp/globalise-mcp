@@ -6,6 +6,26 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.0.0] - 2026-06-10
+
+P1 refactor per `MCP-SERVER-REFACTOR-REVIEW.md` (items R5–R10). Major version bump: this is the breaking-change wave for clients (tool consolidation, response-shape changes).
+
+### Breaking
+- **R6 — Search tools consolidated 3 → 1**: `globalise_search_by_inventory` and `globalise_search_by_language` removed. `globalise_search_transcriptions` now covers both: `query` is optional (defaults to `"*"`), `inventoryNumber` and `languages` filters compose, and `matchAll` finds bilingual/multilingual pages. Language values accept ISO 639-3 codes or English names in any mix, normalized per-entry via the ISO↔label maps (replaces the `length <= 3` heuristic that misrouted mixed input — from R12). For matchAll the upstream filter language is the first non-Dutch entry (Dutch is ~97% of the corpus), and the response carries a `note` stating the 500-candidate scan cap and that totals are a lower bound (R12 honesty fix). 7 tools → 5. Search result rows no longer include `scanNumber` (trivially readable from the document ID).
+- **R5 — Legacy SSE transport removed**: `/sse` + `/messages` endpoints (pre-2025-03-26 protocol) deleted; Streamable HTTP (`/mcp`) and stdio remain. `TRANSPORT=sse` still starts HTTP mode but logs a deprecation warning. `/health` slimmed to `{status, name, version}`.
+- **R9 — Response-shape diet**: tool results are now compact JSON (pretty-printing inflated token cost ~25–40% on array-heavy payloads); `getDocument`/`navigate` no longer return `text.fullText` (it duplicated `text.lines` verbatim); search results no longer carry a per-row `viewerUrl` (the template `https://transcriptions.globalise.huygens.knaw.nl/detail/{id}` is stated once in the tool description and server instructions; the clickable viewer-links markdown block, capped at 10, remains and is now built from result ids).
+
+### Added
+- **R8 — Structured output restored behind an env gate**: the four data tools register `outputSchema` and return `structuredContent` (SDK-validated) by default; set `STRUCTURED_CONTENT=false` to strip both for clients that reject them (MSTY, Jan.ai). The text channel remains the primary payload. The viewer tool keeps its dual-content shape (retired only by R19).
+- **R10 — Server `instructions`**: corpus-level caveats (unknown/cipher language classification, non-Roman-script HTR unreliability, Malay macrolanguage, tokenizer behavior, viewer URL template, scoping workflow) moved to the `McpServer` instructions field, stated once per connection. Tool descriptions rewritten as short informative paragraphs — the `**USE WHEN**`/`**DO NOT USE FOR**` routing tables and the caveat blocks duplicated across two tools are gone.
+- **R7 — `findArchivalDocuments` correctness**: incompatible filter combos (`settlement` is OBP-only; `chamber`/`htrAvailable` are GM-only) now return a structured error with a suggestion instead of silently returning `total: 0`; when `source: "all"` skips one source because of a source-specific filter, the response says so in a `note` field (aggregations now respect the same skip). FTS5 syntax errors (e.g. `oost-indie`, unbalanced quotes) no longer crash the tool: the query is retried phrase-escaped (noted in the response) or rejected with a quoting suggestion. Deleted the dead `results.length < input.size` branch.
+
+### Fixed
+- Stale README: removed the `globalise://help/...` resources table (those resources were archived pre-P0; only the viewer UI resource exists) and documented the `MCP_ALLOWED_ORIGINS`/`STRUCTURED_CONTENT` env vars.
+- Smoke test extended: exact tool count, removed-tool absence, `$ref`-free output schemas, `structuredContent` presence, server instructions presence, and the R7 incompatible-filter error path.
+
+---
+
 ## [1.25.0] - 2026-06-10
 
 P0 architecture refactor per `MCP-SERVER-REFACTOR-REVIEW.md` (items R1–R4). Spec claims re-verified against the live 2025-11-25 changelog and npm registry before implementation (Phase 0 gate). Version 1.24.x skipped: it was used by the reverted `feature/mcp-apps-document-viewer` branch.

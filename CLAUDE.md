@@ -69,7 +69,7 @@ Update ALL of these (they must match):
 4. `CLAUDE.md` — Current Version below
 5. `CHANGELOG.md` — new entry with date
 
-### Current Version: 1.25.0 (worktree-p0-refactor; 1.24.x skipped — used by a reverted branch)
+### Current Version: 2.0.0 (worktree-p0-refactor; major bump for the P1 breaking-change wave — tool consolidation and response-shape changes)
 
 ---
 
