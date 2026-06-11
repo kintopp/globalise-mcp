@@ -48,9 +48,12 @@ For a known page ID, skip straight to `retrieve_document`. For statistics only
 
 ## The two data sources behind `find_archival_documents`
 
-The `source` parameter selects between two very different collections — they
-carry **different fields**, so always be deliberate about which you query
-(`obp` | `gm` | `all`):
+The `source` parameter selects between two indexes over the **same archive**
+(1.04.02) — they carry **different fields**, so always be deliberate about which
+you query (`obp` | `gm` | `all`). They are **not disjoint collections**: GM is a
+*genre within* OBP — the Generale Missiven physically sit in OBP inventory
+volumes, so the same missive is often catalogued in both (see the `source=all`
+dedup note below):
 
 - **OBP — Overgekomen Brieven en Papieren** (`source=obp`, ~227,526 entries).
   Digitized index entries / finding aids. Fields you can filter and read:
@@ -64,6 +67,13 @@ carry **different fields**, so always be deliberate about which you query
 
 `includeAggregations: true` adds settlement / year / inventory breakdowns (OBP)
 or chamber (GM) — cheap and useful for "what's in here?" questions.
+
+> ⚠️ **`source=all` double-counts the Generale Missiven.** Because GM ⊂ OBP, a
+> published-era missive is indexed **twice** — once as the richer GM row, once as a
+> plain OBP finding-aid row carrying the *same* inventory, folio and description.
+> When you list or **count** across `source=all`, dedup on `inventory_number` +
+> `folio` and keep the **GM** row (it adds `chamber`, dates, scan URLs, RGP refs).
+> Query a single `source` when you don't need both field sets.
 
 > ⚠️ **OBP indexes only *some* inventories — an empty result isn't proof of
 > absence.** It was built from TANAP + typoscript sources covering a
