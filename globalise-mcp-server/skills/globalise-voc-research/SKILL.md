@@ -271,10 +271,11 @@ reading of the *manuscript original*. For a published GM the RGP text is the
 authoritative edited version and the HTR is the full original — offer whichever fits
 the need, and say which is which.
 
-**Don't embellish the provenance.** State only what's above (or in the record); do
-**not** invent specific editor-to-volume assignments, page counts, ISBNs, or *other*
-editions (e.g. Colenbrander's Coen volumes) unless the user asks and you can verify —
-the dataset doesn't supply them.
+**Work from the material in hand.** When you describe the published edition, ground it
+in what the record and this section actually provide — the `rgpVolume`/`rgpPage`
+citation and the edition facts above. If a user wants more specific bibliography (the
+editor of a particular volume, an ISBN, a related edition), point them to the RGP
+series record or the GitHub repo, which carry it — the dataset surfaced here does not.
 
 **Reference-only.** The server never fetches the RGP text, and clients generally
 can't fetch these raw URLs inline either — hand the user the link to open rather than
@@ -415,7 +416,7 @@ language aggregation.
 - ❌ Don't carry FTS5 habits to `search_transcriptions`: there **space = OR** (use `AND`), and it adds `~N` / `?` / proximity.
 - ❌ Don't AND a modern toponym into the text query — it returns spurious 0s.
 - ❌ Don't trust GM **`htrAvailable`** as "has transcriptions" — it only marks Zeeland; probe the inventory instead.
-- ❌ Don't call the per-page RGP link the whole letter (it's the **first page**), or invent RGP editors/dates/other editions beyond what the record gives.
+- ❌ Don't call the per-page RGP link the whole letter (it's the **first page**), or go past the record/skill for RGP editors/dates/editions — point to the RGP series record for those.
 - ❌ Don't read an **empty OBP result** as "not in GLOBALISE" — many transcribed inventories (9966 → 495 pages, 9800 → 274) have no OBP index; check `search_transcriptions`.
 - ❌ Don't build a scan ID from an **OBP folio** (for **GM**, use the result's `scanStart` / scan URLs), or try to **filter transcriptions by year** (no date field).
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.
