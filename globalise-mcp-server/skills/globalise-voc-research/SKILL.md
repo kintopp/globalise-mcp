@@ -62,7 +62,8 @@ dedup note below):
   came *from* (origin), not the document's subject.
 - **GM — Generale Missiven** (`source=gm`, ~950 entries). The official summary
   letters from Batavia to the Heren XVII. Fields: `chamber`, dates, RGP
-  references, scan URLs, `htrAvailable`. **`chamber` and `htrAvailable` are
+  references (with `publishedEdition` links for the ~558 published letters), scan
+  URLs, `htrAvailable`. **`chamber` and `htrAvailable` are
   GM-only.** Folio filters require an `inventoryNumber`.
 
 `includeAggregations: true` adds settlement / year / inventory breakdowns (OBP)
@@ -228,16 +229,56 @@ and scans need care, and OBP vs GM behave oppositely:
   (`NL-HaNA_1.04.02_{inv}_{scanStart padded to 4}`, e.g. inv 7545 / scan 27 →
   `…_7545_0027`). Caveat: a minority of GM letters were identified but never
   located in the archive and lack `scanStart` — confirm it's present first.
-- **GM `rgpVolume`/`rgpPage`** (present for ~59% of the 950 letters) cite the
-  *published* RGP edition — a clean but **selective, edited** scholarly text
-  (summaries plus verbatim passages, often modernized spelling) that marks the
-  letter's *start* in the printed volume, not a page-by-page map to the manuscript.
-  The tool gives the citation, not a link. For the full original text, read the HTR
-  via `search_transcriptions`/`retrieve_document`.
+- **GM `rgpVolume`/`rgpPage`** (present for ~558 of the 950 letters) cite the
+  *published* RGP edition and now also drive a **`publishedEdition`** link object on
+  each GM result (page scans + plain text) — see "The RGP published edition links"
+  just below. They mark the letter's *start* in the printed volume, not a
+  page-by-page map to the manuscript.
 - **No year filter on transcriptions.** `search_transcriptions` exposes only
   `inventoryNumber` and `languages` (both exact-match) — there is *no* date field.
   Do all year/place scoping in `find_archival_documents`, then carry the inventory
   numbers across.
+
+## The RGP published edition links (GM only)
+
+For the ~558 Generale Missiven carried in the published RGP edition, a `source=gm`
+result includes a **`publishedEdition`** object; it is `null` for the ~392 not
+published *in this form* (a different copy of the same missive may still appear in
+RGP). The raw `rgpVolume`/`rgpPage` give the print citation; the object turns them
+into three ready-made URLs — present them with **plain labels** ("page scan",
+"plain text", "full volume"), not the raw URL fragments (e.g. `view=imagePane`):
+
+- **`retroboekenUrl`** — Retroboeken viewer opened on the **page scan** of the
+  printed RGP volume at the page where the letter begins. Best for **citing or
+  verifying** against the published book. (The viewer can toggle to a text pane; the
+  link just lands on the scan.) `null` when `rgpPage` is missing.
+- **`githubPageUrl`** — raw plain text of the letter's **first page only**, *not* the
+  whole letter; longer letters continue onto following pages, so use the volume file
+  for the complete text. `null` when `rgpPage` is missing.
+- **`githubVolumeUrl`** — raw plain text of the **entire RGP volume**. Always present
+  when `publishedEdition` exists (it needs only the volume). Use it to read a whole
+  letter (search within for the date / start page), or when the record has a volume
+  but no page (the page-precise links are then `null`).
+
+**Two different texts — keep them distinct.** The RGP edition behind these links is a
+**selective, edited scholarly edition** — summaries plus verbatim passages, partly
+modernized — published in the *Rijks Geschiedkundige Publicatiën* (Grote Serie), 14
+vols. spanning 1610–1767, begun by W. Ph. Coolhaas and continued by later editors.
+(The GitHub plain text extracts the original-letter passages only — introductions,
+footnotes, indices and the modern-Dutch summaries are stripped.) The **HTR
+transcription** (via `search_transcriptions`/`retrieve_document`) is the *machine*
+reading of the *manuscript original*. For a published GM the RGP text is the
+authoritative edited version and the HTR is the full original — offer whichever fits
+the need, and say which is which.
+
+**Don't embellish the provenance.** State only what's above (or in the record); do
+**not** invent specific editor-to-volume assignments, page counts, ISBNs, or *other*
+editions (e.g. Colenbrander's Coen volumes) unless the user asks and you can verify —
+the dataset doesn't supply them.
+
+**Reference-only.** The server never fetches the RGP text, and clients generally
+can't fetch these raw URLs inline either — hand the user the link to open rather than
+promising to paste the text.
 
 ## Searching transcriptions: a different query engine
 
@@ -369,10 +410,12 @@ language aggregation.
 - ✅ Use **period spellings or prefixes** (`Ceijlon*`, `Makass*`) for free-text places.
 - ✅ Check the response **`note`** when results look off (phrase-escape / lower-bound totals).
 - ✅ Offer **scan links** for non-Roman-script and Malay pages.
+- ✅ For a **published GM**, offer the `publishedEdition` links and say whether you're giving the **edited RGP text** or the **HTR** original.
 - ✅ In `search_transcriptions`, lean on **fuzzy `~1`** and period spellings for important terms (HTR/OCR noise).
 - ❌ Don't carry FTS5 habits to `search_transcriptions`: there **space = OR** (use `AND`), and it adds `~N` / `?` / proximity.
 - ❌ Don't AND a modern toponym into the text query — it returns spurious 0s.
 - ❌ Don't trust GM **`htrAvailable`** as "has transcriptions" — it only marks Zeeland; probe the inventory instead.
+- ❌ Don't call the per-page RGP link the whole letter (it's the **first page**), or invent RGP editors/dates/other editions beyond what the record gives.
 - ❌ Don't read an **empty OBP result** as "not in GLOBALISE" — many transcribed inventories (9966 → 495 pages, 9800 → 274) have no OBP index; check `search_transcriptions`.
 - ❌ Don't build a scan ID from an **OBP folio** (for **GM**, use the result's `scanStart` / scan URLs), or try to **filter transcriptions by year** (no date field).
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.

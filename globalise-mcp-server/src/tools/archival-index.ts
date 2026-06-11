@@ -63,7 +63,7 @@ const publishedEditionSchema = z.object({
   retroboekenUrl: z.string().nullable()
     .describe('Retroboeken interactive viewer (page-scan pane) at the missive’s start page; null if rgp_page is missing. Page-precise via the per-volume front-matter offset.'),
   githubPageUrl: z.string().nullable()
-    .describe('Raw GitHub per-page plain-text transcription where the missive begins (keyed directly by rgp_page, no offset); null if rgp_page is missing. Long letters spill onto following pages.'),
+    .describe('Raw GitHub plain text of the missive’s first page only (keyed directly by rgp_page, no offset) — NOT the whole letter; longer letters continue onto following pages, so use githubVolumeUrl for the complete text. Null if rgp_page is missing.'),
   githubVolumeUrl: z.string()
     .describe('Raw GitHub full-volume plain-text transcription (entire RGP volume). Plain text only — link-only, never fetched/cached (CC BY-NC-SA 4.0).'),
 });
@@ -91,7 +91,7 @@ const gmDocumentSchema = z.object({
   rgpVolume: z.string().nullable(),
   rgpPage: z.string().nullable(),
   publishedEdition: publishedEditionSchema.nullable()
-    .describe('Links to the published RGP edition (Retroboeken scans + GitHub plain text); null if this missive was not published in RGP (~41% are not).'),
+    .describe('Links to the published RGP edition — the scholarly Generale Missiven series (Rijks Geschiedkundige Publicatiën), a selective, edited text distinct from the HTR transcription (Retroboeken scans + GitHub plain text). Null if this missive was not published in the RGP edition in this form (~41% are not).'),
 });
 
 // Output schema

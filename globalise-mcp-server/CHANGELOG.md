@@ -6,6 +6,19 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.6.1] - 2026-06-11
+
+Description and skill refinements to the v2.6.0 `publishedEdition` links, prompted by a nine-prompt live MCP-client test pass against beta. No output-schema, behavior, or data change — `.describe()` strings and the `globalise-voc-research` skill only; the server's responses are byte-for-byte identical to v2.6.0. Provenance added to the skill is grounded in the offline dataset resources (`_OVERVIEW.md`, `GITHUB_RGP_TRANSCRIPTIONS.md`; dataset by Kay Pepping, DOI hdl:10622/BHKMWE) plus a corroborating web check, not invented.
+
+### Changed
+- **`publishedEdition` field descriptions** (`src/tools/archival-index.ts`):
+  - `githubPageUrl` now states plainly it is the missive's **first page only** (keyed by `rgp_page`, no offset) — *not* the whole letter; longer letters continue onto following pages, so use `githubVolumeUrl` for the complete text. (A test client had framed the per-page link as the entire letter.)
+  - The `publishedEdition` object description anchors the target as "the scholarly Generale Missiven series (Rijks Geschiedkundige Publicatiën), a selective, edited text distinct from the HTR transcription," and refines the null note to "not published in the RGP edition **in this form**" (per the dataset's column definition — a different copy of the same missive may still appear in RGP).
+- **`globalise-voc-research` skill** (`skills/globalise-voc-research/SKILL.md`):
+  - Corrected the now-stale claim that "the tool gives the citation, not a link" (v2.6.0 added the links).
+  - New **"The RGP published edition links"** subsection: the three link types (page-scan / first-page text / full-volume text) with plain-label guidance, the page-vs-letter nuance, the edited-RGP-edition-vs-HTR-original distinction with verified provenance (RGP Grote Serie, 14 vols., 1610–1767, begun by W. Ph. Coolhaas; GitHub repo = original-letter text only with editorial apparatus stripped, CC BY-NC-SA 4.0, Text Fabric/CLARIAH), an anti-embellishment guard, and a link-only/no-inline-fetch note.
+  - GM field inventory and the do/don't list updated to mention `publishedEdition`.
+
 ## [2.6.0] - 2026-06-11
 
 Adds clickable published-edition links to Generale Missiven results. The 558 GM letters with an RGP (Rijks Geschiedkundige Publicatiën) edition now carry a `publishedEdition` object pointing at the Retroboeken interactive viewer and the GitHub plain-text transcriptions — turning the raw `rgpVolume`/`rgpPage` fields (already surfaced) into usable URLs. Pure URL construction from data already in the DB: no DB rebuild, no network calls, no new dependencies, and the server never fetches or caches the edition text (link-only; GitHub repo is CC BY-NC-SA 4.0). Minor bump for the new output field. URL templates re-verified live (HTTP 200) and against the DB on 2026-06-11.
