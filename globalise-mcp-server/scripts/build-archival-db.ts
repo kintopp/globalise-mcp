@@ -12,12 +12,11 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { parse } from 'csv-parse';
-import { createReadStream, createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
+import { createReadStream, existsSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
-import { pipeline } from 'stream/promises';
 import { fileURLToPath } from 'url';
-import { createGzip } from 'zlib';
 import { getDatabasePath } from '../src/utils/database.js';
+import { runInTransaction, writeGzipArtifact } from './db-build-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -166,24 +165,6 @@ async function parseGmCsv(): Promise<GmRow[]> {
       })
       .on('error', reject);
   });
-}
-
-/**
- * Run `fn` inside a transaction. node:sqlite (unlike better-sqlite3) has no
- * .transaction() helper, so batch inserts wrap their loop manually: BEGIN,
- * run, COMMIT — rolling back and rethrowing on error. Batching matters here:
- * committing once per ~5K-row batch instead of per row keeps the 227K-row OBP
- * insert fast.
- */
-function runInTransaction(db: DatabaseSync, fn: () => void): void {
-  db.exec('BEGIN');
-  try {
-    fn();
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
 }
 
 function createSchema(db: DatabaseSync): void {
@@ -404,11 +385,8 @@ async function main(): Promise<void> {
   }
 
   // Refresh the deploy artifact (R18) so the committed .gz never drifts from
-  // the DB it was built from — ensure-archival-db.ts decompresses it on deploy
-  const gzPath = `${DB_PATH}.gz`;
-  console.log('\nCompressing deploy artifact...');
-  await pipeline(createReadStream(DB_PATH), createGzip({ level: 9 }), createWriteStream(gzPath));
-  console.log(`  Artifact: ${gzPath} (${(statSync(gzPath).size / 1024 / 1024).toFixed(1)} MB)`);
+  // the DB it was built from — ensure-archival-db.ts decompresses it on deploy.
+  await writeGzipArtifact(DB_PATH);
 }
 
 main().catch((err) => {

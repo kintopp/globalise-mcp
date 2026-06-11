@@ -6,6 +6,20 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.9] - 2026-06-11
+
+Build-script dedup (code-review finding 19). Tooling only — no change to the server, the DBs, or the committed artifacts; the build/ensure scripts run via tsx and aren't part of the tsc project, so this was verified by running them.
+
+### Changed
+- **New `scripts/db-build-utils.ts`** holds the helpers the four DB scripts had forked:
+  - `runInTransaction(db, fn)` — was character-identical in `build-archival-db.ts` and `build-commodities-db.ts`; both now import it.
+  - `writeGzipArtifact(dbPath)` — the `createGzip(level:9)` deploy-artifact tail (+ size log) both build scripts repeated.
+  - `ensureDb(opts)` — the parameterized present → `*_DB_URL` download → committed `.gz` gunzip → source rebuild → warn resolution, with the crash-safe temp-write. `ensure-archival-db.ts` and `ensure-reference-db.ts` are now thin wrappers passing their paths/labels/env-var names.
+- **`ensure-reference-db.ts` gains what its hand-fork had dropped:** a `REFERENCE_DB_URL`/`REFERENCE_DB_TOKEN` download branch and the temp-write crash-safety, for free via `ensureDb`. Its stale header comment (referenced a non-existent `npm run ensure:db:commodities`) is fixed to `npm run ensure:db`.
+
+### Verified
+Ran `build:db:commodities` and `ensure:db` against a temp `REFERENCE_DB_PATH` (build → 3,508 rows + gzip artifact; ensure → decompressed the committed `.gz` correctly), leaving the committed `data/*.sqlite{,.gz}` untouched. Full suite green (150 assertions).
+
 ## [2.7.8] - 2026-06-11
 
 P4 cleanup pass (code-review findings 11, 12, 13, 14, 16, 17, 18, and finding 20's index + viewer items). Mostly internal hardening and dead-code removal; one small behavior fix (finding 11) and one viewer attribute-escaping improvement. No DB rebuild, no `.skill` change. Full suite green (150 assertions, +3).

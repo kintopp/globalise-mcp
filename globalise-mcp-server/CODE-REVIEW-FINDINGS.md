@@ -180,7 +180,14 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
   against), or at least derive COUNT from the SELECT page + a single COUNT.
   The same (much milder) pattern exists in commodities — see finding 20.
 
-### [ ] 7. Global promise-chain throttle serializes ALL upstream calls across all concurrent users
+### [-] 7. Global promise-chain throttle serializes ALL upstream calls across all concurrent users — deferred (decision recorded)
+
+> **Decision (2026-06-11):** deferred, per the finding's own guidance — the
+> single global throttle chain is fine for the current 1–2-user load, and the
+> fix (per-host token bucket) is only worth it once concurrent-user load is
+> real. The R14 comment at `api-client.ts:33-37` already documents both the
+> tradeoff and the fix; revisit if tool calls feel slow under parallel use.
+
 
 - **Severity:** medium under concurrency (KNOWN tradeoff — the R14 comment at `src/utils/api-client.ts:33-37` already names the fix)
 - **Where:** `src/utils/api-client.ts:38-53` (`throttle()`, module-global `throttleQueue`, `REQUEST_DELAY_MS=100`); every `apiGet`/`apiPost` enters via `apiFetchOnce` `:273`, and every retry attempt re-enters
@@ -393,7 +400,17 @@ anchored strip: `docId.replace(/^urn:globalise:/i, '')` in both.
   `content[0]` if it starts with `{`) is unreachable against this server's
   content ordering in both STRUCTURED_CONTENT modes.
 
-### [ ] 19. Script duplication: ensure-* and build-* pairs forked
+### [x] 19. Script duplication: ensure-* and build-* pairs forked — fixed v2.7.9
+
+> **Fixed v2.7.9:** new `scripts/db-build-utils.ts` holds `runInTransaction`,
+> `writeGzipArtifact(dbPath)`, and a parameterized `ensureDb(opts)`. Both build
+> scripts import the first two; both ensure scripts are thin wrappers around
+> `ensureDb`. `ensure-reference-db.ts` thereby gains the `REFERENCE_DB_URL`
+> download branch + crash-safe temp-write it had dropped, and its stale
+> `npm run ensure:db:commodities` comment is fixed. Verified by running the
+> build + ensure paths against a temp `REFERENCE_DB_PATH` (committed artifacts
+> untouched).
+
 
 - `scripts/ensure-reference-db.ts` mirrors `scripts/ensure-archival-db.ts`
   step-for-step but dropped the `gzipped` flag and the

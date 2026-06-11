@@ -24,12 +24,11 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { parse } from 'csv-parse';
-import { createReadStream, createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
+import { createReadStream, existsSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
-import { pipeline } from 'stream/promises';
 import { fileURLToPath } from 'url';
-import { createGzip } from 'zlib';
 import { getReferenceDatabasePath } from '../src/utils/database.js';
+import { runInTransaction, writeGzipArtifact } from './db-build-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -101,17 +100,6 @@ async function parseCommoditiesTsv(): Promise<CommodityRow[]> {
       })
       .on('error', reject);
   });
-}
-
-function runInTransaction(db: DatabaseSync, fn: () => void): void {
-  db.exec('BEGIN');
-  try {
-    fn();
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
 }
 
 function createSchema(db: DatabaseSync): void {
@@ -220,10 +208,7 @@ async function main(): Promise<void> {
 
   // Refresh the committed deploy artifact so ensure-reference-db.ts can ship
   // the DB without rebuilding from source on every deploy.
-  const gzPath = `${DB_PATH}.gz`;
-  console.log('\nCompressing deploy artifact...');
-  await pipeline(createReadStream(DB_PATH), createGzip({ level: 9 }), createWriteStream(gzPath));
-  console.log(`  Artifact: ${gzPath} (${(statSync(gzPath).size / 1024 / 1024).toFixed(1)} MB)`);
+  await writeGzipArtifact(DB_PATH);
 }
 
 main().catch((err) => {
