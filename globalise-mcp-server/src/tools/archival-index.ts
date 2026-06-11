@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { getDatabase, isDatabaseAvailable, type Db, type DbStatement } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
+import { sanitizeFtsQuery } from '../utils/fts.js';
 
 // Input schema for archival index queries
 export const findArchivalDocumentsInputSchema = z.object({
@@ -444,40 +445,6 @@ function computeGmAggregations(db: Db, { where, params }: WhereClause): Pick<Agg
 }
 
 /**
- * Validate an FTS5 query against the database, since raw user input like
- * "oost-indie" or an unbalanced quote makes SQLite throw a syntax error (R7).
- * On a syntax error, retry with the whole query phrase-escaped in double
- * quotes; if even that fails, throw a structured error with a suggestion.
- *
- * Returns the query to use plus a note when it was rewritten.
- */
-function sanitizeFtsQuery(
-  db: Db,
-  query: string,
-): { query: string; note?: string } {
-  const probe = getStaticDbState(db).ftsProbe;
-
-  try {
-    probe.get({ query });
-    return { query };
-  } catch {
-    const escaped = `"${query.replace(/"/g, '""')}"`;
-    try {
-      probe.get({ query: escaped });
-      return {
-        query: escaped,
-        note: `query contained FTS5 syntax characters and was searched as the exact phrase ${escaped}`,
-      };
-    } catch {
-      throw new ToolError(
-        `Invalid full-text query: ${query}`,
-        'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
-      );
-    }
-  }
-}
-
-/**
  * Query the archival index database.
  */
 export async function findArchivalDocuments(input: FindArchivalDocumentsInput): Promise<FindArchivalDocumentsOutput> {
@@ -519,10 +486,11 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   const db = getDatabase();
   const notes: string[] = [];
 
-  // Reject or phrase-escape FTS5 queries that SQLite cannot parse
+  // Reject or phrase-escape FTS5 queries that SQLite cannot parse. One probe
+  // table covers both — FTS5 syntax errors are query-side, not table-side.
   let effectiveInput = input;
   if (input.query) {
-    const sanitized = sanitizeFtsQuery(db, input.query);
+    const sanitized = sanitizeFtsQuery(getStaticDbState(db).ftsProbe, input.query);
     if (sanitized.note) {
       effectiveInput = { ...input, query: sanitized.query };
       notes.push(sanitized.note);

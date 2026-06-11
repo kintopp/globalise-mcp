@@ -6,6 +6,15 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.1] - 2026-06-11
+
+Internal cleanup pass (`/simplify`) over the v2.7.0 commodities tool — no behavior change; all tool inputs, outputs, and the response contract are identical (full test suite + end-to-end smoke test green).
+
+### Changed
+- **FTS5 query sanitation deduplicated.** `src/tools/commodities.ts` had a near-verbatim copy of the archival tool's probe-then-phrase-escape-with-`note` recovery (same `note` wording, same `ToolError` suggestion); the copies had already drifted (commodities re-prepared the probe every call). Extracted to a shared `src/utils/fts.ts` `sanitizeFtsQuery(probe, query)` that takes an already-prepared probe statement, so each tool keeps its own FTS table and its own per-connection caching. Both `archival-index.ts` and `commodities.ts` now call it.
+- **Per-call work in `lookupCommodity` removed.** Every call ran `SELECT COUNT(*) FROM commodities` (a constant for a read-only DB) and re-prepared the FTS probe; the no-query path ran that same COUNT a *second* time for `total`. Added a per-connection static-state cache (`commoditiesTotal` + `ftsProbe`, keyed by the db handle) mirroring `getStaticDbState` in `archival-index.ts`; the no-query `total` now reuses the cached glossary size instead of a redundant COUNT.
+- **`lookupCommodity` simplified.** Dropped the `notes: string[]` accumulator (it only ever held one note — copied from the archival tool where it holds three) in favor of a single `note`, and folded the `ftsQuery` resolve-then-branch into one branch on `input.query`.
+
 ## [2.7.0] - 2026-06-11
 
 New tool **`globalise_lookup_commodity`**: a flat-glossary lookup over the VOC commodities thesaurus — 3,508 trade goods and trade-related concepts with bilingual Dutch/English labels, period spelling variants, and a sourced, confidence-rated definition per concept. This reimplements the commodities reference (an MCP *resource* removed in v1.17.0, `globalise://reference/commodities`) as the on-demand SQLite-backed tool the TODO planned — now enriched far beyond the archived "minimal" thesaurus (labels + hierarchy only) with definitions and provenance. Primary use is **query expansion**: the transcription search is spelling-blind, so the returned `altLabels` (period variants) feed back into `globalise_search_transcriptions` to surface documents a single spelling misses. Ships a new `data/reference.sqlite` (a small reference-vocabularies DB kept separate from the large archival index), committed as a ~1 MB `.gz` and decompressed at build like the archival DB. Minor bump for the new tool; no change to existing tools.

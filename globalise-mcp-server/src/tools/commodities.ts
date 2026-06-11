@@ -26,8 +26,9 @@ import {
   getReferenceDatabase,
   isReferenceDatabaseAvailable,
   type Db,
+  type DbStatement,
 } from '../utils/database.js';
-import { ToolError } from '../utils/errors.js';
+import { sanitizeFtsQuery } from '../utils/fts.js';
 
 export const lookupCommodityInputSchema = z.object({
   query: z.string().optional()
@@ -110,31 +111,25 @@ function mapRow(row: CommodityDbRow) {
 }
 
 /**
- * Validate (and if necessary phrase-escape) an FTS5 query, mirroring the
- * archival-index tool: raw input like "oost-indie" or an unbalanced quote
- * makes SQLite throw, so on a syntax error we retry the whole query wrapped in
- * double quotes; if that still fails, throw a structured error.
+ * Per-connection state whose SQL or result is constant: the FTS probe statement
+ * and the glossary row count. The reference DB is read-only and rebuilt only at
+ * deploy, so neither can change for the life of a connection — caching them
+ * keeps every call from re-preparing the probe and re-running COUNT(*) (mirrors
+ * getStaticDbState in archival-index.ts; node:sqlite is synchronous, so each
+ * avoided query is event-loop time saved). Keyed by the db handle so a reopened
+ * database (closeDatabase + getReferenceDatabase) gets fresh state.
  */
-function sanitizeFtsQuery(db: Db, query: string): { query: string; note?: string } {
-  const probe = db.prepare('SELECT rowid FROM commodities_fts WHERE commodities_fts MATCH @query LIMIT 1');
-  try {
-    probe.get({ query });
-    return { query };
-  } catch {
-    const escaped = `"${query.replace(/"/g, '""')}"`;
-    try {
-      probe.get({ query: escaped });
-      return {
-        query: escaped,
-        note: `query contained FTS5 syntax characters and was searched as the exact phrase ${escaped}`,
-      };
-    } catch {
-      throw new ToolError(
-        `Invalid full-text query: ${query}`,
-        'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
-      );
-    }
+let staticState: { db: Db; ftsProbe: DbStatement; commoditiesTotal: number } | null = null;
+
+function getStaticState(db: Db) {
+  if (staticState?.db !== db) {
+    staticState = {
+      db,
+      ftsProbe: db.prepare('SELECT rowid FROM commodities_fts WHERE commodities_fts MATCH @query LIMIT 1'),
+      commoditiesTotal: (db.prepare('SELECT COUNT(*) AS c FROM commodities').get() as { c: number }).c,
+    };
   }
+  return staticState;
 }
 
 /**
@@ -151,40 +146,35 @@ export async function lookupCommodity(input: LookupCommodityInput): Promise<Look
   }
 
   const db = getReferenceDatabase();
-  const notes: string[] = [];
+  const { ftsProbe, commoditiesTotal } = getStaticState(db);
 
-  // Resolve the FTS query (phrase-escape unparseable input)
-  let ftsQuery: string | undefined;
-  if (input.query) {
-    const sanitized = sanitizeFtsQuery(db, input.query);
-    ftsQuery = sanitized.query;
-    if (sanitized.note) notes.push(sanitized.note);
-  }
-
-  const commoditiesTotal = (db.prepare('SELECT COUNT(*) AS c FROM commodities').get() as { c: number }).c;
-
-  // With a text query we JOIN the FTS table and rank by bm25; without one we
-  // page the whole glossary ordered by label.
-  let countSql: string;
-  let selectSql: string;
+  // With a text query we JOIN the FTS table, rank by bm25, and COUNT the
+  // matches; without one we page the whole glossary by label — so the total is
+  // just the (cached) glossary size, no second COUNT needed.
   const params: Record<string, string | number> = {};
+  let selectSql: string;
+  let total: number;
+  let note: string | undefined;
 
-  if (ftsQuery !== undefined) {
-    params.query = ftsQuery;
-    countSql = `SELECT COUNT(*) AS c FROM commodities c JOIN commodities_fts f ON c.id = f.rowid
-                WHERE commodities_fts MATCH @query`;
+  if (input.query) {
+    const sanitized = sanitizeFtsQuery(ftsProbe, input.query);
+    note = sanitized.note;
+    params.query = sanitized.query;
     selectSql = `SELECT c.* FROM commodities c JOIN commodities_fts f ON c.id = f.rowid
                  WHERE commodities_fts MATCH @query
                  ORDER BY bm25(commodities_fts, ${BM25_WEIGHTS})
                  LIMIT @limit OFFSET @offset`;
+    total = (db.prepare(
+      `SELECT COUNT(*) AS c FROM commodities c JOIN commodities_fts f ON c.id = f.rowid
+       WHERE commodities_fts MATCH @query`,
+    ).get(params) as { c: number }).c;
   } else {
-    countSql = 'SELECT COUNT(*) AS c FROM commodities';
     selectSql = `SELECT * FROM commodities
                  ORDER BY COALESCE(pref_en, pref_nl) COLLATE NOCASE
                  LIMIT @limit OFFSET @offset`;
+    total = commoditiesTotal;
   }
 
-  const total = (db.prepare(countSql).get(params) as { c: number }).c;
   const rows = db.prepare(selectSql).all({ ...params, limit: input.size, offset: input.from }) as CommodityDbRow[];
 
   return {
@@ -199,6 +189,6 @@ export async function lookupCommodity(input: LookupCommodityInput): Promise<Look
       commoditiesTotal,
       available: true,
     },
-    ...(notes.length > 0 ? { note: notes.join('; ') } : {}),
+    ...(note ? { note } : {}),
   };
 }
