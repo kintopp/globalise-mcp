@@ -52,6 +52,11 @@ import {
   findArchivalDocumentsInputSchema,
   findArchivalDocumentsOutputSchema,
 } from './tools/archival-index.js';
+import {
+  lookupCommodity,
+  lookupCommodityInputSchema,
+  lookupCommodityOutputSchema,
+} from './tools/commodities.js';
 import { closeDatabase } from './utils/database.js';
 import { ToolError } from './utils/errors.js';
 import { VIEWER_URL_PREFIX } from './utils/api-client.js';
@@ -289,6 +294,7 @@ const searchToolInputSchema = searchTranscriptionsInputSchema.strict();
 const retrieveToolInputSchema = getDocumentInputSchema.strict();
 const navigateToolInputSchema = navigateInputSchema.strict();
 const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
+const lookupCommodityToolInputSchema = lookupCommodityInputSchema.strict();
 const viewDocumentUiToolInputSchema = viewDocumentUiInputSchema.strict();
 
 // UI Resource URI and tool name for the Document Viewer MCP App
@@ -442,6 +448,18 @@ export function createServer(): McpServer {
     findArchivalToolInputSchema,
     findArchivalDocumentsOutputSchema,
     findArchivalDocuments,
+  );
+
+  registerJsonTool(
+    server,
+    'globalise_lookup_commodity',
+    'Look up VOC trade goods in the commodities glossary — ~3,500 commodities and trade-related concepts with bilingual Dutch/English labels, period spelling variants, and a sourced definition per concept. ' +
+      'Main use is query expansion: the transcription search is spelling-blind, so resolve a term here and feed the returned altLabels (period variants) into globalise_search_transcriptions to catch documents a single spelling misses. ' +
+      'The query field uses SQLite FTS5 over labels + variants + definitions (a bare space means AND; plus OR/NOT, prefix*, "exact phrase"); label/variant hits rank above definition hits. Omit the query to page through the glossary alphabetically. ' +
+      'Every definition carries its definitionSource and a confidence rating — over half are LLM-generated, so present low/medium-low ones tentatively and prefer the authoritative sources (wnt, aat, vocGlossarium, PoolParty) when available. Concept IDs are internal and not returned.',
+    lookupCommodityToolInputSchema,
+    lookupCommodityOutputSchema,
+    lookupCommodity,
   );
 
   // ==========================================================================

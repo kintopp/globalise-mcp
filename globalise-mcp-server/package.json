@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -8,14 +8,16 @@
     "build": "npm run build:ui && tsc && npm run ensure:db",
     "build:ui": "vite build -c apps/document-viewer/vite.config.ts",
     "build:db": "npx tsx scripts/build-archival-db.ts",
-    "ensure:db": "npx tsx scripts/ensure-archival-db.ts",
+    "build:db:commodities": "npx tsx scripts/build-commodities-db.ts",
+    "ensure:db": "npx tsx scripts/ensure-archival-db.ts && npx tsx scripts/ensure-reference-db.ts",
     "dev": "tsc --watch",
     "dev:ui": "vite build -c apps/document-viewer/vite.config.ts --watch",
     "start": "node dist/index.js",
     "inspector": "npm run build && npx @modelcontextprotocol/inspector dist/index.js",
-    "test": "npm run test:archival && npm run test:viewer-build && npm run test:smoke",
+    "test": "npm run test:archival && npm run test:commodities && npm run test:viewer-build && npm run test:smoke",
     "test:smoke": "npx tsx scripts/smoke-test.ts",
     "test:archival": "npx tsx scripts/test-archival-index.ts",
+    "test:commodities": "npx tsx scripts/test-commodities.ts",
     "test:viewer-build": "npx tsx scripts/test-viewer-build.ts"
   },
   "keywords": [

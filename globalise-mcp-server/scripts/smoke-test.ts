@@ -3,7 +3,7 @@
  *
  * Uses the SDK's Client + StdioClientTransport (never shell-piped JSON-RPC):
  *   1. initialize handshake against dist/index.js
- *   2. tools/list — expects the 5 consolidated tools, $ref-free input AND
+ *   2. tools/list — expects the 6 consolidated tools, $ref-free input AND
  *      output schemas, additionalProperties: false (strict), viewer tool
  *      UI metadata, and the absence of the tools removed in R6
  *   3. resources/list — expects the document-viewer UI resource
@@ -30,6 +30,7 @@ const EXPECTED_TOOLS = [
   'globalise_retrieve_document',
   'globalise_navigate',
   'globalise_find_archival_documents',
+  'globalise_lookup_commodity',
   'globalise_view_document_ui',
 ];
 
@@ -112,6 +113,25 @@ async function main() {
   check(
     typeof structured?.total?.value === 'number',
     'structuredContent mirrors the result (R8)',
+  );
+
+  console.log('4b. tools/call globalise_lookup_commodity (reference DB)');
+  // A real call is the only thing that exercises the SDK's validation of
+  // structuredContent against the tool's output schema.
+  const commodity = await client.callTool({
+    name: 'globalise_lookup_commodity',
+    arguments: { query: 'peper', size: 2 },
+  });
+  check(!commodity.isError, 'commodity lookup succeeded (isError not set)');
+  const commodityContent = commodity.content as Array<{ type: string; text?: string }>;
+  const commodityPayload = JSON.parse(commodityContent[0]?.text ?? '{}');
+  check(
+    typeof commodityPayload.total?.value === 'number' && commodityPayload.total.value > 0,
+    `commodity results found (total: ${commodityPayload.total?.value})`,
+  );
+  check(
+    Array.isArray(commodityPayload.results?.[0]?.altLabels),
+    'commodity result carries an altLabels array (query-expansion contract)',
   );
 
   /** Call a tool expecting a structured error; returns the parsed error payload. */

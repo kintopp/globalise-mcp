@@ -29,8 +29,15 @@ const __dirname = dirname(__filename);
 const DEFAULT_DB_PATH = join(__dirname, '..', '..', 'data', 'archival-index.sqlite');
 const DB_PATH = process.env.ARCHIVAL_DB_PATH || DEFAULT_DB_PATH;
 
-// Lazy-initialized database instance
+// Reference vocabularies (commodities thesaurus, and weights & measures later)
+// live in a separate, small SQLite file from the large archival index, so each
+// can be built, shipped, and degraded independently. Overridable for tests.
+const DEFAULT_REFERENCE_DB_PATH = join(__dirname, '..', '..', 'data', 'reference.sqlite');
+const REFERENCE_DB_PATH = process.env.REFERENCE_DB_PATH || DEFAULT_REFERENCE_DB_PATH;
+
+// Lazy-initialized database instances
 let db: Db | null = null;
+let referenceDb: Db | null = null;
 
 /**
  * Get the SQLite database connection.
@@ -80,7 +87,45 @@ export function isDatabaseAvailable(): boolean {
 }
 
 /**
- * Close the database connection if open.
+ * Get the reference-vocabularies database connection (commodities thesaurus).
+ * Lazy, read-only, mirrors getDatabase(). This DB is small (a few MB), so it
+ * skips the archival DB's large mmap/cache pragmas.
+ *
+ * @throws Error if the database file doesn't exist
+ */
+export function getReferenceDatabase(): Db {
+  if (referenceDb) {
+    return referenceDb;
+  }
+
+  if (!existsSync(REFERENCE_DB_PATH)) {
+    throw new Error(
+      `Reference database not found at ${REFERENCE_DB_PATH}. ` +
+      `Run 'npm run build:db:commodities' to build it from source.`
+    );
+  }
+
+  referenceDb = new DatabaseSync(REFERENCE_DB_PATH, { readOnly: true });
+  referenceDb.exec('PRAGMA cache_size = -16000'); // 16MB cache
+  referenceDb.exec('PRAGMA temp_store = MEMORY');
+
+  return referenceDb;
+}
+
+/**
+ * Check if the reference database exists and is accessible.
+ */
+export function isReferenceDatabaseAvailable(): boolean {
+  try {
+    getReferenceDatabase();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Close any open database connections.
  * Useful for cleanup in tests or graceful shutdown.
  */
 export function closeDatabase(): void {
@@ -88,11 +133,22 @@ export function closeDatabase(): void {
     db.close();
     db = null;
   }
+  if (referenceDb) {
+    referenceDb.close();
+    referenceDb = null;
+  }
 }
 
 /**
- * Get the path to the database file.
+ * Get the path to the archival index database file.
  */
 export function getDatabasePath(): string {
   return DB_PATH;
+}
+
+/**
+ * Get the path to the reference-vocabularies database file.
+ */
+export function getReferenceDatabasePath(): string {
+  return REFERENCE_DB_PATH;
 }
