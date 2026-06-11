@@ -6,8 +6,9 @@ description: >-
   17th–18th-century early-modern Dutch. Use this whenever a task involves the
   GLOBALISE/VOC corpus or its tools: finding archival documents by
   place/year/inventory, full-text searching transcriptions, reading or paging
-  through pages, or opening the interactive viewer. Reach for it even when the
-  user names a VOC topic obliquely.
+  through pages, resolving a trade good to its period spelling variants, or
+  opening the interactive viewer. Reach for it even when the user names a VOC
+  topic obliquely.
 ---
 
 # Researching VOC archives with the GLOBALISE MCP server
@@ -20,11 +21,12 @@ Document IDs look like `NL-HaNA_1.04.02_7535_0011` = `{archive}_{inventory}_{sca
 Any page opens in the web viewer at
 `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:{id}`.
 
-## The five tools
+## The six tools
 
 | Tool | Use it to… | Backed by |
 |------|-----------|-----------|
 | `globalise_find_archival_documents` | **Scope first.** Search a *local* index of 228K archival document descriptions (finding aids) by text + metadata, to narrow down inventories/places/years before touching transcriptions. | Local SQLite + FTS5 |
+| `globalise_lookup_commodity` | **Expand a term.** Resolve a trade good to its period-Dutch spelling variants + a sourced definition, from the ~3,500-concept VOC commodities glossary; feed the variants into a search to beat spelling-blind matching. | Local SQLite + FTS5 |
 | `globalise_search_transcriptions` | Full-text search across the ~4.8M transcribed pages; filter by inventory and/or language. | Remote search API (Broccoli) |
 | `globalise_retrieve_document` | Get one page by ID/URN: full line-by-line transcription, metadata (languages, dates, license), prev/next IDs, viewer + scan links. | Remote |
 | `globalise_navigate` | Read sequentially — fetch the previous or next page relative to an ID. | Remote |
@@ -45,6 +47,11 @@ Most research follows **scope → search → read**:
 For a known page ID, skip straight to `retrieve_document`. For statistics only
 (e.g. the language breakdown of an inventory), call `search_transcriptions` with
 `query="*"` and `size=1` and read the aggregations.
+
+**Vocabulary expansion** rides alongside step 2: `globalise_lookup_commodity`
+turns a trade good (modern or Dutch) into the period spelling variants the corpus
+actually uses, which you then OR or fuzz into `search_transcriptions` — see
+"Expanding commodity terms" below.
 
 ## The two data sources behind `find_archival_documents`
 
@@ -322,6 +329,31 @@ querying them. There's no reliable way to match a literal `*` or `?`.
 languages**, which post-filters a capped 500-hit candidate window and adds a
 `note`. When you see `"gte"` or a note, treat the count as a lower bound.
 
+## Expanding commodity terms with `lookup_commodity`
+
+`globalise_lookup_commodity` is a **local glossary** of ~3,500 VOC trade goods and
+trade-related concepts, each with bilingual labels, **period spelling variants**,
+and a sourced, confidence-rated definition. It exists because both search engines
+are spelling-naive — archival FTS5 has no stemming (Trap 1) and
+`search_transcriptions` no normalization — so its headline use is **query
+expansion**: look a commodity up once, then feed the returned `altLabels` into a
+search.
+
+- → `search_transcriptions`: OR or fuzz the variants (`peper OR piper`, `coffij~1`).
+  This is what turns `koffie` (119 pages) into `coffij` (25,124).
+- → `find_archival_documents`: OR period spellings into the FTS5 `query` to widen a
+  serendipitous description search (Trap 3).
+
+It is a **flat term-lookup, not a category browser** (the source's classifications
+were too unreliable to surface): search by term, or omit `query` to page the
+glossary alphabetically. Query mechanics (FTS5 operators, label-over-definition
+ranking) are in the tool description — don't re-derive them here.
+
+**Trust the labels, weigh the definitions.** Over half the definitions are
+LLM-generated and ~a third are low-confidence — use labels/variants freely for
+expansion, but present a *definition* tentatively unless its `definitionSource` is
+authoritative (`wnt`, `aat`, `vocGlossarium`, `PoolParty`).
+
 ## HTR transcription caveats (data quality)
 
 The HTR model was trained on **Latin script only**. This shapes what's
@@ -343,32 +375,25 @@ trustworthy:
 These are 17th–18th-c. VOC records. The OBP/GM `description` text and the
 transcriptions use period colonial language — including terms and framings that are
 offensive by modern standards (the dataset documentation flags this explicitly). The
-records, and the commodities vocabulary (which carries a *"people treated as
-commodities"* category), document the VOC's trade in **enslaved people**, who appear
-commodified in shipping lists and accounts. Surface such material with accurate
+records, and the commodities glossary (which includes concepts for people
+trafficked as commodities), document the VOC's trade in **enslaved people**, who
+appear commodified in shipping lists and accounts. Surface such material with accurate
 historical framing: quote the sources faithfully rather than sanitizing them, but
 don't reproduce period slurs in your own voice or present commodification as neutral.
 Description is also **uneven**: European actors are named far more consistently than
 Asian individuals (whom GLOBALISE addresses with separate remediation datasets), so
 name- and actor-based searches over the metadata skew toward European subjects.
 
-## Domain vocabulary (external references, not tools here)
+## Weights & measures (external reference, not a tool here)
 
-GLOBALISE publishes companion reference datasets that this server does **not**
-expose as tools — but they're worth knowing when you phrase a search or read a
-result:
-
-- **Commodities thesaurus** (SKOS, ~3,800 concepts): VOC trade goods with bilingual
-  (Dutch/English) labels and period spelling variants (pepper → `peper`/`piper`/`peeper`;
-  coffee → `coffij`/`coffie`/`kofij`). When searching transcriptions, expand a
-  commodity to its variants and lean on fuzzy/wildcards rather than betting on one
-  modern form.
-- **Weights & measures glossary** (~213 units): early-modern units (`bahar`, `last`,
-  `man`, `seer`, `maat`) are **not stable** — a unit's value shifts by place, period,
-  and even the commodity measured (a *bahar* of pepper ≠ a *bahar* of cloves; a *maat*
-  of rice ≠ a *maat* of peanuts), and a unit name often doubles as the name of the
-  measuring container. When a transcription quotes a quantity, don't convert it to a
-  modern equivalent without that context.
+GLOBALISE also publishes a **weights & measures glossary** (~213 units) that this
+server does *not* expose as a tool, but it's worth knowing when you read a
+quantity: early-modern units (`bahar`, `last`, `man`, `seer`, `maat`) are **not
+stable** — a unit's value shifts by place, period, and even the commodity measured
+(a *bahar* of pepper ≠ a *bahar* of cloves; a *maat* of rice ≠ a *maat* of
+peanuts), and a unit name often doubles as the name of the measuring container.
+When a transcription quotes a quantity, don't convert it to a modern equivalent
+without that context.
 
 ## Worked patterns
 
@@ -383,6 +408,11 @@ language aggregation.
 **"Find pages mentioning Amsterdam, tolerant of spelling/OCR noise."**
 → `search_transcriptions(query="amsterdam~1")` — fuzzy matching, which
 `find_archival_documents` (FTS5) has no operator for.
+
+**"Search transcriptions for coffee, catching period spellings."**
+→ `lookup_commodity(query="coffee")` → take its `altLabels` (`coffij`, `coffie`,
+`kofij`…) → `search_transcriptions(query="coffij OR coffie OR kofij")` (or
+`coffij~1`). Beats betting on the modern `koffie` (119 vs 25,124 pages).
 
 **"Show me page NL-HaNA_1.04.02_7535_0011 with 'Batavia' highlighted."**
 → `view_document_ui(documentId="NL-HaNA_1.04.02_7535_0011", highlightTerms=["Batavia"])`.
@@ -409,6 +439,7 @@ language aggregation.
 - ✅ Put **places in the `settlement` filter**, content words in `query`.
 - ✅ Read the exact **settlement spelling from the aggregation** (`includeAggregations`) — it's `Malakka`, not `Malacca`.
 - ✅ Use **period spellings or prefixes** (`Ceijlon*`, `Makass*`) for free-text places.
+- ✅ **Expand commodity terms** with `lookup_commodity` — search on the real period `altLabels`, not a guessed modern spelling.
 - ✅ Check the response **`note`** when results look off (phrase-escape / lower-bound totals).
 - ✅ Offer **scan links** for non-Roman-script and Malay pages.
 - ✅ For a **published GM**, offer the `publishedEdition` links and say whether you're giving the **edited RGP text** or the **HTR** original.
@@ -422,3 +453,4 @@ language aggregation.
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.
 - ❌ Don't read `year_earliest=1600` (or any wide range) as a precise date.
 - ❌ Don't treat `language="unknown"` as unidentifiable, or `"art"` as a real language.
+- ❌ Don't present a `lookup_commodity` **definition** as fact when it's low-confidence/LLM-sourced — its reliable payload is the **labels/variants**.
