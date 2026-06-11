@@ -18,7 +18,10 @@ export interface ParsedDocumentId {
  * Returns unchanged if already a URN.
  */
 export function normalizeDocumentId(docId: string): string {
-  if (docId.startsWith('urn:globalise:')) {
+  // Case-insensitive + anchored: a "URN:GLOBALISE:..." id must be recognized as
+  // already-prefixed, not double-prefixed and then rejected (CODE-REVIEW
+  // finding 17). Same regex strips it in parseDocumentId.
+  if (/^urn:globalise:/i.test(docId)) {
     return docId;
   }
   return `urn:globalise:${docId}`;
@@ -35,7 +38,7 @@ const DOCUMENT_ID_PATTERN = /^NL-HaNA_([\d.]+)_([^_]+)_([^_]+)$/;
  * upstream URN lookup that would 404 confusingly.
  */
 export function parseDocumentId(docId: string): ParsedDocumentId {
-  const cleanId = docId.replace('urn:globalise:', '');
+  const cleanId = docId.replace(/^urn:globalise:/i, '');
   const match = cleanId.match(DOCUMENT_ID_PATTERN);
 
   if (!match) {

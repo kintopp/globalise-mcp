@@ -30,6 +30,20 @@
 import type { DbStatement } from './database.js';
 import { ToolError } from './errors.js';
 
+/**
+ * The FTS5 query contract, single-sourced so the two tool input-schema
+ * describes and the two `index.ts` registrations can't drift from each other or
+ * from the sanitizer's actual behavior (CODE-REVIEW findings 4, 16) — the next
+ * change to this file's behavior edits one string. Each call site adds its own
+ * surrounding context (grouping caveat, bm25 ranking, alphabetical paging).
+ * SKILL.md restates the same contract for a different audience and is updated by
+ * hand (markdown can't interpolate a const).
+ */
+export const FTS_OPERATORS =
+  'a bare space means AND — all terms must appear; plus OR/NOT, prefix*, "exact phrase"';
+export const FTS_AUTOQUOTE =
+  'Terms with special characters (hyphens, slashes, apostrophes) are auto-quoted for you while your AND/OR/NOT operators are kept intact, so `peper OR oost-indie` works as written. Only input FTS5 itself cannot parse (unbalanced quotes/parens) falls back to a whole-phrase search, flagged in the response note.';
+
 /** A token already legal as an FTS5 bareword: letters, digits, underscore, non-ASCII. */
 const LEGAL_BAREWORD = /^[\p{L}\p{N}_]+$/u;
 /** Characters that delimit a bareword in the FTS5 grammar (structure we pass through). */
@@ -114,6 +128,27 @@ export function escapeFtsTerms(query: string): string {
   return out;
 }
 
+/**
+ * Distinguish an FTS5 *query-grammar* failure (which we recover from by
+ * rewriting) from an operational one (which must propagate, not be masked as
+ * "invalid query"). node:sqlite tags every SQLite failure with
+ * `code: 'ERR_SQLITE_ERROR'` and the raw result code in `errcode`; query-grammar
+ * problems — the only thing that varies in the probe — surface as SQLITE_ERROR
+ * (errcode 1): "fts5: syntax error near …", "unterminated string",
+ * "no such column: …". A finalized statement after closeDatabase() is
+ * ERR_INVALID_STATE; SQLITE_BUSY is errcode 5 and I/O errors 10 — none match,
+ * so they rethrow instead of degrading to a confusing "Invalid full-text query"
+ * (CODE-REVIEW finding 12).
+ */
+function isFtsQueryError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'ERR_SQLITE_ERROR' &&
+    (error as { errcode?: unknown }).errcode === 1
+  );
+}
+
 /** Returns the query to use against MATCH, plus a note when it was rewritten. */
 export function sanitizeFtsQuery(
   probe: DbStatement,
@@ -123,8 +158,9 @@ export function sanitizeFtsQuery(
   try {
     probe.get({ query });
     return { query };
-  } catch {
-    // fall through to rewriting
+  } catch (e) {
+    if (!isFtsQueryError(e)) throw e; // operational failure: surface it, don't rewrite
+    // else fall through to rewriting
   }
 
   // 2. Quote only the offending barewords, keeping operators and grouping.
@@ -136,8 +172,9 @@ export function sanitizeFtsQuery(
         query: rebuilt,
         note: `query contained FTS5 special characters; the affected terms were quoted (boolean operators preserved) and it was searched as ${rebuilt}`,
       };
-    } catch {
-      // fall through to whole-phrase wrap
+    } catch (e) {
+      if (!isFtsQueryError(e)) throw e;
+      // else fall through to whole-phrase wrap
     }
   }
 
@@ -151,7 +188,8 @@ export function sanitizeFtsQuery(
       query: escaped,
       note: `query could not be parsed even after quoting individual terms, so it was searched as the exact phrase ${escaped} — any AND/OR/NOT operators were dropped; balance your quotes and parentheses`,
     };
-  } catch {
+  } catch (e) {
+    if (!isFtsQueryError(e)) throw e;
     throw new ToolError(
       `Invalid full-text query: ${query}`,
       'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',

@@ -105,6 +105,18 @@ async function main() {
     'folio on "all" → note names folio and the skipped GM source',
   );
 
+  console.log('2c. empty-string settlement/chamber are treated as absent (finding 11)');
+  const fullTotal = (await call({ size: 1, includeAggregations: false })).total.value;
+  // '' (or whitespace) is not a filter: it must not skip a source or change the
+  // result, just behave like {} — previously it skipped GM and returned all OBP.
+  const emptySettlement = await call({ source: 'all', settlement: '   ', size: 1, includeAggregations: false });
+  check(!emptySettlement.note?.includes('skipped'), 'empty settlement does not skip the GM source');
+  check(emptySettlement.total.value === fullTotal, 'empty settlement returns the full unfiltered total');
+  // Previously {source:'gm', settlement:''} threw "settlement is OBP-only"; now
+  // the empty filter is a no-op and the GM query runs.
+  const gmEmptySettlement = await call({ source: 'gm', settlement: '', size: 1, includeAggregations: false });
+  check(gmEmptySettlement.results.every((r) => r.type === 'gm'), 'empty settlement on source "gm" no longer errors');
+
   console.log('3. FTS5 hostile inputs (R7)');
   // A lone hyphenated term is per-term quoted (not whole-phrase wrapped), and
   // the term still matches the index.

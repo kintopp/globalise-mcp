@@ -83,6 +83,21 @@ Migration is directional only until the draft finalizes a version date — do no
 
 ---
 
+### Type-check the Document Viewer (`apps/`) — add an apps tsconfig + `test:viewer-typecheck`
+
+**Priority:** Low
+**Status:** Deferred residual from code-review finding 10 (v2.7.7)
+
+`apps/document-viewer` is **excluded from `tsc`** (root `tsconfig.json` `include: ["src/**/*"]`, `exclude: ["apps"]`) and only transpiled by vite/esbuild, which does **not** type-check. So a type error *inside* `viewer.ts` (e.g. misusing a field after the server contract changes) is caught by neither `npm run build` nor `npm test` — it surfaces only at runtime in the iframe.
+
+v2.7.7 (finding 10) closed the worst of this: the viewer now `import type`s the server's zod-inferred `ViewDocumentUiOutput`/`ArchivalContext` (single source), and `scripts/test-viewer-protocol.ts` cross-checks the extracted `parse-result.ts` against a schema-built payload. But the viewer's own *usage* of those types is still unchecked.
+
+**Approach:** add `apps/document-viewer/tsconfig.json` (`lib: ["DOM","DOM.Iterable","ES2022"]`, `moduleResolution: NodeNext`, `noEmit`, `skipLibCheck`) covering `apps/document-viewer/src/**` plus the cross-boundary `import type` from `src/tools/document-viewer.ts`; wire a `test:viewer-typecheck` script (`tsc -p apps/document-viewer/tsconfig.json --noEmit`) into `npm test`.
+
+**Watch for:** incidental type errors in the never-checked viewer code (OpenSeadragon, the ext-apps SDK, DOM globals) — `skipLibCheck` + the right `types`/`lib` should contain them, but expect a first-pass cleanup. Keep zod out of the viewer *bundle* (the `import type` already guarantees this; the typecheck doesn't change bundling).
+
+---
+
 ### Document Viewer: OpenSeadragon Enhancements
 
 **Priority:** Low

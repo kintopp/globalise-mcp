@@ -27,11 +27,11 @@ import {
   isReferenceDatabaseAvailable,
   createConnectionState,
 } from '../utils/database.js';
-import { sanitizeFtsQuery } from '../utils/fts.js';
+import { sanitizeFtsQuery, FTS_OPERATORS, FTS_AUTOQUOTE } from '../utils/fts.js';
 
 export const lookupCommodityInputSchema = z.object({
   query: z.string().optional()
-    .describe('Full-text search (SQLite FTS5) over Dutch + English labels, spelling variants, and the definition text. A space means AND — all terms must appear; also OR, NOT, prefix*, "exact phrase". Matches on labels/variants rank above matches in the definition body. Terms containing special characters (hyphens, slashes, apostrophes) are auto-quoted for you while your AND/OR/NOT operators are kept intact; only input FTS5 itself cannot parse (unbalanced quotes/parens) falls back to a whole-phrase search, flagged in the response `note`. Omit to page through the whole glossary alphabetically.'),
+    .describe(`Full-text search (SQLite FTS5) over Dutch + English labels, spelling variants, and the definition text. ${FTS_OPERATORS}. Matches on labels/variants rank above matches in the definition body. ${FTS_AUTOQUOTE} Omit to page through the whole glossary alphabetically.`),
   from: z.number().int().min(0).default(0)
     .describe('Pagination offset (default: 0)'),
   size: z.number().int().min(1).max(100).default(20)

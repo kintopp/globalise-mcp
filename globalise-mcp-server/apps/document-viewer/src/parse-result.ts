@@ -20,8 +20,13 @@ export interface ParseableToolResult {
 
 /**
  * Extract the document payload. Primary channel (R19) is structuredContent,
- * detected by the presence of `id`; the two content-sniffing branches survive
- * only for STRUCTURED_CONTENT=false servers. Returns null if nothing parses.
+ * detected by the presence of `id`; the dual-content branch survives only for
+ * STRUCTURED_CONTENT=false servers. Returns null if nothing parses.
+ *
+ * (A third "first content item if it starts with `{`" fallback was dropped as
+ * unreachable: in STRUCTURED_CONTENT=true mode content[0] is the human-readable
+ * summary, and in =false mode the JSON is content[1], caught below — CODE-REVIEW
+ * finding 18.)
  */
 export function parseDocumentResult(result: ParseableToolResult): ViewDocumentUiOutput | null {
   // Primary channel: the server mirrors the document as structuredContent.
@@ -37,18 +42,8 @@ export function parseDocumentResult(result: ParseableToolResult): ViewDocumentUi
       try {
         return JSON.parse(jsonContent.text) as ViewDocumentUiOutput;
       } catch {
-        // fall through to the next strategy
+        // not JSON — fall through to null
       }
-    }
-  }
-
-  // Fallback: first content item if it looks like JSON.
-  const first = result.content?.[0];
-  if (first?.type === 'text' && first.text?.startsWith('{')) {
-    try {
-      return JSON.parse(first.text) as ViewDocumentUiOutput;
-    } catch {
-      // not JSON, ignore
     }
   }
 

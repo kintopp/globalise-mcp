@@ -61,6 +61,7 @@ import {
 import { closeDatabase } from './utils/database.js';
 import { ToolError } from './utils/errors.js';
 import { VIEWER_URL_PREFIX } from './utils/api-client.js';
+import { FTS_OPERATORS, FTS_AUTOQUOTE } from './utils/fts.js';
 import {
   viewDocumentUi,
   viewDocumentUiInputSchema,
@@ -178,6 +179,17 @@ function formatError(error: unknown): { message: string; suggestion?: string } {
     return { message: apiError.error, suggestion: apiError.suggestion };
   }
 
+  // Any other object carrying a string `message` (e.g. a future thrown shape):
+  // surface it rather than coercing the whole object to "[object Object]"
+  // (CODE-REVIEW finding 20; the deeper fix — making ApiError a class so this
+  // duck-typing goes away — is deferred, see TODO/CHANGELOG).
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const e = error as { message: unknown; suggestion?: unknown };
+    if (typeof e.message === 'string') {
+      return { message: e.message, suggestion: typeof e.suggestion === 'string' ? e.suggestion : undefined };
+    }
+  }
+
   return { message: String(error) };
 }
 
@@ -237,6 +249,29 @@ function errorResponse(toolName: string, error: unknown): CallToolResult {
   };
 }
 
+/**
+ * The outputSchema registration field, behind the R8 gate: present only when
+ * structured output is enabled (the SDK then requires + validates
+ * structuredContent on every non-error result). Single source for the gate,
+ * shared by the JSON-tool and app-tool registrations (CODE-REVIEW finding 20).
+ */
+function outputSchemaField<T>(outputSchema: T): { outputSchema: T } | Record<string, never> {
+  return STRUCTURED_CONTENT_ENABLED ? { outputSchema } : {};
+}
+
+/**
+ * Run a tool handler, formatting any throw as an isError result (SEP-1303).
+ * Shared by registerJsonTool and the app-tool handler — their success paths
+ * differ (content shape) but their error path is identical (finding 20).
+ */
+async function runTool(name: string, fn: () => Promise<CallToolResult>): Promise<CallToolResult> {
+  try {
+    return await fn();
+  } catch (error) {
+    return errorResponse(name, error);
+  }
+}
+
 const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -271,18 +306,15 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
       // Cast to the concrete constraint: the SDK's conditional callback type
       // does not resolve against a bare generic type parameter
       inputSchema: schema as z.ZodObject<z.ZodRawShape>,
-      ...(STRUCTURED_CONTENT_ENABLED ? { outputSchema } : {}),
+      ...outputSchemaField(outputSchema),
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    async (args): Promise<CallToolResult> => {
-      try {
+    async (args): Promise<CallToolResult> =>
+      runTool(name, async () => {
         const result = await handler(args as z.output<Schema>);
         const links = viewerLinks?.(result as Record<string, unknown>) ?? [];
         return toolResponse(name, result, links);
-      } catch (error) {
-        return errorResponse(name, error);
-      }
-    },
+      }),
   );
 }
 
@@ -443,7 +475,7 @@ export function createServer(): McpServer {
     'globalise_find_archival_documents',
     'Query a local index of 228K+ VOC archival document descriptions (finding aids) — useful for scoping by archival metadata before searching transcriptions. ' +
       'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, scan URLs, and — for the ~558 published in RGP — published-edition links to Retroboeken scans + GitHub plain text). ' +
-      'The query field uses SQLite FTS5 — a bare space means AND (all terms must appear); plus OR/NOT, prefix*, "exact phrase", and (expr) grouping. Terms with special characters (hyphens, slashes, apostrophes) are auto-quoted for you while your AND/OR/NOT operators are kept intact, so `peper OR oost-indie` works as written. Only input FTS5 itself cannot parse (unbalanced quotes/parens) falls back to a whole-phrase search, flagged in the response note. ' +
+      'The query field uses SQLite FTS5 — ' + FTS_OPERATORS + ', and (expr) grouping. ' + FTS_AUTOQUOTE + ' ' +
       'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
       'Inventory numbers in the results feed the inventoryNumber filter of globalise_search_transcriptions to reach the actual transcribed pages.',
     findArchivalToolInputSchema,
@@ -456,7 +488,7 @@ export function createServer(): McpServer {
     'globalise_lookup_commodity',
     'Look up VOC trade goods in the commodities glossary — ~3,500 commodities and trade-related concepts, each with a Dutch (usually also English) label and a sourced, confidence-rated definition. ' +
       'Two main uses: (1) resolve a modern/English term to the Dutch word the corpus uses (coffee→koffie, mace→foelie); (2) read a sourced definition. Some concepts also carry period spelling variants (altLabels), but only ~10% do — pepper, coffee, nutmeg have none — so for recall in globalise_search_transcriptions take the Dutch label, OR in any altLabels, then add fuzzy (~1)/wildcards (the corpus prefers c- over k-, -ij over -ie: koffie→coffij). ' +
-      'The query field uses SQLite FTS5 over labels + variants + definitions (a bare space means AND; plus OR/NOT, prefix*, "exact phrase"); label/variant hits rank above definition hits. Omit the query to page through the glossary alphabetically. ' +
+      'The query field uses SQLite FTS5 over labels + variants + definitions — ' + FTS_OPERATORS + '; label/variant hits rank above definition hits. Omit the query to page through the glossary alphabetically. ' +
       'Every definition carries its definitionSource and a confidence rating — over half are LLM-generated, so present low/medium-low ones tentatively, say only what the definition states, and prefer the authoritative sources (wnt, aat, vocGlossarium, PoolParty). prefLabelEn is occasionally a mistranslation — prefer the definition. Concept IDs are internal and not returned.',
     lookupCommodityToolInputSchema,
     lookupCommodityOutputSchema,
@@ -487,9 +519,7 @@ export function createServer(): McpServer {
       // outputSchema only when structured output is enabled: once set, the SDK
       // requires a matching structuredContent on every non-error result, and
       // the STRUCTURED_CONTENT=false branch below emits none.
-      ...(STRUCTURED_CONTENT_ENABLED
-        ? { outputSchema: viewDocumentUiOutputSchema as unknown as typeof viewDocumentUiOutputSchema.shape }
-        : {}),
+      ...outputSchemaField(viewDocumentUiOutputSchema as unknown as typeof viewDocumentUiOutputSchema.shape),
       annotations: READ_ONLY_ANNOTATIONS,
       _meta: {
         ui: {
@@ -497,8 +527,8 @@ export function createServer(): McpServer {
         },
       },
     },
-    async (args): Promise<CallToolResult> => {
-      try {
+    async (args): Promise<CallToolResult> =>
+      runTool(VIEW_DOCUMENT_UI_TOOL_NAME, async () => {
         const docResult = await viewDocumentUi(args);
 
         // Return human-readable summary + JSON data for MCP Apps UI
@@ -529,10 +559,7 @@ export function createServer(): McpServer {
               ],
           ...structuredPayload(docResult),
         };
-      } catch (error) {
-        return errorResponse(VIEW_DOCUMENT_UI_TOOL_NAME, error);
-      }
-    },
+      }),
   );
 
   return server;

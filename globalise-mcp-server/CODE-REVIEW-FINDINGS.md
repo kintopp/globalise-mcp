@@ -262,7 +262,13 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
 
 ## P4 — Verified but lower priority (cleanup-pass material)
 
-### [ ] 11. Empty-string `settlement`/`chamber` diverge between source-compat checks and WHERE builders
+### [x] 11. Empty-string `settlement`/`chamber` diverge between source-compat checks and WHERE builders — fixed v2.7.8
+
+> **Fixed v2.7.8:** `findArchivalDocuments` normalizes empty/whitespace-only
+> `settlement` and `chamber` to `undefined` once at the top (param renamed
+> `rawInput`), so the compat checks and WHERE builders agree — `''` is now just
+> "no filter." New test §2c.
+
 
 `src/tools/archival-index.ts:464` uses `input.settlement !== undefined` (so `''`
 counts as a filter) but `buildObpWhereClause:234` uses falsy `if (input.settlement)`
@@ -272,7 +278,14 @@ ALL 227K OBP docs unfiltered; `{source:'gm', settlement:''}` → ToolError at `:
 despite no effective filter. **Fix:** normalize empty strings to undefined at
 input (or `.min(1)` on the zod strings).
 
-### [ ] 12. Bare `catch` in `sanitizeFtsQuery` conflates any DB failure with FTS5 syntax errors
+### [x] 12. Bare `catch` in `sanitizeFtsQuery` conflates any DB failure with FTS5 syntax errors — fixed v2.7.8
+
+> **Fixed v2.7.8:** new `isFtsQueryError(e)` = node:sqlite
+> `code === 'ERR_SQLITE_ERROR' && errcode === 1` (empirically: fts5 syntax /
+> "unterminated string" / "no such column" are errcode 1; a finalized statement
+> is `ERR_INVALID_STATE`, BUSY 5, I/O 10). All three catches rethrow non-query
+> errors instead of masking them as "Invalid full-text query."
+
 
 All three catches (`src/utils/fts.ts:126/:139/:154`) are bare `catch {}`. A
 non-syntax probe failure (stale statement after `closeDatabase`, SQLITE_BUSY,
@@ -282,7 +295,12 @@ read-only DB, single process). **Fix:** inspect the error (node:sqlite exposes
 `errcode`/message; FTS5 grammar errors say `fts5: syntax error` / `unterminated
 string`) and rethrow non-syntax errors.
 
-### [ ] 13. `getCachedApiGet`: truthiness cache check + no in-flight dedup
+### [x] 13. `getCachedApiGet`: truthiness cache check + no in-flight dedup — fixed v2.7.8
+
+> **Fixed v2.7.8:** `!== undefined` hit test, plus a per-cache
+> `WeakMap<LRUCache, Map<key, Promise>>` so concurrent misses for the same key
+> share one upstream fetch (entry cleared on settle).
+
 
 `src/utils/api-client.ts:360-363` — `if (cached)` treats falsy cached values as
 misses (currently unreachable: both cached endpoints return objects), and N
@@ -290,7 +308,11 @@ concurrent identical misses fire N upstream fetches (softened by the global
 throttle). **Fix:** `!== undefined` check + a `Map<string, Promise>` of
 in-flight fetches.
 
-### [ ] 14. `getDatabase` flip-flops availability if a PRAGMA throws after handle assignment
+### [x] 14. `getDatabase` flip-flops availability if a PRAGMA throws after handle assignment — fixed v2.7.8
+
+> **Fixed v2.7.8:** both `getDatabase` and `getReferenceDatabase` configure a
+> local `conn`, run the pragmas, then publish to the module var only on success.
+
 
 `src/utils/database.ts:63-74` (and `getReferenceDatabase` `:108-110`): `db` is
 assigned before the `db.exec('PRAGMA ...')` calls and `:50` early-returns on
@@ -318,7 +340,13 @@ later") → third copy. The handle-keying detail is the non-obvious correctness
 invariant a third copy could miss. **Fix:** generic `perConnectionState(db, init)`
 helper in `database.ts`; fold finding 6's statement cache into it.
 
-### [ ] 16. FTS auto-quote contract described in ≥4 prose places (already drifted)
+### [x] 16. FTS auto-quote contract described in ≥4 prose places (already drifted) — fixed v2.7.8
+
+> **Fixed v2.7.8:** exported `FTS_OPERATORS` + `FTS_AUTOQUOTE` from `fts.ts`;
+> both describes (archival-index.ts, commodities.ts) and both `index.ts`
+> registrations interpolate them. SKILL.md (separate audience, markdown) stays
+> hand-maintained — noted in the const's doc comment.
+
 
 Sites: `archival-index.ts:16` describe, `commodities.ts:35` describe, both tool
 descriptions in `src/index.ts`, `skills/globalise-voc-research/SKILL.md`.
@@ -326,7 +354,12 @@ Findings 4 covers the two live contradictions. **Fix (structural):** single
 source the contract paragraph (e.g. exported const interpolated into both
 describes and both registrations) so the next `fts.ts` change edits one string.
 
-### [ ] 17. `document-id.ts` prefix handling: case-sensitive `startsWith` + unanchored `replace`
+### [x] 17. `document-id.ts` prefix handling: case-sensitive `startsWith` + unanchored `replace` — fixed v2.7.8
+
+> **Fixed v2.7.8:** `normalizeDocumentId` tests `/^urn:globalise:/i` and
+> `parseDocumentId` strips `/^urn:globalise:/i` — case-insensitive + anchored,
+> so `URN:GLOBALISE:…` is recognized, not double-prefixed.
+
 
 `src/utils/document-id.ts:21` (`startsWith('urn:globalise:')`, case-sensitive)
 and `:38` (`replace('urn:globalise:', '')`, first occurrence anywhere).
@@ -334,7 +367,15 @@ and `:38` (`replace('urn:globalise:', '')`, first occurrence anywhere).
 ToolError (clear rejection, not silent misbehavior). **Fix:** case-insensitive
 anchored strip: `docId.replace(/^urn:globalise:/i, '')` in both.
 
-### [ ] 18. Dead/inert code (each verified zero-caller by grep)
+### [x] 18. Dead/inert code (each verified zero-caller by grep) — fixed v2.7.8
+
+> **Fixed v2.7.8:** all five removed — `configCache`; `LRUCache.clear/size/has/delete`
+> (the LRU-mutating `has()` included); `getDocument`'s always-true
+> `includeAnnotations` option (always-`['anno']` now); the inert
+> `searchInputSchema` zod (→ plain `SearchInput` interface, dropped the
+> never-passed `indexName`/`languageLabels` and their dead branches); the
+> viewer's unreachable third parse fallback (in `parse-result.ts`).
+
 
 - `src/utils/api-client.ts:342` — exported `configCache` has zero importers.
 - `src/tools/search.ts:65` — `searchInputSchema` is never `.parse()`d (only
@@ -367,11 +408,15 @@ anchored strip: `docId.replace(/^urn:globalise:/i, '')` in both.
 - **Fix:** extract `scripts/db-build-utils.ts` (transaction wrapper, artifact
   tail) and a parameterized `ensureDb({dbPath, gzPath, buildScript, urlEnv})`.
 
-### [ ] 20. Minor efficiency (verified real, marginal magnitude) — partially fixed v2.7.6
+### [x] 20. Minor efficiency (verified real, marginal magnitude) — fixed v2.7.6 + v2.7.8
 
-> **Note:** the commodities item below is **done v2.7.6** (folded into finding
-> 15's `createConnectionState`). The remaining items (viewer, index.ts) are
-> still open — this finding stays `[ ]` for them.
+> **Done:** commodities COUNT/SELECT cache — v2.7.6 (folded into finding 15's
+> `createConnectionState`). Viewer regex-per-line + escapeHtml `<div>`, viewer
+> per-render splitter handlers, `index.ts` STRUCTURED_CONTENT gate (×4) +
+> app-handler error wrapper — v2.7.8 (`outputSchemaField`/`runTool` helpers,
+> hoisted highlight regex, regex `escapeHtml`, once-registered drag handlers).
+> `formatError` duck-typing hardened in v2.7.8; the deeper ApiError-class
+> migration it suggested is **deferred** (marginal — no degrading site exists).
 
 - **[done v2.7.6]** `src/tools/commodities.ts:167/:178` — COUNT/SELECT re-prepared per call (3
   constant SQL strings; cacheable in `getStaticState`); text query runs the

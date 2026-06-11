@@ -86,31 +86,9 @@ export class LRUCache<T> {
     }
   }
 
-  /**
-   * Clear all entries from the cache
-   */
-  clear(): void {
-    this.cache.clear();
-  }
-
-  /**
-   * Get the current number of entries in the cache
-   */
-  size(): number {
-    return this.cache.size;
-  }
-
-  /**
-   * Check if a key exists in the cache (and is not expired)
-   */
-  has(key: string): boolean {
-    return this.get(key) !== undefined;
-  }
-
-  /**
-   * Delete a specific entry from the cache
-   */
-  delete(key: string): boolean {
-    return this.cache.delete(key);
-  }
+  // clear()/size()/delete() and a has() were removed as zero-caller dead code
+  // (CODE-REVIEW finding 18). has() in particular delegated to get(), which
+  // mutates LRU recency — a passive existence check would have silently
+  // reordered eviction. Re-add deliberately (and make has() a non-mutating
+  // peek) if a caller ever needs them.
 }

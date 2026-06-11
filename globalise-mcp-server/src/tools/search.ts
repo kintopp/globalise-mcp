@@ -61,20 +61,27 @@ function normalizeLanguage(entry: string): string {
 /** Cap on raw candidates scanned when post-filtering for matchAll. */
 const MATCH_ALL_SCAN_CAP = 500;
 
-// Internal full-featured search input (not exposed as a tool schema)
-const searchInputSchema = z.object({
-  query: z.string().describe('Search query text'),
-  from: z.number().min(0).optional().default(0),
-  size: z.number().min(1).max(1000).optional().default(10),
-  fragmentSize: z.number().min(50).max(1000).optional().default(500),
-  sortBy: z.string().optional().default('_score'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-  includeAggregations: z.boolean().optional().default(true),
-  indexName: z.string().optional(),
-  languages: z.array(z.string()).optional().describe('Filter by language ISO codes'),
-  languageLabels: z.array(z.string()).optional().describe('Filter by human-readable language names'),
-  filters: z.record(z.string(), z.array(z.string())).optional().describe('Advanced term filters, field name → values'),
-});
+/**
+ * Internal full-featured search input. A plain interface, not a zod object:
+ * it's never `.parse()`d (searchTranscriptions builds it explicitly and is the
+ * only caller), so a zod object's `.default()`s would be silently inert — a
+ * trap for future tuning (CODE-REVIEW finding 18). The previously-dead
+ * `indexName` and `languageLabels` knobs (never set by the caller) were dropped;
+ * the index is always API_CONFIG.DEFAULT_INDEX.
+ */
+interface SearchInput {
+  query: string;
+  from: number;
+  size: number;
+  fragmentSize: number;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  includeAggregations: boolean;
+  /** Filter by language ISO codes. */
+  languages?: string[];
+  /** Advanced term filters, field name → values. */
+  filters?: Record<string, string[]>;
+}
 
 // Consolidated public tool schema (R6): one search tool with composable filters
 export const searchTranscriptionsInputSchema = z.object({
@@ -146,7 +153,6 @@ export const searchOutputSchema = z.object({
   note: z.string().optional().describe('Caveats about how this result was computed (e.g. matchAll scan cap)'),
 });
 
-type SearchInput = z.infer<typeof searchInputSchema>;
 export type SearchOutput = z.infer<typeof searchOutputSchema>;
 export type SearchTranscriptionsInput = z.infer<typeof searchTranscriptionsInputSchema>;
 
@@ -154,7 +160,7 @@ export type SearchTranscriptionsInput = z.infer<typeof searchTranscriptionsInput
  * Core search against the upstream Broccoli API.
  */
 async function search(input: SearchInput): Promise<SearchOutput> {
-  const indexName = input.indexName || API_CONFIG.DEFAULT_INDEX;
+  const indexName = API_CONFIG.DEFAULT_INDEX;
 
   const aggs = input.includeAggregations ? {
     invNr: { order: 'countDesc', size: 10 },
@@ -163,10 +169,9 @@ async function search(input: SearchInput): Promise<SearchOutput> {
     langLabel: { order: 'countDesc', size: 10 },
   } : {};
 
-  // Build terms filters from language codes, labels, and custom filters
+  // Build terms filters from language codes and custom filters
   const terms: Record<string, string[]> = {
     ...(input.languages?.length ? { langIso: input.languages } : {}),
-    ...(input.languageLabels?.length ? { langLabel: input.languageLabels } : {}),
     ...input.filters,
   };
 

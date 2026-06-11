@@ -60,17 +60,22 @@ export function getDatabase(): Db {
 
   // existsSync above already guards the missing-file case, so we don't need
   // better-sqlite3's fileMustExist; node:sqlite opens (open defaults to true).
-  db = new DatabaseSync(DB_PATH, { readOnly: true });
+  // Configure on a local handle and publish to `db` only after the pragmas
+  // succeed — otherwise a throwing pragma would leave `db` set to a
+  // half-configured handle that every later call returns via the `if (db)`
+  // early-return, while the first call reported the DB unavailable (finding 14).
+  const conn = new DatabaseSync(DB_PATH, { readOnly: true });
 
   // Optimize for read-only queries (only set pragmas that don't require write
   // access). node:sqlite has no .pragma() helper, so issue them via exec().
-  db.exec('PRAGMA cache_size = -64000'); // 64MB cache
-  db.exec('PRAGMA temp_store = MEMORY');
+  conn.exec('PRAGMA cache_size = -64000'); // 64MB cache
+  conn.exec('PRAGMA temp_store = MEMORY');
   // Memory-map the (read-only, ~108MB) DB so cold-page reads skip read()
   // syscalls. 256MB ceiling comfortably covers the whole file; safe on a
   // read-only connection.
-  db.exec('PRAGMA mmap_size = 268435456');
+  conn.exec('PRAGMA mmap_size = 268435456');
 
+  db = conn;
   return db;
 }
 
@@ -105,10 +110,12 @@ export function getReferenceDatabase(): Db {
     );
   }
 
-  referenceDb = new DatabaseSync(REFERENCE_DB_PATH, { readOnly: true });
-  referenceDb.exec('PRAGMA cache_size = -16000'); // 16MB cache
-  referenceDb.exec('PRAGMA temp_store = MEMORY');
+  // Publish only after the pragmas succeed (see getDatabase, finding 14).
+  const conn = new DatabaseSync(REFERENCE_DB_PATH, { readOnly: true });
+  conn.exec('PRAGMA cache_size = -16000'); // 16MB cache
+  conn.exec('PRAGMA temp_store = MEMORY');
 
+  referenceDb = conn;
   return referenceDb;
 }
 

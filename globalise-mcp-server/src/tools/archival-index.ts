@@ -6,14 +6,14 @@
 import { z } from 'zod';
 import { getDatabase, isDatabaseAvailable, createConnectionState, type ConnectionState } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
-import { sanitizeFtsQuery } from '../utils/fts.js';
+import { sanitizeFtsQuery, FTS_OPERATORS, FTS_AUTOQUOTE } from '../utils/fts.js';
 
 // Input schema for archival index queries
 export const findArchivalDocumentsInputSchema = z.object({
   source: z.enum(['obp', 'gm', 'all']).default('all')
     .describe('Data source: "obp" (Digitized Indexes, ~227K docs), "gm" (Generale Missiven, ~950 letters), "all" (both)'),
   query: z.string().optional()
-    .describe('Full-text search in descriptions (SQLite FTS5). A space means AND — all terms must appear; also OR, NOT, prefix*, "exact phrase", and (expr) grouping. Terms containing special characters (hyphens, slashes, apostrophes) are auto-quoted for you while your AND/OR/NOT operators are kept intact — so `peper OR oost-indie` works as written, no manual quoting needed. Only input FTS5 itself cannot parse (unbalanced quotes/parens, or an operator omitted before a `(group)` as in `compagnie (a OR b)` — write `compagnie AND (a OR b)`) falls back to a whole-phrase search; the response `note` flags when that happened. Descriptions are one-line catalogue headings, not a subject index, so prefer the structured filters (settlement/year/inventory) for discovery.'),
+    .describe(`Full-text search in descriptions (SQLite FTS5). ${FTS_OPERATORS}, and (expr) grouping. ${FTS_AUTOQUOTE} (Implicit-AND before a group like \`compagnie (a OR b)\` is rejected by FTS5 itself — write \`compagnie AND (a OR b)\`.) Descriptions are one-line catalogue headings, not a subject index, so prefer the structured filters (settlement/year/inventory) for discovery.`),
   inventoryNumber: z.union([z.string(), z.array(z.string())]).optional()
     .describe('Filter by inventory number(s). Single: "1543" or multiple: ["1543", "1068"]'),
   settlement: z.string().optional()
@@ -437,7 +437,19 @@ function computeGmAggregations(state: ConnectionState, { where, params }: WhereC
 /**
  * Query the archival index database.
  */
-export async function findArchivalDocuments(input: FindArchivalDocumentsInput): Promise<FindArchivalDocumentsOutput> {
+export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput): Promise<FindArchivalDocumentsOutput> {
+  // Treat empty/whitespace-only settlement & chamber as absent. The
+  // source-routing checks test `!== undefined` while the WHERE builders test
+  // falsiness, so a literal '' diverged: `{settlement:''}` skipped GM and
+  // returned every OBP doc as if filtered, and `{source:'gm', settlement:''}`
+  // errored despite no effective filter (CODE-REVIEW finding 11). Normalizing
+  // once here makes both views agree.
+  const input: FindArchivalDocumentsInput = {
+    ...rawInput,
+    settlement: rawInput.settlement?.trim() || undefined,
+    chamber: rawInput.chamber?.trim() || undefined,
+  };
+
   // Check database availability
   if (!isDatabaseAvailable()) {
     return {

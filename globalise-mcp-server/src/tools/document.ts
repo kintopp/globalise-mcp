@@ -56,13 +56,15 @@ export const getDocumentOutputSchema = z.object({
 });
 
 /**
- * Internal call options: the public tool always includes annotations and
- * text; navigate() skips text for the current page (it only needs the
- * prev/next pointers).
+ * Internal call options: annotations are always fetched (they carry the
+ * metadata, navigation pointers, and URLs — navigate() depends on them);
+ * navigate() only opts out of `text` for the current page, since it needs
+ * just the prev/next pointers. (A former `includeAnnotations` flag was dead —
+ * always true — and its false branch would have silently stripped metadata
+ * and broken navigate; CODE-REVIEW finding 18.)
  */
 export interface GetDocumentOptions {
   documentId: string;
-  includeAnnotations?: boolean;
   includeText?: boolean;
 }
 
@@ -72,13 +74,13 @@ export type GetDocumentOutput = z.infer<typeof getDocumentOutputSchema>;
  * Get detailed document information
  */
 export async function getDocument(options: GetDocumentOptions): Promise<GetDocumentOutput> {
-  const { documentId, includeAnnotations = true, includeText = true } = options;
+  const { documentId, includeText = true } = options;
   const documentUrn = normalizeDocumentId(documentId);
   const { archive, inventoryNumber, scanNumber } = parseDocumentId(documentUrn);
 
-  // Build include list
-  const include: string[] = [];
-  if (includeAnnotations) include.push('anno');
+  // Annotations are always fetched (metadata/navigation/urls live there); text
+  // is optional (navigate skips it for the current page).
+  const include: string[] = ['anno'];
   if (includeText) include.push('text');
 
   // Build URL with query parameters

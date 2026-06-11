@@ -42,6 +42,18 @@ let currentDocument: DocumentData | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
 
+// Splitter-drag state. The document-level mousemove/mouseup handlers are
+// registered ONCE (below); renderDocument only re-binds mousedown on the
+// freshly-rendered splitter. Previously those document handlers were added per
+// render and never removed, accumulating a stale pair each time, and read
+// getBoundingClientRect on every mousemove (forced reflow) — CODE-REVIEW
+// finding 20. Bounds are now captured once on mousedown.
+let splitterDragging = false;
+let dragImagePanel: HTMLElement | null = null;
+let dragContainerLeft = 0;
+let dragMinWidth = 0;
+let dragMaxWidth = 0;
+
 // Initialize the MCP App with capabilities.
 //
 // The view exposes no app-side tools (no app.registerTool calls), so it must
@@ -444,18 +456,18 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
  * Render transcription lines with optional highlighting
  */
 function renderTranscription(lines: string[], highlightTerms: string[]): string {
+  // Compile one combined highlight regex up front instead of recompiling per
+  // term per line (CODE-REVIEW finding 20). Empty terms are dropped so the
+  // alternation can't match the empty string.
+  const terms = highlightTerms.filter(Boolean).map(escapeRegex);
+  const highlightRegex = terms.length > 0 ? new RegExp(`(${terms.join('|')})`, 'gi') : null;
+
   return lines
     .map((line, i) => {
       let text = escapeHtml(line);
-
-      // Apply highlighting for search terms
-      if (highlightTerms && highlightTerms.length > 0) {
-        for (const term of highlightTerms) {
-          const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
-          text = text.replace(regex, '<mark>$1</mark>');
-        }
+      if (highlightRegex) {
+        text = text.replace(highlightRegex, '<mark>$1</mark>');
       }
-
       return `<div class="line"><span class="line-number">${i + 1}</span>${text || '&nbsp;'}</div>`;
     })
     .join('');
@@ -537,43 +549,42 @@ function attachEventListeners(doc: DocumentData): void {
   document.getElementById('rotate-left')?.addEventListener('click', () => rotateImage(-90));
   document.getElementById('rotate-right')?.addEventListener('click', () => rotateImage(90));
 
-  // Splitter drag functionality
-  const splitter = document.querySelector('.splitter');
-  const imagePanel = document.querySelector('.image-panel') as HTMLElement;
+  // Splitter drag: bind mousedown on the freshly-rendered splitter and capture
+  // the drag bounds once. The document-level mousemove/mouseup live at module
+  // scope (registered once — finding 20).
+  document.querySelector('.splitter')?.addEventListener('mousedown', () => {
+    const containerRect = document.querySelector('.content')?.getBoundingClientRect();
+    const imagePanel = document.querySelector('.image-panel') as HTMLElement | null;
+    if (!containerRect || !imagePanel) return;
 
-  if (splitter && imagePanel) {
-    let isDragging = false;
-
-    splitter.addEventListener('mousedown', () => {
-      isDragging = true;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const containerRect = document.querySelector('.content')?.getBoundingClientRect();
-      if (!containerRect) return;
-
-      const newWidth = e.clientX - containerRect.left;
-      const minWidth = 300;
-      const maxWidth = containerRect.width - 300;
-
-      if (newWidth >= minWidth && newWidth <= maxWidth) {
-        imagePanel.style.flex = 'none';
-        imagePanel.style.width = `${newWidth}px`;
-      }
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        isDragging = false;
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
-    });
-  }
+    splitterDragging = true;
+    dragImagePanel = imagePanel;
+    dragContainerLeft = containerRect.left;
+    dragMinWidth = 300;
+    dragMaxWidth = containerRect.width - 300;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
 }
+
+// Document-level splitter-drag handlers, registered once (see splitter-drag
+// state). mousemove uses the bounds captured on mousedown — no per-move reflow.
+document.addEventListener('mousemove', (e) => {
+  if (!splitterDragging || !dragImagePanel) return;
+  const newWidth = e.clientX - dragContainerLeft;
+  if (newWidth >= dragMinWidth && newWidth <= dragMaxWidth) {
+    dragImagePanel.style.flex = 'none';
+    dragImagePanel.style.width = `${newWidth}px`;
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (!splitterDragging) return;
+  splitterDragging = false;
+  dragImagePanel = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+});
 
 /**
  * Keyboard shortcuts matching the control-button title hints:
@@ -670,13 +681,18 @@ function showError(title: string, message: string, suggestion?: string): void {
   });
 }
 
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+};
+
 /**
- * Escape HTML special characters
+ * Escape HTML special characters. A regex map, not a throwaway
+ * `document.createElement('div')` per call (CODE-REVIEW finding 20) — and it
+ * also escapes quotes, which the textContent approach left intact even though
+ * this is used inside title="..." attributes.
  */
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
 /**

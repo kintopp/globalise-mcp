@@ -6,6 +6,31 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.8] - 2026-06-11
+
+P4 cleanup pass (code-review findings 11, 12, 13, 14, 16, 17, 18, and finding 20's index + viewer items). Mostly internal hardening and dead-code removal; one small behavior fix (finding 11) and one viewer attribute-escaping improvement. No DB rebuild, no `.skill` change. Full suite green (150 assertions, +3).
+
+### Fixed
+- **Empty-string settlement/chamber no longer diverge** (finding 11). The source-routing checks tested `!== undefined` while the WHERE builders tested falsiness, so a literal `''` was a filter to one and a no-op to the other: `{settlement:''}` skipped GM and returned every OBP doc as if filtered, and `{source:'gm', settlement:''}` threw. `findArchivalDocuments` now normalizes empty/whitespace settlement & chamber to `undefined` once at the top, so `''` is simply "no filter."
+- **`document-id` URN handling is case-insensitive and anchored** (finding 17). `normalizeDocumentId`/`parseDocumentId` used a case-sensitive `startsWith` and a first-occurrence `replace`, so `URN:GLOBALISE:NL-HaNA_…` got double-prefixed and rejected. Both now strip `^urn:globalise:` case-insensitively.
+- **FTS sanitizer distinguishes query errors from operational ones** (finding 12). The three `catch {}` in `sanitizeFtsQuery` walked the whole rewrite chain on *any* probe failure and surfaced "Invalid full-text query", masking the real cause (a finalized statement after `closeDatabase()`, SQLITE_BUSY, I/O). It now rethrows anything that isn't an FTS5 query-grammar error (node:sqlite `code === 'ERR_SQLITE_ERROR' && errcode === 1`, empirically confirmed against the live index).
+- **`getDatabase`/`getReferenceDatabase` no longer flip-flop on a failing PRAGMA** (finding 14). The handle was published to the module var before the pragmas ran, so a throwing pragma left every later call returning a half-configured handle while the first reported the DB unavailable. The connection is now configured on a local and published only after the pragmas succeed.
+- **`getCachedApiGet` cache check + in-flight dedup** (finding 13). Switched the cache hit test from truthiness to `!== undefined` (a legitimately-cached falsy value is a hit), and added per-cache in-flight dedup so N concurrent misses for the same key share one upstream fetch instead of firing N.
+- **Viewer `escapeHtml` now escapes quotes** (finding 20). The old `document.createElement('div')`/textContent approach left `"`/`'` intact even though `escapeHtml` is used inside `title="…"` attributes; the regex-based replacement closes that and drops the per-call DOM node.
+
+### Changed
+- **FTS query contract single-sourced** (finding 16). Exported `FTS_OPERATORS` + `FTS_AUTOQUOTE` from `src/utils/fts.ts`; both tool-input describes and both `index.ts` registrations now interpolate them, so the next change to the sanitizer's behavior edits one string instead of four prose sites (SKILL.md, a separate-audience doc, stays hand-maintained).
+- **`index.ts` STRUCTURED_CONTENT gate + error wrapper extracted** (finding 20). New `outputSchemaField()` (the R8 gate, shared by both registrations) and `runTool()` (the try/catch→errorResponse wrapper, shared by registerJsonTool and the app-tool handler). `formatError` also hardened to surface any object with a string `message` rather than coercing to `[object Object]` (the full ApiError-class migration is deferred — see TODO).
+- **Viewer transcription highlighting** (finding 20): one combined highlight regex compiled per render instead of one `new RegExp` per term per line.
+- **Viewer splitter drag handlers** (finding 20): the document-level mousemove/mouseup are now registered once at module scope (they were added per `renderDocument` and never removed, accumulating stale pairs), and the drag bounds are read once on mousedown instead of per mousemove (no forced reflow mid-drag).
+
+### Removed (dead code, finding 18)
+- `configCache` (zero importers) from `api-client.ts`.
+- `LRUCache.clear()/size()/has()/delete()` (zero callers) — `has()` in particular delegated to `get()`, which mutates LRU recency.
+- The dead `includeAnnotations` option on `getDocument` (always true; its false branch would have stripped metadata and broken `navigate`).
+- The inert `searchInputSchema` zod object (never parsed → defaults never applied) → a plain `SearchInput` interface; dropped the never-passed `indexName`/`languageLabels` knobs and their dead branches.
+- The unreachable third parse fallback in the viewer's `parse-result.ts`.
+
 ## [2.7.7] - 2026-06-11
 
 Document-viewer fixes — the P3 viewer-only batch (code-review findings 8, 9, 10). Viewer-only (`apps/document-viewer`); no server-tool behavior change, no DB rebuild, no `.skill` change.

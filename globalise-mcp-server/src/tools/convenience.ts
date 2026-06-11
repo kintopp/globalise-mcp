@@ -66,7 +66,6 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
   // First, get the current document to find navigation links
   const currentDoc = await getDocument({
     documentId: input.currentDocumentId,
-    includeAnnotations: true,
     includeText: false,
   });
 
@@ -96,7 +95,6 @@ export async function navigate(input: NavigateInput): Promise<NavigateOutput> {
   // Get the target document
   const targetDoc = await getDocument({
     documentId: targetPageId,
-    includeAnnotations: true,
     includeText: input.includeText,
   });
 
