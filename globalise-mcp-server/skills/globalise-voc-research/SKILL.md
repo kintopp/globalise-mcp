@@ -156,18 +156,18 @@ If you must match a place in free text, use a prefix or the period spelling:
 Normalization is also imperfect (`Bengale`/`Bengalen` coexist), so for exhaustive
 coverage combine the filter with a prefix query and check the aggregations.
 
-### Trap 2 — special characters silently become one literal phrase
+### Trap 2 — special characters are auto-quoted
 
-Characters FTS5 can't parse — hyphens (`oost-indie`), slashes, unbalanced quotes
-or parentheses — make SQLite throw a syntax error. The server catches this and
-**retries the *entire* query wrapped in double quotes as a single exact phrase**,
-adding a `note` to the response. That means your operators are silently dropped.
+Hyphens (`oost-indie`), slashes, and apostrophes (`'s-gravenhage`) can't sit in an
+FTS5 bareword, so the server quotes those terms for you and keeps your
+`AND`/`OR`/`NOT` — `kaneel AND oost-indie` works as written.
 
-- If a result set looks wrong, **check the response `note`** — it tells you the
-  query was phrase-escaped.
-- To combine a hyphenated/period term with operators, quote just that term
-  yourself: `kaneel AND "oost-indie"` (a hyphen *inside* an explicit phrase is
-  fine).
+Two inputs still can't be parsed and fall back to one literal phrase (operators
+dropped); the response `note` flags it:
+
+- **Unbalanced quotes or parentheses** — `"oost`, `(kaneel OR peper`.
+- **A missing operator before a group** — write `compagnie AND (peper OR koffie)`,
+  not `compagnie (peper OR koffie)`.
 
 ### Trap 3 — OBP is a finding aid, not a subject index
 
@@ -461,7 +461,7 @@ form ~25,000.)
 - ✅ Read the exact **settlement spelling from the aggregation** (`includeAggregations`) — it's `Malakka`, not `Malacca`.
 - ✅ Use **period spellings or prefixes** (`Ceijlon*`, `Makass*`) for free-text places.
 - ✅ **Resolve commodity terms** with `lookup_commodity` — get the Dutch label, then (most have no `altLabels`) reconstruct period spellings + fuzzy `~1` rather than betting on the modern form.
-- ✅ Check the response **`note`** when results look off (phrase-escape / lower-bound totals).
+- ✅ Check the response **`note`** when results look off (auto-quoted terms / phrase fallback / lower-bound totals).
 - ✅ Offer **scan links** for non-Roman-script and Malay pages.
 - ✅ For a **published GM**, offer the `publishedEdition` links and say whether you're giving the **edited RGP text** or the **HTR** original.
 - ✅ In `search_transcriptions`, lean on **fuzzy `~1`** and period spellings for important terms (HTR/OCR noise).

@@ -5,7 +5,7 @@
  *   2. bm25 ranking surfaces the exact-label concept for a distinctive term
  *   3. empty query pages the whole glossary alphabetically
  *   4. FTS hostile inputs (hyphen, unbalanced quote) never surface raw SQLite
- *      errors — phrase-escape with a note, or a structured error
+ *      errors — per-term quoting with a note, or a structured error
  *   5. definitionSource + confidence are surfaced on every result
  *   6. pagination hasMore; a no-match query returns total 0
  *
@@ -60,10 +60,10 @@ async function main() {
 
   console.log('4. FTS hostile inputs');
   const hyphen = await call({ query: 'oost-indie', size: 1 });
-  check(Boolean(hyphen.note?.includes('exact phrase')), 'hyphenated query phrase-escaped with a note');
+  check(Boolean(hyphen.note?.includes('quoted')), 'hyphenated query is per-term quoted, with a note');
   try {
     const unclosed = await call({ query: '"unclosed', size: 1 });
-    check(typeof unclosed.total.value === 'number', 'unbalanced quote rescued by phrase-escape');
+    check(typeof unclosed.total.value === 'number', 'unbalanced quote rescued by whole-phrase wrap');
   } catch (e) {
     check(e instanceof ToolError && typeof e.suggestion === 'string', 'unbalanced quote → structured error with suggestion');
   }

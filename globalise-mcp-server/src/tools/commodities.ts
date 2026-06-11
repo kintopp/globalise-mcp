@@ -32,7 +32,7 @@ import { sanitizeFtsQuery } from '../utils/fts.js';
 
 export const lookupCommodityInputSchema = z.object({
   query: z.string().optional()
-    .describe('Full-text search (SQLite FTS5) over Dutch + English labels, spelling variants, and the definition text. A space means AND — all terms must appear; also OR, NOT, prefix*, "exact phrase". Matches on labels/variants rank above matches in the definition body. Special characters (hyphens, slashes, unbalanced quotes/parens) make FTS5 throw, so the server retries the whole query as one quoted phrase and adds a `note`; quote the offending term yourself (e.g. "oost-indie") to keep operators. Omit to page through the whole glossary alphabetically.'),
+    .describe('Full-text search (SQLite FTS5) over Dutch + English labels, spelling variants, and the definition text. A space means AND — all terms must appear; also OR, NOT, prefix*, "exact phrase". Matches on labels/variants rank above matches in the definition body. Terms containing special characters (hyphens, slashes, apostrophes) are auto-quoted for you while your AND/OR/NOT operators are kept intact; only input FTS5 itself cannot parse (unbalanced quotes/parens) falls back to a whole-phrase search, flagged in the response `note`. Omit to page through the whole glossary alphabetically.'),
   from: z.number().int().min(0).default(0)
     .describe('Pagination offset (default: 0)'),
   size: z.number().int().min(1).max(100).default(20)
@@ -68,7 +68,7 @@ export const lookupCommodityOutputSchema = z.object({
     commoditiesTotal: z.number(),
     available: z.boolean(),
   }),
-  note: z.string().optional().describe('Caveats about how this result was computed (e.g. an FTS query rewritten as an exact phrase)'),
+  note: z.string().optional().describe('Caveats about how this result was computed (e.g. an FTS query whose special-character terms were auto-quoted)'),
 });
 
 export type LookupCommodityInput = z.infer<typeof lookupCommodityInputSchema>;

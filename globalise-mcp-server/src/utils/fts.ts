@@ -3,9 +3,23 @@
  * (archival-index, commodities). Raw user input like "oost-indie" or an
  * unbalanced quote makes SQLite's FTS5 MATCH throw a syntax error (R7).
  *
- * Validate the query against a probe statement; on a syntax error, retry with
- * the whole query phrase-escaped in double quotes and return a note. If even
- * that fails, throw a structured ToolError with a suggestion.
+ * The error comes from the FTS5 query *grammar*, not the tokenizer: a bareword
+ * may contain only letters, digits, underscore, and codepoints above U+007F, so
+ * a hyphen/slash/apostrophe/comma is rejected before any tokenizer runs (see
+ * https://sqlite.org/fts5.html#fts5_strings). The fix is therefore query-side —
+ * quote the offending barewords — not a different tokenizer (which would change
+ * indexing but leave the parse error untouched and force a DB rebuild).
+ *
+ * Strategy, cheapest-and-most-faithful first:
+ *   1. Try the query verbatim — valid FTS5 passes through, preserving full
+ *      power-user syntax (AND/OR/NOT/NEAR, grouping, prefix*, "phrases").
+ *   2. On failure, quote only the barewords that contain illegal characters and
+ *      leave the STRUCTURE intact (escapeFtsTerms). `peper OR oost-indie`
+ *      becomes `peper OR "oost-indie"` — operators and grouping survive.
+ *   3. If even that won't parse (unterminated quote, unbalanced parens), fall
+ *      back to wrapping the whole query as one exact phrase. This DOES drop
+ *      operators, so the note says so.
+ *   4. If nothing parses, throw a structured ToolError with a suggestion.
  *
  * The caller supplies an already-prepared probe statement
  * (`SELECT rowid FROM <fts_table> WHERE <fts_table> MATCH @query LIMIT 1`), so
@@ -16,27 +30,131 @@
 import type { DbStatement } from './database.js';
 import { ToolError } from './errors.js';
 
+/** A token already legal as an FTS5 bareword: letters, digits, underscore, non-ASCII. */
+const LEGAL_BAREWORD = /^[\p{L}\p{N}_]+$/u;
+/** Characters that delimit a bareword in the FTS5 grammar (structure we pass through). */
+const STRUCTURAL = new Set([' ', '\t', '\n', '\r', '(', ')', '"']);
+
+/** Wrap a string as one FTS5 phrase literal, doubling embedded quotes (`a"b` → `"a""b"`). */
+function quoteAsPhrase(s: string): string {
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Rewrite a raw query into a valid FTS5 MATCH expression by quoting ONLY the
+ * individual barewords that contain illegal characters, leaving query structure
+ * — grouping parens, existing "phrases", and a trailing prefix `*` — in place.
+ * This preserves the user's boolean intent instead of collapsing the whole query
+ * into a single phrase.
+ *
+ * Operator keywords (AND/OR/NOT/NEAR) need no special handling: they are already
+ * legal barewords, so they pass through unchanged, and FTS5 itself decides
+ * whether each is an operator or a search term (by case and position).
+ *
+ * Best-effort: the result is not guaranteed to parse (e.g. an unterminated
+ * quote passes through unchanged), so the caller must still probe it.
+ */
+export function escapeFtsTerms(query: string): string {
+  let out = '';
+  let i = 0;
+  const n = query.length;
+
+  while (i < n) {
+    const ch = query[i];
+
+    // An existing "phrase": copy the whole span (incl. "" escapes and a trailing
+    // prefix *) through untouched. An unterminated phrase runs to end-of-string
+    // and is emitted as-is — the caller's probe will reject it and fall back.
+    // Handled before the general structural check so the span is consumed whole.
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < n) {
+        if (query[j] === '"') {
+          if (query[j + 1] === '"') { j += 2; continue; } // "" = escaped quote, stays inside
+          break;
+        }
+        j++;
+      }
+      let end = j < n ? j + 1 : n; // past the closing quote, or end-of-string
+      if (query[end] === '*') end++; // keep a phrase-prefix marker attached
+      out += query.slice(i, end);
+      i = end;
+      continue;
+    }
+
+    // Other structure — whitespace and grouping parens — copied through verbatim.
+    if (STRUCTURAL.has(ch)) {
+      out += ch;
+      i++;
+      continue;
+    }
+
+    // Otherwise a bareword: consume up to the next structural character.
+    let j = i;
+    while (j < n && !STRUCTURAL.has(query[j])) j++;
+    let token = query.slice(i, j);
+    i = j;
+
+    // Peel a trailing prefix * so it stays OUTSIDE the quotes (`"oost-indie"*`).
+    let star = '';
+    if (token.endsWith('*')) {
+      star = '*';
+      token = token.slice(0, -1);
+    }
+
+    if (token.length === 0) {
+      out += star; // a lone '*' or similar — leave it for the probe to judge
+    } else if (LEGAL_BAREWORD.test(token)) {
+      out += token + star; // operator keyword or already-legal bareword: pass through
+    } else {
+      out += quoteAsPhrase(token) + star; // quote just this term
+    }
+  }
+
+  return out;
+}
+
 /** Returns the query to use against MATCH, plus a note when it was rewritten. */
 export function sanitizeFtsQuery(
   probe: DbStatement,
   query: string,
 ): { query: string; note?: string } {
+  // 1. Valid as-is — preserve full FTS5 syntax for power users.
   try {
     probe.get({ query });
     return { query };
   } catch {
-    const escaped = `"${query.replace(/"/g, '""')}"`;
+    // fall through to rewriting
+  }
+
+  // 2. Quote only the offending barewords, keeping operators and grouping.
+  const rebuilt = escapeFtsTerms(query);
+  if (rebuilt !== query) {
     try {
-      probe.get({ query: escaped });
+      probe.get({ query: rebuilt });
       return {
-        query: escaped,
-        note: `query contained FTS5 syntax characters and was searched as the exact phrase ${escaped}`,
+        query: rebuilt,
+        note: `query contained FTS5 special characters; the affected terms were quoted (boolean operators preserved) and it was searched as ${rebuilt}`,
       };
     } catch {
-      throw new ToolError(
-        `Invalid full-text query: ${query}`,
-        'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
-      );
+      // fall through to whole-phrase wrap
     }
+  }
+
+  // 3. Last resort: search the whole input as one exact phrase. This drops any
+  //    AND/OR/NOT operators, so only reach it when per-term quoting still fails
+  //    (an unterminated quote or unbalanced parens).
+  const escaped = quoteAsPhrase(query);
+  try {
+    probe.get({ query: escaped });
+    return {
+      query: escaped,
+      note: `query could not be parsed even after quoting individual terms, so it was searched as the exact phrase ${escaped} — any AND/OR/NOT operators were dropped; balance your quotes and parentheses`,
+    };
+  } catch {
+    throw new ToolError(
+      `Invalid full-text query: ${query}`,
+      'FTS5 syntax error. Wrap multi-word or hyphenated terms in double quotes (e.g. "oost-indie"), and balance any quotes or parentheses.',
+    );
   }
 }

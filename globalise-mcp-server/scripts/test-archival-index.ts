@@ -72,11 +72,31 @@ async function main() {
   check(Boolean(obpOnly.note?.includes('GM')), 'settlement on "all" → note names the skipped GM source');
 
   console.log('3. FTS5 hostile inputs (R7)');
+  // A lone hyphenated term is per-term quoted (not whole-phrase wrapped), and
+  // the term still matches the index.
   const hyphen = await call({ query: 'oost-indie', size: 3, includeAggregations: false });
-  check(Boolean(hyphen.note?.includes('exact phrase')), 'hyphenated query is phrase-escaped, with a note');
+  check(Boolean(hyphen.note?.includes('quoted')), 'hyphenated term is per-term quoted, with a note');
+  check(hyphen.total.value > 0, 'per-term quoted hyphenated term still matches the index');
+  // Operators survive a hyphenated operand: `peper OR oost-indie` must NOT
+  // collapse to the phrase "peper or oost indie" (which matched nothing) — the
+  // OR is preserved, so it returns at least as many hits as "peper" alone.
+  const peper = await call({ query: 'peper', size: 1, includeAggregations: false });
+  const peperOrOost = await call({ query: 'peper OR oost-indie', size: 1, includeAggregations: false });
+  check(Boolean(peperOrOost.note?.includes('operators preserved')), 'OR + hyphenated operand → note says operators preserved');
+  check(peperOrOost.total.value >= peper.total.value && peper.total.value > 0, 'OR is preserved (>= the "peper"-only count), not dropped');
+  // Explicit-operator grouping is reconstructed faithfully (quote the operand,
+  // keep the parens and the OR) rather than collapsed to a phrase.
+  const grouped = await call({ query: 'compagnie AND (oost-indie OR ceylon)', size: 1, includeAggregations: false });
+  check(Boolean(grouped.note?.includes('operators preserved')), 'explicit-operator grouped query is rebuilt per-term, not collapsed to an exact phrase');
+  // The implicit-AND-before-group form (`compagnie (…)`) is rejected by FTS5
+  // itself even when correctly quoted, so it safely falls back — no raw crash.
+  const implicitGroup = await call({ query: 'compagnie (oost-indie OR ceylon)', size: 1, includeAggregations: false });
+  check(typeof implicitGroup.total.value === 'number', 'implicit-AND-before-group falls back safely (no raw FTS5 error)');
+  // Genuinely unparseable input (unbalanced quote) still falls back safely:
+  // whole-phrase wrap with a note, or a structured error — never a raw crash.
   try {
     const unclosed = await call({ query: '"unclosed', size: 3, includeAggregations: false });
-    check(typeof unclosed.total.value === 'number', 'unbalanced quote rescued by phrase-escape');
+    check(typeof unclosed.total.value === 'number', 'unbalanced quote rescued by whole-phrase wrap');
   } catch (e) {
     check(e instanceof ToolError && typeof e.suggestion === 'string', 'unbalanced quote → structured error with suggestion');
   }
