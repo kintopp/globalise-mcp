@@ -25,47 +25,22 @@ import {
 } from '@modelcontextprotocol/ext-apps/app-with-deps';
 import OpenSeadragon from 'openseadragon';
 
-// Archival context from OBP/GM databases
-interface ArchivalContext {
-  source: 'obp' | 'gm' | 'both' | 'none';
-  inventoryTotal: number;
-  settlements?: string[];
-  yearRange?: { from: number; to: number };
-  chamber?: string;
-  htrAvailable?: boolean;
-  locationTanap?: string;
-  geographicalCoverage?: string;
-  description?: string;
-}
+// Server↔viewer wire contract. ViewDocumentUiOutput / ArchivalContext are the
+// server's own zod-inferred types, so the contract is defined ONCE: a
+// server-side field rename changes the type the viewer sees instead of
+// silently diverging from a hand-copied interface (CODE-REVIEW finding 10).
+// `import type` is erased by esbuild, so zod and the rest of the server graph
+// stay out of the viewer bundle. DocumentData stays a local alias to avoid
+// churning every use site.
+import type { ViewDocumentUiOutput, ArchivalContext } from '../../../src/tools/document-viewer.js';
+import { parseDocumentResult, type ParseableToolResult } from './parse-result.js';
 
-// Document data structure from tool result
-interface DocumentData {
-  id: string;
-  iiifImageUrl: string;
-  transcription: string[];
-  metadata: {
-    inventory: string;
-    scan: string;
-    languages: Array<{ code: string; label: string }>;
-    license?: string;
-  };
-  navigation: {
-    prev: string | null;
-    next: string | null;
-  };
-  urls: {
-    viewer: string;
-    archive: string | null;
-  };
-  highlight: string[];
-  archivalContext?: ArchivalContext;
-}
+type DocumentData = ViewDocumentUiOutput;
 
 // App state
 let currentDocument: DocumentData | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
-let currentRotation = 0; // Track rotation in degrees
 
 // Initialize the MCP App with capabilities.
 //
@@ -116,46 +91,32 @@ app.ontoolinput = (params) => {
 app.ontoolresult = (result) => {
   app.sendLog({ level: 'info', data: 'Tool result received' });
 
-  // Check for error
+  // Check for error. The server's errorResponse emits JSON.stringify({error,
+  // suggestion, tool}) as the text, so parse it and surface the message +
+  // suggestion rather than dumping the raw envelope at the user (CODE-REVIEW
+  // finding 9). Any other (non-JSON) error text is shown verbatim.
   if (result.isError) {
     const first = result.content?.[0];
-    showError('Error loading document', (first?.type === 'text' ? first.text : undefined) || 'Unknown error');
+    const raw = (first?.type === 'text' ? first.text : undefined) || 'Unknown error';
+    let message = raw;
+    let suggestion: string | undefined;
+    try {
+      const parsed = JSON.parse(raw) as { error?: string; suggestion?: string };
+      if (parsed && typeof parsed === 'object' && typeof parsed.error === 'string') {
+        message = parsed.error;
+        suggestion = parsed.suggestion;
+      }
+    } catch {
+      // not JSON — show the raw text as-is
+    }
+    showError('Error loading document', message, suggestion);
     return;
   }
 
-  let data: DocumentData | null = null;
-
-  // Primary channel (R19): the server mirrors the document as
-  // structuredContent. Content-sniffing below survives only as a fallback
-  // for STRUCTURED_CONTENT=false servers.
-  const structured = (result as { structuredContent?: unknown }).structuredContent;
-  if (structured && typeof structured === 'object' && 'id' in structured) {
-    data = structured as DocumentData;
-  }
-
-  // Fallback: legacy dual-content shape [human-readable text, JSON data]
-  if (!data && result.content && result.content.length >= 2) {
-    const jsonContent = result.content[1];
-    if (jsonContent?.type === 'text') {
-      try {
-        data = JSON.parse(jsonContent.text) as DocumentData;
-      } catch (e) {
-        app.sendLog({ level: 'error', data: `JSON parse error: ${e}` });
-      }
-    }
-  }
-
-  // Fallback: try first content item if it looks like JSON
-  if (!data && result.content?.[0]?.type === 'text') {
-    const text = result.content[0].text;
-    if (text.startsWith('{')) {
-      try {
-        data = JSON.parse(text) as DocumentData;
-      } catch {
-        // Not JSON, ignore
-      }
-    }
-  }
+  // Extract the document payload (structuredContent first, then content
+  // fallbacks). The parse logic lives in parse-result.ts so it can be
+  // unit-tested under node against a server-built payload (finding 10).
+  const data = parseDocumentResult(result as ParseableToolResult);
 
   if (data) {
     currentDocument = data;
@@ -516,10 +477,12 @@ function zoomOut(): void {
  */
 function rotateImage(degrees: number): void {
   if (!viewer) return;
-  currentRotation = (currentRotation + degrees) % 360;
-  if (currentRotation < 0) currentRotation += 360;
-  viewer.viewport.setRotation(currentRotation);
-  app.sendLog({ level: 'info', data: `Image rotated to ${currentRotation}°` });
+  // Derive from the live viewport rotation rather than a module-level counter,
+  // which desynced when a new document loaded a fresh viewer at 0° while the
+  // counter still held the previous document's angle (CODE-REVIEW finding 8).
+  const next = (((viewer.viewport.getRotation() + degrees) % 360) + 360) % 360;
+  viewer.viewport.setRotation(next);
+  app.sendLog({ level: 'info', data: `Image rotated to ${next}°` });
 }
 
 /**
@@ -527,7 +490,6 @@ function rotateImage(degrees: number): void {
  */
 function resetView(): void {
   if (!viewer) return;
-  currentRotation = 0;
   viewer.viewport.setRotation(0);
   viewer.viewport.goHome();
 }
@@ -685,7 +647,7 @@ function updateModelContext(doc: DocumentData): void {
 /**
  * Show error state
  */
-function showError(title: string, message: string): void {
+function showError(title: string, message: string, suggestion?: string): void {
   const appEl = document.getElementById('app');
   if (!appEl) return;
 
@@ -693,6 +655,7 @@ function showError(title: string, message: string): void {
     <div class="error">
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(message)}</p>
+      ${suggestion ? `<p class="error-suggestion">${escapeHtml(suggestion)}</p>` : ''}
       <button id="error-back-btn">← Back to Document</button>
     </div>
   `;

@@ -396,6 +396,12 @@ html, body {
   max-width: 400px;
 }
 
+.error-suggestion {
+  margin-top: 0.5rem;
+  font-style: italic;
+  opacity: 0.85;
+}
+
 .error button {
   margin-top: 1rem;
   padding: 0.5rem 1rem;

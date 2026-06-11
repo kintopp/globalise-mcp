@@ -6,6 +6,20 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.7] - 2026-06-11
+
+Document-viewer fixes — the P3 viewer-only batch (code-review findings 8, 9, 10). Viewer-only (`apps/document-viewer`); no server-tool behavior change, no DB rebuild, no `.skill` change.
+
+### Fixed
+- **Rotation no longer desyncs across documents** (finding 8). `rotateImage` tracked the angle in a module-level `currentRotation` that was never reset when a new document loaded a fresh OpenSeadragon viewer at 0°, so the first rotate after navigating jumped to 180°. It now derives from the live `viewer.viewport.getRotation()`, removing the sync invariant entirely; `currentRotation` is deleted and `resetView` no longer touches it.
+- **Error screens show the message, not the raw JSON envelope** (finding 9). The server's `errorResponse` emits `JSON.stringify({error, suggestion, tool})` as the error text; the viewer rendered that blob verbatim. The `isError` branch now parses it and shows `error` as the message with `suggestion` as a secondary `.error-suggestion` line, falling back to the raw text for any non-JSON error. New CSS for `.error-suggestion`.
+
+### Changed
+- **Server↔viewer contract is now single-sourced and cross-checked** (finding 10). The viewer had hand-written `DocumentData`/`ArchivalContext` interfaces duplicating the server's `viewDocumentUiOutputSchema` (zod) across two separate compilations (tsc over `src/`, vite over `apps/`), so a server-side rename compiled green everywhere and failed only at runtime in the iframe. The viewer now imports the server's zod-inferred `ViewDocumentUiOutput`/`ArchivalContext` types directly (`import type`, erased by esbuild — zod stays out of the bundle, verified: bundle size unchanged). The result-parsing logic moved to a browser-free `apps/document-viewer/src/parse-result.ts` so it can run under node, and a new `scripts/test-viewer-protocol.ts` (wired into `npm test` as `test:viewer-protocol`) feeds a schema-validated payload through it — catching `id`-detection / schema drift that `test:viewer-build` (build-only) never could.
+
+### Deferred
+The viewer (`apps/`) is still excluded from `tsc` and only transpiled by vite, so a type error in viewer.ts itself is caught by neither the build nor `npm test` (only the extracted parse path is now node-testable). Full viewer type-checking is a larger build-infra change (an apps tsconfig + DOM/openseadragon/ext-apps types) deferred out of this batch.
+
 ## [2.7.6] - 2026-06-11
 
 Per-connection statement-cache refactor across the two SQLite tools (code-review findings 6, 15, and 20's commodities item). No behavior change — same inputs, outputs, and result contract; full suite green (142 assertions, +2 new). No DB rebuild, no `.skill` change.

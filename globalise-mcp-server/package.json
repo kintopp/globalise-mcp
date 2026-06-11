@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.7.6",
+  "version": "2.7.7",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -14,12 +14,13 @@
     "dev:ui": "vite build -c apps/document-viewer/vite.config.ts --watch",
     "start": "node dist/index.js",
     "inspector": "npm run build && npx @modelcontextprotocol/inspector dist/index.js",
-    "test": "npm run test:fts && npm run test:archival && npm run test:commodities && npm run test:viewer-build && npm run test:smoke",
+    "test": "npm run test:fts && npm run test:archival && npm run test:commodities && npm run test:viewer-build && npm run test:viewer-protocol && npm run test:smoke",
     "test:smoke": "npx tsx scripts/smoke-test.ts",
     "test:fts": "npx tsx scripts/test-fts.ts",
     "test:archival": "npx tsx scripts/test-archival-index.ts",
     "test:commodities": "npx tsx scripts/test-commodities.ts",
-    "test:viewer-build": "npx tsx scripts/test-viewer-build.ts"
+    "test:viewer-build": "npx tsx scripts/test-viewer-build.ts",
+    "test:viewer-protocol": "npx tsx scripts/test-viewer-protocol.ts"
   },
   "keywords": [
     "mcp",

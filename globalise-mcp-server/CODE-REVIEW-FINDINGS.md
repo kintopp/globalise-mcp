@@ -196,7 +196,12 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
 
 ## P3 — Viewer (user-visible polish + structural)
 
-### [ ] 8. Rotation state desyncs when loading a new document
+### [x] 8. Rotation state desyncs when loading a new document — fixed v2.7.7
+
+> **Fixed v2.7.7:** deleted the module-level `currentRotation`; `rotateImage`
+> now derives the next angle from `viewer.viewport.getRotation()`, and
+> `resetView` just calls `setRotation(0)`. Removes the sync invariant entirely.
+
 
 - **Severity:** medium (visible misbehavior on a common path)
 - **Where:** `apps/document-viewer/src/viewer.ts:68` (module-level `currentRotation`), `:519` (`rotateImage`), `:530` (`resetView`), `:424-480` (`initializeImageViewer` — creates a fresh OSD viewer at 0° and never resets `currentRotation`)
@@ -207,7 +212,13 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
   `viewer.viewport.getRotation()`; or reset it to 0 in `initializeImageViewer`.
   Deriving is strictly better (removes the sync invariant entirely).
 
-### [ ] 9. Viewer renders the server's JSON error envelope verbatim as the error message
+### [x] 9. Viewer renders the server's JSON error envelope verbatim as the error message — fixed v2.7.7
+
+> **Fixed v2.7.7:** the viewer's `isError` branch now `JSON.parse`s the text and
+> renders `parsed.error` as the message with `parsed.suggestion` as a secondary
+> `.error-suggestion` line (new CSS), falling back to the raw text for any
+> non-JSON error. `showError` gained an optional `suggestion` param.
+
 
 - **Severity:** medium (raw JSON blob shown to the user; suggestion buried)
 - **Where:** `apps/document-viewer/src/viewer.ts:120-124` (isError path renders `content[0].text` verbatim) vs `src/index.ts:~229` (`errorResponse` emits `JSON.stringify({error, suggestion, tool})` as that text; the view_document_ui handler routes all throws through it at `:532`)
@@ -219,7 +230,19 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
   the app tool — but the JSON envelope is shared with the non-UI tools, so the
   viewer-side parse is the smaller change.)
 
-### [ ] 10. Server↔viewer protocol contract typed twice, never cross-checked, detection hinges on `'id' in structured`
+### [x] 10. Server↔viewer protocol contract typed twice, never cross-checked, detection hinges on `'id' in structured` — fixed v2.7.7
+
+> **Fixed v2.7.7:** the viewer's hand-written `DocumentData`/`ArchivalContext`
+> were deleted; it now `import type`s the server's zod-inferred
+> `ViewDocumentUiOutput`/`ArchivalContext` from `document-viewer.ts` (single
+> source; `import type` is erased by esbuild so zod stays out of the bundle).
+> The parse logic moved to a browser-free `parse-result.ts`, and new
+> `scripts/test-viewer-protocol.ts` (in `npm test`) feeds a schema-validated
+> payload through it — so `id`-detection / schema drift now fails a test.
+> **Residual:** `apps/` is still excluded from `tsc` (vite transpile-only), so a
+> type error in viewer.ts itself is caught by neither the build nor tests; full
+> viewer type-checking (apps tsconfig) is deferred as a larger build-infra change.
+
 
 - **Severity:** medium (latent; regressions invisible to `npm test`)
 - **Where:** `src/tools/document-viewer.ts:53-74` (`viewDocumentUiOutputSchema`, zod) vs `apps/document-viewer/src/viewer.ts:29-62` (hand-written `DocumentData`/`ArchivalContext` interfaces); detection at `viewer.ts:132` (`'id' in structured`)
