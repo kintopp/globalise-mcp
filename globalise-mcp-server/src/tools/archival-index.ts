@@ -461,13 +461,17 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   // Source-specific filters: combining filters that exclude every source
   // would silently return total: 0 and mislead the model into concluding
   // no documents exist (R7) — reject the combination instead.
-  const hasObpOnlyFilters = input.settlement !== undefined;
+  // folio is an OBP-only filter (like settlement): GM has folio columns but is
+  // a different population, and folio is documented "OBP only", so it routes
+  // exactly like settlement (CODE-REVIEW finding 2).
+  const hasFolioFilter = input.folioFrom !== undefined || input.folioTo !== undefined;
+  const hasObpOnlyFilters = input.settlement !== undefined || hasFolioFilter;
   const hasGmOnlyFilters = input.chamber !== undefined || input.htrAvailable !== undefined;
 
   if (hasObpOnlyFilters && hasGmOnlyFilters) {
     throw new ToolError(
-      'Incompatible filters: settlement applies only to OBP, while chamber/htrAvailable apply only to GM (Generale Missiven)',
-      'Run two queries: source "obp" with settlement, and source "gm" with chamber/htrAvailable.',
+      'Incompatible filters: OBP-only filters (settlement, folio range) cannot combine with GM-only filters (chamber, htrAvailable)',
+      'Run two queries: source "obp" with the OBP-only filters, and source "gm" with chamber/htrAvailable.',
     );
   }
   if (input.source === 'obp' && hasGmOnlyFilters) {
@@ -478,8 +482,19 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   }
   if (input.source === 'gm' && hasObpOnlyFilters) {
     throw new ToolError(
-      'The settlement filter applies only to OBP (Digitized Indexes), not to source "gm"',
-      'Use source "obp" or "all" with the settlement filter.',
+      'The settlement and folio filters apply only to OBP (Digitized Indexes), not to source "gm"',
+      'Use source "obp" or "all" with these filters.',
+    );
+  }
+
+  // Folio numbers are positions within a single inventory, so a folio range is
+  // only meaningful with an inventoryNumber. These params were previously
+  // dropped silently when no inventory was given, returning unfiltered results
+  // presented as filtered (CODE-REVIEW finding 2).
+  if (hasFolioFilter && !input.inventoryNumber) {
+    throw new ToolError(
+      'folioFrom/folioTo require an inventoryNumber',
+      'Folio numbers are positions within one inventory; add an inventoryNumber (e.g. "1543") to use a folio range.',
     );
   }
 
@@ -504,7 +519,13 @@ export async function findArchivalDocuments(input: FindArchivalDocumentsInput): 
   const skipObp = input.source === 'all' && hasGmOnlyFilters;
   const skipGm = input.source === 'all' && hasObpOnlyFilters;
   if (skipObp) notes.push('chamber/htrAvailable filters apply only to GM, so the OBP source was skipped');
-  if (skipGm) notes.push('the settlement filter applies only to OBP, so the GM (Generale Missiven) source was skipped');
+  if (skipGm) {
+    const obpOnly = [
+      input.settlement !== undefined ? 'settlement' : null,
+      hasFolioFilter ? 'folio' : null,
+    ].filter(Boolean).join('/');
+    notes.push(`the ${obpOnly} filter applies only to OBP, so the GM (Generale Missiven) source was skipped`);
+  }
 
   const obpClause = (input.source === 'obp' || input.source === 'all') && !skipObp
     ? buildObpWhereClause(effectiveInput)

@@ -46,7 +46,7 @@ export const navigateOutputSchema = z.object({
       ocrSoftware: z.string().optional(),
       annotationGenerated: z.string().optional(),
       languages: z.array(languageSchema),
-      license: z.string(),
+      license: z.string().optional(),
     }).optional(),
     urls: z.object({
       transcriptionsViewer: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),

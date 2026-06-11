@@ -71,6 +71,40 @@ async function main() {
   check(obpOnly.results.length > 0 && obpOnly.results.every((r) => r.type === 'obp'), 'settlement on "all" → OBP results only');
   check(Boolean(obpOnly.note?.includes('GM')), 'settlement on "all" → note names the skipped GM source');
 
+  console.log('2b. folio is an OBP-only filter requiring an inventoryNumber (finding 2)');
+  // A folio range without an inventoryNumber is rejected, not silently dropped
+  // (the old bug: every matching doc returned as if folio-filtered).
+  await expectStructuredError({ folioFrom: 100, folioTo: 200 }, 'folio range without inventoryNumber rejected');
+  await expectStructuredError({ source: 'obp', folioTo: 50 }, 'lone folioTo without inventoryNumber rejected');
+  // folio is OBP-only, so it cannot combine with GM-only filters or source "gm".
+  await expectStructuredError(
+    { inventoryNumber: '1543', folioFrom: 1, chamber: 'Amsterdam' },
+    'folio + chamber rejected as incompatible',
+  );
+  await expectStructuredError(
+    { source: 'gm', inventoryNumber: '1543', folioFrom: 1 },
+    'folio on source "gm" rejected (OBP-only)',
+  );
+  // On source "all", a folio range routes like settlement: GM is skipped with a
+  // note, so no unfiltered GM rows are mixed into a folio-filtered response.
+  const folioInv = (
+    await call({ source: 'obp', settlement: 'Batavia', size: 1, includeAggregations: false })
+  ).results[0]?.inventoryNumber;
+  check(typeof folioInv === 'string', 'found an OBP inventory to fold a folio range onto');
+  const folioAll = await call({
+    source: 'all',
+    inventoryNumber: folioInv!,
+    folioFrom: 1,
+    folioTo: 1_000_000,
+    size: 5,
+    includeAggregations: false,
+  });
+  check(folioAll.results.every((r) => r.type === 'obp'), 'folio on "all" → OBP results only (GM skipped)');
+  check(
+    Boolean(folioAll.note?.includes('folio') && folioAll.note?.includes('GM')),
+    'folio on "all" → note names folio and the skipped GM source',
+  );
+
   console.log('3. FTS5 hostile inputs (R7)');
   // A lone hyphenated term is per-term quoted (not whole-phrase wrapped), and
   // the term still matches the index.

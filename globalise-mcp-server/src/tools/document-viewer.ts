@@ -11,6 +11,7 @@ import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
 import { DocumentResponse } from '../utils/types.js';
 import { languageSchema, mapPageLanguages } from '../utils/languages.js';
+import { normalizeLicense } from './document.js';
 import { findArchivalDocuments } from './archival-index.js';
 
 /**
@@ -182,7 +183,7 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
       inventory: inventoryNumber,
       scan: scanNumber,
       languages: mapPageLanguages(metadata?.lang),
-      license: metadata?.comment?.replace('license: ', '') || undefined,
+      license: normalizeLicense(metadata?.comment),
     },
     navigation: {
       prev: metadata?.prevPageId || null,

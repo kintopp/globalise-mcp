@@ -88,7 +88,11 @@ export interface PageMetadata {
   creator: string;
   created: string;
   lastChange: string;
-  comment: string;
+  // Carries the page license as a "license: <value>" string. Upstream is not
+  // guaranteed to set it on every page, so it is optional and untrusted —
+  // normalizeLicense() in document.ts maps a missing/empty value to undefined
+  // (CODE-REVIEW finding 1).
+  comment?: string;
   naUrl: string;
   trUrl: string;
   prevPageId?: string;

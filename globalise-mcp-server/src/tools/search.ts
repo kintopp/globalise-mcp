@@ -237,6 +237,44 @@ async function search(input: SearchInput): Promise<SearchOutput> {
 }
 
 /**
+ * Recompute aggregations over an in-memory result set. matchAll filters upstream
+ * on a single language and then post-filters to the pages carrying ALL requested
+ * languages, so the upstream aggregations describe that single-language candidate
+ * pool — a different, usually far larger, population than the bilingual pages
+ * actually returned. Recomputing here keeps total, results, and aggregations all
+ * describing the same set (CODE-REVIEW finding 3).
+ */
+function aggregateResults(results: SearchOutput['results']): NonNullable<SearchOutput['aggregations']> {
+  const invCounts = new Map<string, number>();
+  const docCounts = new Map<string, number>();
+  const langCounts = new Map<string, { label: string; count: number }>();
+
+  for (const r of results) {
+    invCounts.set(r.inventoryNumber, (invCounts.get(r.inventoryNumber) ?? 0) + 1);
+    docCounts.set(r.document, (docCounts.get(r.document) ?? 0) + 1);
+    for (const lang of r.languages) {
+      const entry = langCounts.get(lang.code);
+      if (entry) entry.count++;
+      else langCounts.set(lang.code, { label: lang.label, count: 1 });
+    }
+  }
+
+  return {
+    topInventoryNumbers: [...invCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([inventoryNumber, count]) => ({ inventoryNumber, count })),
+    topDocuments: [...docCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([document, count]) => ({ document, count })),
+    languages: [...langCounts.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([code, { label, count }]) => ({ code, label, count })),
+  };
+}
+
+/**
  * Consolidated search tool (R6): replaces the former search_transcriptions /
  * search_by_inventory / search_by_language trio. Inventory and language
  * filters compose with the free-text query.
@@ -268,7 +306,9 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
     fragmentSize: 500,
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
-    includeAggregations: true,
+    // matchAll recomputes aggregations client-side over the post-filtered set
+    // (finding 3), so the upstream single-language aggregations would be unused.
+    includeAggregations: !useMatchAll,
     languages: filterLanguages,
     filters,
   });
@@ -289,12 +329,12 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
   return {
     total: { value: matched.length, relation: 'gte' },
     results: pageResults,
-    aggregations: searchResult.aggregations,
+    aggregations: aggregateResults(matched),
     pagination: {
       from: input.from,
       size: input.size,
       hasMore: input.from + input.size < matched.length,
     },
-    note: `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); the total is a lower bound and pages beyond the scanned window are unreachable.`,
+    note: `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); total and aggregations describe the matching pages within that window — the total is a lower bound and pages beyond the scanned window are unreachable.`,
   };
 }

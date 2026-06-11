@@ -8,6 +8,18 @@ import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { DocumentResponse } from '../utils/types.js';
 import { languageSchema, mapPageLanguages } from '../utils/languages.js';
 
+/**
+ * Normalize the upstream `metadata.comment` field, which carries the page
+ * license as a "license: <value>" string (e.g. "license: CC-BY-4.0"). Strips
+ * the prefix and maps a missing or empty value to undefined. Shared with the
+ * viewer tool (document-viewer.ts) so this one untrusted upstream field is
+ * handled identically everywhere instead of one path returning it raw and
+ * required while another strips and optionalizes it (CODE-REVIEW finding 1).
+ */
+export function normalizeLicense(comment: string | undefined): string | undefined {
+  return comment?.replace('license: ', '') || undefined;
+}
+
 // Public tool input: just the document ID; annotations and text are always included
 export const getDocumentInputSchema = z.object({
   documentId: z.string()
@@ -31,7 +43,7 @@ export const getDocumentOutputSchema = z.object({
     ocrSoftware: z.string().optional(),
     annotationGenerated: z.string().optional(),
     languages: z.array(languageSchema),
-    license: z.string(),
+    license: z.string().optional(),
   }).optional(),
   navigation: z.object({
     previousPageId: z.string().optional(),
@@ -114,7 +126,7 @@ export async function getDocument(options: GetDocumentOptions): Promise<GetDocum
       ocrSoftware: annotation?.generator?.name,
       annotationGenerated: annotation?.generated,
       languages: mapPageLanguages(metadata.lang),
-      license: metadata.comment,
+      license: normalizeLicense(metadata.comment),
     };
 
     // Add navigation
