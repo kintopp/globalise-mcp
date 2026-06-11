@@ -28,14 +28,14 @@ Word-level coordinates exist in PageXML files but aren't exposed through the pub
 ### Reimplement Removed Resources as SQLite-backed Tools
 
 **Priority:** Medium
-**Status:** Planned (resources removed in v1.17.0)
+**Status:** In progress — Commodities shipped (v2.7.0); Weights & Measures + Query Syntax remain
 
 Archived content in `archived-resources/`. Reimplement as on-demand lookup tools:
-- **Weights & Measures** → `globalise_lookup_measure` (term → variants, conversions)
-- **Commodities** → `globalise_lookup_commodity` (term → concepts, hierarchy, variants)
-- **Query Syntax** → integrate into search tool descriptions or simple help tool
+- **Commodities** → `globalise_lookup_commodity` — ✅ **Done (v2.7.0).** Term → concepts, hierarchy, variants; backed by the shared `data/reference.sqlite` (built by `scripts/build-commodities-db.ts`, ensured by `scripts/ensure-reference-db.ts`, tested by `scripts/test-commodities.ts`).
+- **Weights & Measures** → `globalise_lookup_measure` (term → variants, conversions) — slots into the same `data/reference.sqlite` as a second table + tool, mirroring `src/tools/commodities.ts`.
+- **Query Syntax** → integrate into search tool descriptions or simple help tool.
 
-Could share a single `data/reference.sqlite` database. Follows `globalise_find_archival_documents` pattern.
+The shared `data/reference.sqlite` database this item proposed now exists and follows the `globalise_find_archival_documents` pattern (read-only DB, per-connection state via `createConnectionState`, shared FTS sanitizer). Adding `lookup_measure` is mostly a second table + a tool module cloned from `commodities.ts`.
 
 ---
 
