@@ -155,7 +155,17 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
   (Railway's grace period), then `closeDatabase()` and exit. Stdio mode keeps the
   current synchronous path.
 
-### [ ] 6. Archival query path executes the identical FTS5 MATCH up to 8× per call and re-prepares every statement
+### [x] 6. Archival query path executes the identical FTS5 MATCH up to 8× per call and re-prepares every statement — fixed (re-prepare) v2.7.6
+
+> **Fixed v2.7.6 (option a):** every per-call statement (OBP/GM COUNT+SELECT,
+> the 3 aggregation GROUP BYs) now goes through the cached `prepare()` on the
+> shared `createConnectionState` (database.ts), so each distinct SQL shape is
+> compiled once per connection instead of re-prepared every call.
+> **Deferred (option b):** materializing the FTS-matched rowids once per call
+> (temp table/CTE) to avoid *executing* the MATCH 8× was not done — a per-call
+> temp table invalidates the cached statements that reference it (conflicts with
+> the statement cache), and the redundant MATCH cost is modest on the warm
+> read-only DB. The re-prepare cost (the finding's primary fix) is eliminated.
 
 - **Severity:** medium (synchronous node:sqlite blocks the event loop per redundant scan; multiplies under concurrent HTTP users)
 - **Where:** `src/tools/archival-index.ts` — sanitizer probe via `:493`, OBP COUNT `:528`, OBP SELECT `:536`, GM COUNT `:549`, GM SELECT `:562`, plus 3 aggregation GROUP BYs `:417/:424/:438` (default `includeAggregations:true`)
@@ -266,7 +276,15 @@ returns the half-configured handle. The three pragmas are perf-only and
 essentially never throw on an opened read-only connection — structural, not
 live. **Fix:** assign to a local, run pragmas, then publish to the module var.
 
-### [ ] 15. Per-connection static-state cache hand-copied between the two SQLite tools
+### [x] 15. Per-connection static-state cache hand-copied between the two SQLite tools — fixed v2.7.6
+
+> **Fixed v2.7.6:** extracted `createConnectionState(init)` to `database.ts` — a
+> factory that owns the handle-keying invariant in one place and exposes a
+> per-connection `prepare(sql)` statement cache (folding in finding 6). Both
+> `archival-index.ts` (`getDbState`) and `commodities.ts` (`getState`) now call
+> it; a future weights-&-measures DB gets the invariant for free. New
+> test-archival-index.ts §7 locks the reopen behavior.
+
 
 `src/tools/commodities.ts:122-133` (`getStaticState`) mirrors
 `src/tools/archival-index.ts:390-410` (`getStaticDbState`) — same
@@ -326,9 +344,13 @@ anchored strip: `docId.replace(/^urn:globalise:/i, '')` in both.
 - **Fix:** extract `scripts/db-build-utils.ts` (transaction wrapper, artifact
   tail) and a parameterized `ensureDb({dbPath, gzPath, buildScript, urlEnv})`.
 
-### [ ] 20. Minor efficiency (verified real, marginal magnitude)
+### [ ] 20. Minor efficiency (verified real, marginal magnitude) — partially fixed v2.7.6
 
-- `src/tools/commodities.ts:167/:178` — COUNT/SELECT re-prepared per call (3
+> **Note:** the commodities item below is **done v2.7.6** (folded into finding
+> 15's `createConnectionState`). The remaining items (viewer, index.ts) are
+> still open — this finding stays `[ ]` for them.
+
+- **[done v2.7.6]** `src/tools/commodities.ts:167/:178` — COUNT/SELECT re-prepared per call (3
   constant SQL strings; cacheable in `getStaticState`); text query runs the
   MATCH 3× (probe/COUNT/SELECT). Sub-ms on 3.5K rows — fold into finding 15.
 - `apps/document-viewer/src/viewer.ts:485-501` — new RegExp per highlight term

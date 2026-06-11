@@ -215,6 +215,20 @@ async function main() {
   check(Boolean(unpublished), 'corpus has an unpublished GM row (rgpVolume null) to check');
   check(unpublished?.publishedEdition === null, 'unpublished GM row has publishedEdition === null');
 
+  console.log('7. per-connection statement cache rebuilds after DB reopen (findings 6/15)');
+  // A query primes the per-connection prepared-statement cache. After
+  // closeDatabase() those statements belong to the old (closed) handle, so the
+  // next call must rebuild state on the fresh handle rather than reuse stale
+  // statements — the handle-keying invariant createConnectionState centralizes.
+  const before = await call({ query: 'peper', size: 3, includeAggregations: true });
+  closeDatabase();
+  const after = await call({ query: 'peper', size: 3, includeAggregations: true });
+  check(after.total.value === before.total.value && before.total.value > 0, 'same query returns the same total after closeDatabase + reopen');
+  check(
+    JSON.stringify(after.aggregations) === JSON.stringify(before.aggregations),
+    'aggregations identical after reopen (state rebuilt on the fresh handle, not stale)',
+  );
+
   closeDatabase();
 
   finish('Archival-index tests');

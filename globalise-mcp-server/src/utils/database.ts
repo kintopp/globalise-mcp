@@ -152,3 +152,58 @@ export function getDatabasePath(): string {
 export function getReferenceDatabasePath(): string {
   return REFERENCE_DB_PATH;
 }
+
+/**
+ * Per-connection state derived from a Db handle, with a statement cache.
+ * `prepare(sql)` returns a statement prepared once and reused for the life of
+ * the connection (cached by exact SQL string).
+ */
+export interface ConnectionState {
+  readonly db: Db;
+  /** Prepare a statement once per connection, cached by exact SQL string. */
+  prepare(sql: string): DbStatement;
+}
+
+/**
+ * Build a memoized accessor for state derived from a Db handle. This owns, in
+ * one place, the two invariants both SQLite tools used to hand-copy
+ * (CODE-REVIEW finding 15):
+ *
+ *  - **Handle-keying:** a prepared statement belongs to the handle that created
+ *    it, so the cache is keyed by the handle and rebuilt after closeDatabase()
+ *    + reopen. The DBs are read-only and rebuilt only at deploy, so any
+ *    constants the init derives (totals, probes) hold for the connection's life.
+ *  - **Statement caching:** the `prepare()` passed to `init` (and stored on the
+ *    returned state) caches by SQL string, so the handful of WHERE shapes a tool
+ *    issues per call are compiled once, not re-prepared every call (findings
+ *    6/20). node:sqlite is synchronous, so each avoided compile is event-loop
+ *    time saved — and it multiplies under concurrent HTTP users.
+ *
+ * Each call to this factory owns its own slot, so different tools and DBs never
+ * collide. The cache is unbounded but bounded in practice: the distinct SQL
+ * shapes are few (parameter *values* don't vary the string; only e.g. the
+ * count of `IN (@inv0, @inv1, …)` placeholders does).
+ */
+export function createConnectionState<T>(
+  init: (state: ConnectionState) => T,
+): (db: Db) => ConnectionState & T {
+  let cached: (ConnectionState & T) | null = null;
+  return (db: Db): ConnectionState & T => {
+    if (cached?.db !== db) {
+      const statements = new Map<string, DbStatement>();
+      const base: ConnectionState = {
+        db,
+        prepare(sql: string): DbStatement {
+          let stmt = statements.get(sql);
+          if (stmt === undefined) {
+            stmt = db.prepare(sql);
+            statements.set(sql, stmt);
+          }
+          return stmt;
+        },
+      };
+      cached = Object.assign(base, init(base));
+    }
+    return cached;
+  };
+}

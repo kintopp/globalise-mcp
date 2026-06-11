@@ -6,6 +6,19 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.6] - 2026-06-11
+
+Per-connection statement-cache refactor across the two SQLite tools (code-review findings 6, 15, and 20's commodities item). No behavior change — same inputs, outputs, and result contract; full suite green (142 assertions, +2 new). No DB rebuild, no `.skill` change.
+
+### Changed
+- **New `createConnectionState(init)` in `src/utils/database.ts`** (finding 15). Both tools hand-copied the same per-connection cache (`staticState?.db !== db` handle-keying + an FTS probe + a cached COUNT), and a third copy was planned for the weights-&-measures DB. Extracted to one factory that owns the handle-keying invariant (a prepared statement belongs to its handle, so the cache is rebuilt after `closeDatabase()` + reopen) and exposes a per-connection `prepare(sql)` that caches statements by SQL string. Each factory call owns its own slot, so the archival and reference DBs never collide.
+- **`src/tools/archival-index.ts`** (finding 6). `getStaticDbState` → `getDbState = createConnectionState(...)`; every per-call statement (OBP/GM COUNT + SELECT, the three aggregation GROUP BYs) now goes through the cached `prepare()` instead of `db.prepare()`, so each distinct SQL shape is compiled once per connection rather than re-prepared on every call (with a query + `source:'all'` that was up to 8 inline prepares). The lazy unfiltered-aggregation result cache is unchanged.
+- **`src/tools/commodities.ts`** (finding 20, first item). `getStaticState` → `getState = createConnectionState(...)`; the FTS COUNT and both SELECT shapes now use the cached `prepare()` too.
+- **Tests** — `test-archival-index.ts` §7: a query → `closeDatabase()` → same query asserts identical total/aggregations, locking the handle-keying invariant (state rebuilt on the fresh handle, not reused stale).
+
+### Deferred
+Finding 6 also floated materializing the FTS-matched rowids once per call (temp table / CTE) so the same `MATCH` isn't *executed* in every statement. Not done: a per-call temp table conflicts with the statement cache (cached statements referencing a re-created temp table get invalidated), and on the warm read-only DB the redundant `MATCH` cost is modest. The re-prepare cost — the finding's primary fix — is eliminated. Finding 20's other items (viewer regex/handlers, the `STRUCTURED_CONTENT` gate, `formatError`) are untouched and remain open.
+
 ## [2.7.5] - 2026-06-11
 
 Graceful HTTP shutdown (P2 finding 5). Every Railway redeploy sends SIGTERM, but `shutdown()` was `closeDatabase(); process.exit(0)` — it cut in-flight `/mcp` requests mid-response (e.g. while awaiting an upstream search fetch) and the socket kept accepting new connections right up to exit. The root cause was a discarded handle: `createHttpServer` called `app.listen()` but returned the express `app`, throwing away the `http.Server`, so nothing could `.close()` it.

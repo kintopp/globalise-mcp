@@ -25,8 +25,7 @@ import { z } from 'zod';
 import {
   getReferenceDatabase,
   isReferenceDatabaseAvailable,
-  type Db,
-  type DbStatement,
+  createConnectionState,
 } from '../utils/database.js';
 import { sanitizeFtsQuery } from '../utils/fts.js';
 
@@ -114,23 +113,16 @@ function mapRow(row: CommodityDbRow) {
  * Per-connection state whose SQL or result is constant: the FTS probe statement
  * and the glossary row count. The reference DB is read-only and rebuilt only at
  * deploy, so neither can change for the life of a connection — caching them
- * keeps every call from re-preparing the probe and re-running COUNT(*) (mirrors
- * getStaticDbState in archival-index.ts; node:sqlite is synchronous, so each
- * avoided query is event-loop time saved). Keyed by the db handle so a reopened
- * database (closeDatabase + getReferenceDatabase) gets fresh state.
+ * keeps every call from re-preparing the probe and re-running COUNT(*).
+ * createConnectionState (database.ts) owns the handle-keying and the statement
+ * cache: `state.prepare(sql)` below is shared with the per-call COUNT/SELECT, so
+ * those constant SQL strings are compiled once per connection too (CODE-REVIEW
+ * findings 15, 20).
  */
-let staticState: { db: Db; ftsProbe: DbStatement; commoditiesTotal: number } | null = null;
-
-function getStaticState(db: Db) {
-  if (staticState?.db !== db) {
-    staticState = {
-      db,
-      ftsProbe: db.prepare('SELECT rowid FROM commodities_fts WHERE commodities_fts MATCH @query LIMIT 1'),
-      commoditiesTotal: (db.prepare('SELECT COUNT(*) AS c FROM commodities').get() as { c: number }).c,
-    };
-  }
-  return staticState;
-}
+const getState = createConnectionState((state) => ({
+  ftsProbe: state.prepare('SELECT rowid FROM commodities_fts WHERE commodities_fts MATCH @query LIMIT 1'),
+  commoditiesTotal: (state.prepare('SELECT COUNT(*) AS c FROM commodities').get() as { c: number }).c,
+}));
 
 /**
  * Look up commodities by free text (or page the whole glossary alphabetically).
@@ -146,7 +138,8 @@ export async function lookupCommodity(input: LookupCommodityInput): Promise<Look
   }
 
   const db = getReferenceDatabase();
-  const { ftsProbe, commoditiesTotal } = getStaticState(db);
+  const state = getState(db);
+  const { ftsProbe, commoditiesTotal } = state;
 
   // With a text query we JOIN the FTS table, rank by bm25, and COUNT the
   // matches; without one we page the whole glossary by label — so the total is
@@ -164,7 +157,7 @@ export async function lookupCommodity(input: LookupCommodityInput): Promise<Look
                  WHERE commodities_fts MATCH @query
                  ORDER BY bm25(commodities_fts, ${BM25_WEIGHTS})
                  LIMIT @limit OFFSET @offset`;
-    total = (db.prepare(
+    total = (state.prepare(
       `SELECT COUNT(*) AS c FROM commodities c JOIN commodities_fts f ON c.id = f.rowid
        WHERE commodities_fts MATCH @query`,
     ).get(params) as { c: number }).c;
@@ -175,7 +168,7 @@ export async function lookupCommodity(input: LookupCommodityInput): Promise<Look
     total = commoditiesTotal;
   }
 
-  const rows = db.prepare(selectSql).all({ ...params, limit: input.size, offset: input.from }) as CommodityDbRow[];
+  const rows = state.prepare(selectSql).all({ ...params, limit: input.size, offset: input.from }) as CommodityDbRow[];
 
   return {
     total: { value: total, relation: 'eq' },
