@@ -435,7 +435,7 @@ export function createServer(): McpServer {
     server,
     'globalise_find_archival_documents',
     'Query a local index of 228K+ VOC archival document descriptions (finding aids) — useful for scoping by archival metadata before searching transcriptions. ' +
-      'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, RGP references, scan URLs). ' +
+      'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, scan URLs, and — for the ~558 published in RGP — published-edition links to Retroboeken scans + GitHub plain text). ' +
       'The query field uses SQLite FTS5 — a bare space means AND (all terms must appear); plus OR/NOT, prefix*, "exact phrase". Unparseable characters (hyphens, slashes) trigger a phrase-escape retry that sets a response note. ' +
       'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
       'Inventory numbers in the results feed the inventoryNumber filter of globalise_search_transcriptions to reach the actual transcribed pages.',

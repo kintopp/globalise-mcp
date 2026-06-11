@@ -7,6 +7,8 @@
  *      SQLite syntax errors
  *   4. combined OBP→GM pagination across the source boundary
  *   5. unfiltered aggregations are cached per connection and stable (R14)
+ *   6. RGP published-edition links — Retroboeken offset, GitHub per-page/full-volume
+ *      URLs, multi-page and volume-only rows, null for unpublished missives
  *
  * Plain Node script (no framework). Imports the tool directly from src via
  * tsx — no build needed, but the local SQLite database must exist.
@@ -23,9 +25,18 @@ import { isDatabaseAvailable, closeDatabase, getDatabasePath } from '../src/util
 import { ToolError } from '../src/utils/errors.js';
 import { check, finish } from './test-utils.js';
 
+type GmResult = Extract<FindArchivalDocumentsOutput['results'][number], { type: 'gm' }>;
+const isGm = (r: FindArchivalDocumentsOutput['results'][number]): r is GmResult => r.type === 'gm';
+
 /** Parse args through the tool schema (applies defaults) and run the query. */
 async function call(args: Record<string, unknown>): Promise<FindArchivalDocumentsOutput> {
   return findArchivalDocuments(findArchivalDocumentsInputSchema.parse(args));
+}
+
+/** GM rows for a given inventory number (source "gm" so the filter stays GM-only). */
+async function gmRowsFor(inventoryNumber: string): Promise<GmResult[]> {
+  const res = await call({ source: 'gm', inventoryNumber, size: 50, includeAggregations: false });
+  return res.results.filter(isGm);
 }
 
 async function expectStructuredError(args: Record<string, unknown>, label: string): Promise<void> {
@@ -100,6 +111,55 @@ async function main() {
     JSON.stringify(agg1.aggregations) === JSON.stringify(agg2.aggregations),
     'repeated unfiltered call returns identical aggregations',
   );
+
+  console.log('6. RGP published-edition links');
+  const RETRO = 'https://resources.huygens.knaw.nl/retroboeken/generalemissiven/';
+  const GH = 'https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main';
+
+  // inv 1208 → vol 3, page 1: all three links; vol-3 offset 13 → website page 14; imagePane
+  const v3p1 = (await gmRowsFor('1208')).find((r) => r.rgpVolume === '3' && r.rgpPage === '1');
+  check(Boolean(v3p1?.publishedEdition), 'inv 1208 (vol 3, p1) has publishedEdition');
+  check(
+    v3p1?.publishedEdition?.retroboekenUrl === `${RETRO}#source=3&page=14&view=imagePane`,
+    'retroboekenUrl applies the vol-3 offset (1+13=14) and lands on imagePane',
+  );
+  check(
+    v3p1?.publishedEdition?.githubPageUrl === `${GH}/txt/GM3/3_1.txt`,
+    'githubPageUrl keys directly off rgp_page (no offset)',
+  );
+  check(
+    v3p1?.publishedEdition?.githubVolumeUrl === `${GH}/full_volumes/GM_3.txt`,
+    'githubVolumeUrl points at the full volume (underscore form)',
+  );
+
+  // multi-page rgp_page "172;173" (inv 1085, vol 1) → first page 172; vol-1 offset 23 → page 195
+  const multi = (await gmRowsFor('1085')).find((r) => r.rgpPage === '172;173');
+  check(
+    multi?.publishedEdition?.githubPageUrl === `${GH}/txt/GM1/1_172.txt`,
+    'multi-page rgp_page takes the first page for the per-page link',
+  );
+  check(
+    multi?.publishedEdition?.retroboekenUrl === `${RETRO}#source=1&page=195&view=imagePane`,
+    'multi-page rgp_page takes the first page for the Retroboeken offset (172+23=195)',
+  );
+
+  // inv 3066 → vol 14, page null: full-volume link present, page-precise links null
+  const volOnly = (await gmRowsFor('3066')).find((r) => r.rgpVolume === '14' && r.rgpPage === null);
+  check(Boolean(volOnly?.publishedEdition), 'volume-only row (inv 3066) still has publishedEdition');
+  check(
+    volOnly?.publishedEdition?.githubVolumeUrl === `${GH}/full_volumes/GM_14.txt`,
+    'volume-only row gets the full-volume link',
+  );
+  check(
+    volOnly?.publishedEdition?.retroboekenUrl === null && volOnly?.publishedEdition?.githubPageUrl === null,
+    'volume-only row has null page-precise links',
+  );
+
+  // a GM row not published in RGP → publishedEdition is null
+  const allGm = await call({ source: 'gm', size: 500, includeAggregations: false });
+  const unpublished = allGm.results.find((r): r is GmResult => r.type === 'gm' && r.rgpVolume === null);
+  check(Boolean(unpublished), 'corpus has an unpublished GM row (rgpVolume null) to check');
+  check(unpublished?.publishedEdition === null, 'unpublished GM row has publishedEdition === null');
 
   closeDatabase();
 

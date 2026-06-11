@@ -25,26 +25,6 @@ Word-level coordinates exist in PageXML files but aren't exposed through the pub
 
 ---
 
-### Add RGP Published Edition Links (Retroboeken + GitHub)
-
-**Priority:** Medium
-**Status:** Ready to implement (mapping + sources re-verified live 2026-06-11; raw fields already exposed)
-
-558 of 950 Generale Missiven have RGP published editions available via Retroboeken (interactive viewer) and GitHub (plain text). The raw `rgpVolume`/`rgpPage` fields are already surfaced in GM output (`mapGmRow`, `src/tools/archival-index.ts:303-304`); what remains is turning them into clickable URLs when `rgp_volume` and `rgp_page` exist.
-
-**Two link targets, both verified live (HTTP 200) 2026-06-11:**
-
-- **Retroboeken** (page-precise, interactive viewer with scans+OCR): `#source={vol}&page={rgp_page + offset}&view={mode}`. Needs the per-volume offset table — all 14 offsets in `RETROBOEKEN_MAPPING.md` (verified). The website page ≠ printed page, hence the offset.
-- **GitHub** (plain text, CC BY-NC-SA 4.0 — link only, no caching): **letter-precise is possible and trivial** — the per-page files `txt/GM{vol}/{vol}_{rgp_page}.txt` are keyed directly by `rgp_page` (no offset; front matter stripped so arabic page 1 = first letter page), ~2-3 KB each. Verified: `3_1.txt`/`3_4.txt`/`1_21.txt` land exactly on the expected missives. Full-volume files (`full_volumes/GM_{vol}.txt`, 0.4-3.6 MB, ~25.6 MB total) are line-keyed `{vol} {page}:{line}` and can be blob-deep-linked via `#L{line}` after building an `rgp_page→line` index. **This corrects `GITHUB_RGP_TRANSCRIPTIONS.md`'s old "no letter-level mapping" claim** (see the corrected "Page Number Mapping" section).
-
-**Implementation:** URL generator wired into `mapGmRow`. Parse multi-page `rgp_page` (14 rows like `"172;173"`, `"350-1"`) by taking the first page (`split(/[;,-]/)[0]`). For the GitHub TSV link use `GM{vol}.tsv` (verified 200) — **not** `GM_{vol}.tsv` (404); the doc's "URL Pattern" section has this wrong, the pseudocode is right.
-
-**Before coding (decisions to flag — Editorial Decisions rule):** (1) default Retroboeken `view` (`htmlPane` vs `imagePane`); (2) which GitHub link(s) to surface — letter-level per-page `.txt`, full volume, and/or TSV. Adding fields means updating `gmOutputSchema` + `mapGmRow` (strict output schema since v2.5.4), CHANGELOG, and a version bump — not a passthrough.
-
-**Documentation:** repo-root `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/` — `RETROBOEKEN_MAPPING.md` and `GITHUB_RGP_TRANSCRIPTIONS.md` (note: `offline/` is gitignored and lives at the repo root, **not** under `globalise-mcp-server/`).
-
----
-
 ### Reimplement Removed Resources as SQLite-backed Tools
 
 **Priority:** Medium

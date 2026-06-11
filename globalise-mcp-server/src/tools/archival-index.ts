@@ -56,6 +56,18 @@ const obpDocumentSchema = z.object({
   documentType: z.string().nullable(),
 });
 
+// Links to the published RGP (Rijks Geschiedkundige Publicatiën) edition of a
+// Generale Missive. Null on the GM object when the missive was not published in
+// RGP (~41% are not). Built by buildPublishedEdition() from rgp_volume/rgp_page.
+const publishedEditionSchema = z.object({
+  retroboekenUrl: z.string().nullable()
+    .describe('Retroboeken interactive viewer (page-scan pane) at the missive’s start page; null if rgp_page is missing. Page-precise via the per-volume front-matter offset.'),
+  githubPageUrl: z.string().nullable()
+    .describe('Raw GitHub per-page plain-text transcription where the missive begins (keyed directly by rgp_page, no offset); null if rgp_page is missing. Long letters spill onto following pages.'),
+  githubVolumeUrl: z.string()
+    .describe('Raw GitHub full-volume plain-text transcription (entire RGP volume). Plain text only — link-only, never fetched/cached (CC BY-NC-SA 4.0).'),
+});
+
 // GM document result type
 const gmDocumentSchema = z.object({
   type: z.literal('gm'),
@@ -78,6 +90,8 @@ const gmDocumentSchema = z.object({
   htrAvailable: z.boolean(),
   rgpVolume: z.string().nullable(),
   rgpPage: z.string().nullable(),
+  publishedEdition: publishedEditionSchema.nullable()
+    .describe('Links to the published RGP edition (Retroboeken scans + GitHub plain text); null if this missive was not published in RGP (~41% are not).'),
 });
 
 // Output schema
@@ -277,6 +291,51 @@ function mapObpRow(row: ObpDbRow) {
   };
 }
 
+const RETROBOEKEN_BASE = 'https://resources.huygens.knaw.nl/retroboeken/generalemissiven/';
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main';
+
+/**
+ * Per-volume front-matter offset for Retroboeken: website_page = rgp_page + offset.
+ * All 14 verified live 2026-01-01 (offline RETROBOEKEN_MAPPING.md). GitHub per-page
+ * files need no offset — they are keyed directly by rgp_page.
+ */
+const RETROBOEKEN_OFFSETS: Record<string, number> = {
+  '1': 23, '2': 13, '3': 13, '4': 15, '5': 15, '6': 15, '7': 11,
+  '8': 11, '9': 13, '10': 11, '11': 11, '12': 11, '13': 11, '14': 13,
+};
+
+/**
+ * Build published-edition links for a Generale Missive from its raw RGP fields.
+ *
+ * Returns null when the missive has no RGP volume (~392 of 950 are unpublished).
+ * The full-volume GitHub link needs only the volume, so it is always present
+ * when the object exists — including the one row (inv 3066) that has a volume
+ * but a null page. The page-precise Retroboeken and per-page GitHub links require
+ * a parseable first page: rgp_page may hold a multi-page list ("172;173",
+ * "28; 29; 33", "350-1"), and parseInt reads the leading integer in every case.
+ */
+function buildPublishedEdition(
+  rgpVolume: string | null,
+  rgpPage: string | null,
+): z.infer<typeof publishedEditionSchema> | null {
+  if (!rgpVolume) return null;
+
+  const githubVolumeUrl = `${GITHUB_RAW_BASE}/full_volumes/GM_${rgpVolume}.txt`;
+
+  const firstPage = rgpPage != null ? parseInt(rgpPage, 10) : NaN;
+  const hasPage = !Number.isNaN(firstPage);
+  const offset = RETROBOEKEN_OFFSETS[rgpVolume];
+
+  const githubPageUrl = hasPage
+    ? `${GITHUB_RAW_BASE}/txt/GM${rgpVolume}/${rgpVolume}_${firstPage}.txt`
+    : null;
+  const retroboekenUrl = hasPage && offset !== undefined
+    ? `${RETROBOEKEN_BASE}#source=${rgpVolume}&page=${firstPage + offset}&view=imagePane`
+    : null;
+
+  return { retroboekenUrl, githubPageUrl, githubVolumeUrl };
+}
+
 /**
  * Map a GM database row to the output format.
  */
@@ -302,6 +361,7 @@ function mapGmRow(row: GmDbRow) {
     htrAvailable: row.htr_available === 1,
     rgpVolume: row.rgp_volume,
     rgpPage: row.rgp_page,
+    publishedEdition: buildPublishedEdition(row.rgp_volume, row.rgp_page),
   };
 }
 

@@ -6,6 +6,24 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.6.0] - 2026-06-11
+
+Adds clickable published-edition links to Generale Missiven results. The 558 GM letters with an RGP (Rijks Geschiedkundige Publicatiën) edition now carry a `publishedEdition` object pointing at the Retroboeken interactive viewer and the GitHub plain-text transcriptions — turning the raw `rgpVolume`/`rgpPage` fields (already surfaced) into usable URLs. Pure URL construction from data already in the DB: no DB rebuild, no network calls, no new dependencies, and the server never fetches or caches the edition text (link-only; GitHub repo is CC BY-NC-SA 4.0). Minor bump for the new output field. URL templates re-verified live (HTTP 200) and against the DB on 2026-06-11.
+
+### Added
+- **`publishedEdition` on GM results** (`src/tools/archival-index.ts`). A nested object on each Generale Missive, or `null` when the missive was not published in RGP (~41% are not). Fields:
+  - `retroboekenUrl` — Retroboeken viewer (`#source={vol}&page={rgp_page + offset}&view=imagePane`) at the missive's start page; page-precise via a per-volume front-matter offset (all 14 verified). `null` when `rgp_page` is missing.
+  - `githubPageUrl` — raw GitHub per-page transcription `txt/GM{vol}/{vol}_{rgp_page}.txt`, keyed **directly** by `rgp_page` with no offset (front matter is stripped, so arabic page 1 = first letter page). `null` when `rgp_page` is missing.
+  - `githubVolumeUrl` — raw GitHub full-volume transcription `full_volumes/GM_{vol}.txt`. Needs only the volume, so it is always present when `publishedEdition` exists — including the one row (inv 3066) that has a volume but a null page.
+- The `globalise_find_archival_documents` tool description now mentions the published-edition links in its GM clause (`src/index.ts`).
+- Test section 6 in `scripts/test-archival-index.ts` (11 assertions): URL/offset correctness for a known row, multi-page `rgp_page` first-page extraction, the volume-only row, and `publishedEdition === null` for an unpublished missive.
+
+### Editorial decisions (per the Editorial Decisions rule)
+- **Retroboeken default view is `imagePane`** (page scans), not `htmlPane` (OCR text). The user can flip the pane in the Retroboeken UI; `imagePane` is the landing view for citation-grade visual fidelity.
+- **GitHub links surfaced: per-page + full-volume only.** TSV (`GM{vol}.tsv`) is deliberately excluded — its `File` column is a chunk id, not a page number, so it cannot anchor a letter.
+- **Multi-page `rgp_page` values** (14 rows, e.g. `"172;173"`, `"350-1"`) use the **first** page; `parseInt` reads the leading integer in every form. The per-page file is the missive's *first* page; long letters spill onto following pages (use the full-volume link for the whole letter).
+- **Full-volume blob `#L{line}` deep-link index deferred** — the per-page `.txt` is already letter-precise; the `rgp_page→line` index (a build-time scan of ~25.6 MB plus a new column) is marginal and left as a future enhancement.
+
 ## [2.5.5] - 2026-06-11
 
 Tool-description correctness pass on `globalise_find_archival_documents` and `globalise_search_transcriptions`, prompted by reviewing the `globalise-voc-research` skill against the always-loaded tool descriptions. Two of the four fixes correct descriptions that were independently *wrong/misleading* on their own — a skill-less client (the common case) was getting a defective contract and silently wrong results. No runtime/output/behavior change: these are `.describe()` strings and tool-description prose only; the schemas' types and the server's responses are byte-for-byte identical. All facts verified against `data/archival-index.sqlite`.
