@@ -395,7 +395,7 @@ export function createServer(): McpServer {
     server,
     'globalise_search_transcriptions',
     'Search the ~4.8M transcribed VOC pages by free text, with composable filters for inventory number(s) and language(s). ' +
-      'Query syntax: Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes; query defaults to "*" (match everything). ' +
+      'Query syntax (Elasticsearch): a bare space means OR — use uppercase AND for all-terms; plus NOT, wildcards (* ?), fuzzy matching (~N, for HTR/OCR spelling noise), exact phrases in quotes; query defaults to "*" (match everything). ' +
       'Languages accept ISO 639-3 codes or English names; matchAll=true requires pages to contain ALL listed languages (bilingual documents) by post-filtering a capped candidate window — totals are then a lower bound, see the response note. ' +
       'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +
       'For statistics only (e.g. the language breakdown of an inventory), use query="*" with size=1. ' +
@@ -436,7 +436,7 @@ export function createServer(): McpServer {
     'globalise_find_archival_documents',
     'Query a local index of 228K+ VOC archival document descriptions (finding aids) — useful for scoping by archival metadata before searching transcriptions. ' +
       'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, RGP references, scan URLs). ' +
-      'The query field supports FTS5 syntax (AND/OR/NOT, prefix*, "exact phrase"). ' +
+      'The query field uses SQLite FTS5 — a bare space means AND (all terms must appear); plus OR/NOT, prefix*, "exact phrase". Unparseable characters (hyphens, slashes) trigger a phrase-escape retry that sets a response note. ' +
       'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
       'Inventory numbers in the results feed the inventoryNumber filter of globalise_search_transcriptions to reach the actual transcribed pages.',
     findArchivalToolInputSchema,

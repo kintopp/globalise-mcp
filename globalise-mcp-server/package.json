@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.5.4",
+  "version": "2.5.5",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",

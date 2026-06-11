@@ -82,7 +82,7 @@ export const searchTranscriptionsInputSchema = z.object({
     .min(1, 'Search query cannot be empty')
     .optional()
     .default('*')
-    .describe('Search query. Supports Boolean operators (AND/OR/NOT), wildcards (* ?), fuzzy matching (~N), exact phrases in quotes, proximity ("phrase"~N). Defaults to "*" (match everything) — combine with filters and size=1 to get aggregation statistics cheaply.'),
+    .describe('Search query (Elasticsearch). A space means OR — matches pages with ANY term; write uppercase AND for all-terms (peper AND koffie). Also NOT, wildcards (* ?, including leading *schip), fuzzy ~N (the key tool for HTR/OCR spelling noise — coffij~1 over koffie), exact phrases in quotes, proximity ("phrase"~N). NB: opposite default from globalise_find_archival_documents (FTS5, where space = AND). Defaults to "*" (match everything) — combine with filters and size=1 to get aggregation statistics cheaply.'),
   inventoryNumber: z.union([z.string(), z.array(z.string())])
     .optional()
     .describe('Restrict to inventory number(s). Single: "9966" or multiple: ["9966", "4293"]'),

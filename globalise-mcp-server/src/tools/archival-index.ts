@@ -12,11 +12,11 @@ export const findArchivalDocumentsInputSchema = z.object({
   source: z.enum(['obp', 'gm', 'all']).default('all')
     .describe('Data source: "obp" (Digitized Indexes, ~227K docs), "gm" (Generale Missiven, ~950 letters), "all" (both)'),
   query: z.string().optional()
-    .describe('Full-text search in descriptions. Supports FTS5 syntax: AND, OR, NOT, prefix*, "exact phrase"'),
+    .describe('Full-text search in descriptions (SQLite FTS5). A space means AND — all terms must appear; also OR, NOT, prefix*, "exact phrase". Special characters (hyphens, slashes, unbalanced quotes/parens) make FTS5 throw, so the server retries the whole query as one quoted phrase and adds a `note` to the response, silently dropping your operators — quote just the offending term yourself (e.g. kaneel AND "oost-indie") and check the response `note` if results look wrong. Descriptions are one-line catalogue headings, not a subject index, so prefer the structured filters (settlement/year/inventory) for discovery.'),
   inventoryNumber: z.union([z.string(), z.array(z.string())]).optional()
     .describe('Filter by inventory number(s). Single: "1543" or multiple: ["1543", "1068"]'),
   settlement: z.string().optional()
-    .describe('Filter by settlement name (OBP only). Examples: "Ceylon", "Batavia", "Malacca"'),
+    .describe('Filter by settlement name (OBP only) — the VOC office the papers came *from* (origin), not the subject. Spellings are normalized to one canonical form per place, but it is unpredictable (e.g. "Malakka" NOT "Malacca"; "Ceylon" NOT the period "Ceijlon"), so run once with includeAggregations and copy the exact value from the breakdown. Examples: "Ceylon", "Batavia", "Malakka".'),
   yearFrom: z.number().int().optional()
     .describe('Filter by earliest year (inclusive). Example: 1700'),
   yearTo: z.number().int().optional()
@@ -28,7 +28,7 @@ export const findArchivalDocumentsInputSchema = z.object({
   chamber: z.string().optional()
     .describe('Filter by VOC chamber (GM only). Values: "Amsterdam", "Zeeland"'),
   htrAvailable: z.boolean().optional()
-    .describe('Filter for letters with HTR transcriptions available (GM only)'),
+    .describe('Filter on the IJsberg sub-project flag (GM only). NOT a reliable "has transcriptions" flag: it effectively marks chamber=Zeeland (all 70 Zeeland letters true, all 880 Amsterdam false), yet many Amsterdam inventories ARE transcribed in GLOBALISE. To find letters you can actually read, take the inventoryNumber and probe globalise_search_transcriptions(query="*", size=1) instead of filtering on this.'),
   from: z.number().int().min(0).default(0)
     .describe('Pagination offset (default: 0)'),
   size: z.number().int().min(1).max(500).default(25)

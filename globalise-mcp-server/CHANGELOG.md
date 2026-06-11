@@ -6,6 +6,16 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.5.5] - 2026-06-11
+
+Tool-description correctness pass on `globalise_find_archival_documents` and `globalise_search_transcriptions`, prompted by reviewing the `globalise-voc-research` skill against the always-loaded tool descriptions. Two of the four fixes correct descriptions that were independently *wrong/misleading* on their own — a skill-less client (the common case) was getting a defective contract and silently wrong results. No runtime/output/behavior change: these are `.describe()` strings and tool-description prose only; the schemas' types and the server's responses are byte-for-byte identical. All facts verified against `data/archival-index.sqlite`.
+
+### Changed
+- **`settlement` example no longer returns zero** (`src/tools/archival-index.ts`). The schema offered `"Malacca"` as a sample value, but `settlement='Malacca'` matches **0** rows — the canonical form is `"Malakka"` (6,967). Settlement spellings are normalized to one unpredictable canonical form per place (`Ceylon` not the period `Ceijlon`; `Malakka` not `Malacca`), so the describe now says to run once with `includeAggregations` and copy the exact value, and the examples use working spellings.
+- **`htrAvailable` describe no longer claims "has transcriptions"** (`src/tools/archival-index.ts`). It read "Filter for letters with HTR transcriptions available", but the flag mirrors the IJsberg sub-project and is effectively `chamber=Zeeland` (all 70 Zeeland letters true, all 880 Amsterdam false), while many Amsterdam inventories *are* transcribed. Filtering `htrAvailable=true` to find readable letters was actively wrong; the describe now states what the flag means and points to probing `search_transcriptions` instead.
+- **Search operators now document the bare-space default** (`src/tools/search.ts`, `src/index.ts`). `search_transcriptions` (Elasticsearch) treats a space as **OR**; `find_archival_documents` (SQLite FTS5) treats a space as **AND** — opposite defaults across the two search tools, previously documented in neither tool description (only in the skill). An agent assuming the usual space=AND silently changed recall. Both descriptions now state their space semantics and flag the contrast.
+- **FTS5 phrase-escape retry is now documented** (`src/tools/archival-index.ts`, `src/index.ts`). When `find_archival_documents.query` contains characters FTS5 can't parse (hyphens, slashes, unbalanced quotes/parens), the server retries the whole query as one quoted phrase and adds a `note` — silently dropping operators. The describe now tells callers to quote the offending term (e.g. `kaneel AND "oost-indie"`) and check the response `note`.
+
 ## [2.5.4] - 2026-06-10
 
 `mcp-builder` review consistency pass — three findings on `globalise_view_document_ui` and `globalise_search_transcriptions`. No change to normal-path output or server behavior; the viewer's `structuredContent` and the search results are byte-for-byte the same. UI bundle unaffected (no viewer-side code changed).
