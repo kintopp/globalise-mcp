@@ -8,6 +8,7 @@
  * caching stale session IDs.
  */
 
+import type { Server } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express, { Request, Response } from 'express';
@@ -27,9 +28,12 @@ export interface HttpServerOptions {
 }
 
 /**
- * Create and start the HTTP server.
+ * Create and start the HTTP server. Returns the underlying http.Server so the
+ * caller can drain it on shutdown — discarding it (and returning the express
+ * app) meant SIGTERM had no handle to close, cutting in-flight requests on
+ * every redeploy (CODE-REVIEW finding 5).
  */
-export function createHttpServer(options: HttpServerOptions) {
+export function createHttpServer(options: HttpServerOptions): Server {
   const { port = 3000, allowedOrigins = ['*'], name = 'mcp-server', version = 'unknown', createServer } = options;
 
   const app = express();
@@ -120,7 +124,7 @@ export function createHttpServer(options: HttpServerOptions) {
   // Start Server
   // ==========================================================================
 
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.error('='.repeat(65));
     console.error('[HTTP] GLOBALISE MCP Server started');
     console.error(`[HTTP] Version: ${version}`);
@@ -132,5 +136,5 @@ export function createHttpServer(options: HttpServerOptions) {
     console.error('='.repeat(65));
   });
 
-  return app;
+  return server;
 }

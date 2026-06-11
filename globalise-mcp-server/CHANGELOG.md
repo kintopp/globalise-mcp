@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.5] - 2026-06-11
+
+Graceful HTTP shutdown (P2 finding 5). Every Railway redeploy sends SIGTERM, but `shutdown()` was `closeDatabase(); process.exit(0)` — it cut in-flight `/mcp` requests mid-response (e.g. while awaiting an upstream search fetch) and the socket kept accepting new connections right up to exit. The root cause was a discarded handle: `createHttpServer` called `app.listen()` but returned the express `app`, throwing away the `http.Server`, so nothing could `.close()` it.
+
+### Fixed
+- **`src/transports/http-server.ts`** now captures the `http.Server` from `app.listen()` and returns it (typed `: Server`) instead of the express app — which nothing consumed.
+- **`src/index.ts`** keeps the running listener in a module-scope `httpServer` (set only in http mode) and `shutdown()` now drains it: `closeIdleConnections()` to release idle keep-alive sockets, then `server.close()` to stop accepting and wait for in-flight requests, then `closeDatabase()` + exit. A `SHUTDOWN_TIMEOUT_MS` (10s, `unref`'d) backstop forces exit if a connection never closes, so we never hang past Railway's grace window. Stdio mode is unchanged (no listener → synchronous exit).
+
+### Verified
+Started the http transport, confirmed `/health`, sent SIGTERM: process exited **0** (was 143 = killed) with the `[SHUTDOWN]` drain sequence logged and the timeout backstop not triggered. No DB rebuild, no `.skill` change.
+
 ## [2.7.4] - 2026-06-11
 
 Fixed the four P1 findings from the v2.7.3 whole-codebase review (`CODE-REVIEW-FINDINGS.md`): one hard-failure edge case, two silent-wrong-answer bugs, and one contradictory tool description. No database rebuild; no `.skill` change.

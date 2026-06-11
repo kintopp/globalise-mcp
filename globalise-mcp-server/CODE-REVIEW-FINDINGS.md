@@ -131,7 +131,16 @@ Line numbers are as of commit `ca4c49e` (v2.7.3). All paths relative to
 
 ## P2 — Operational (bite under deploys / concurrency)
 
-### [ ] 5. SIGTERM/SIGINT shutdown never closes or drains the HTTP listener
+### [x] 5. SIGTERM/SIGINT shutdown never closes or drains the HTTP listener — fixed v2.7.5
+
+> **Fixed v2.7.5:** `createHttpServer` now captures the `http.Server` from
+> `app.listen()` and returns it (was returning the express `app`, discarding the
+> handle); `index.ts` keeps it in a module-scope `httpServer` (http mode only)
+> and `shutdown()` drains it — `closeIdleConnections()` → `server.close()`
+> (stop accepting, await in-flight) → `closeDatabase()` + exit, with a 10s
+> `unref`'d backstop. Stdio mode keeps the synchronous path. Verified live:
+> SIGTERM → exit 0 (was 143), `[SHUTDOWN]` sequence logged, backstop not fired.
+
 
 - **Severity:** medium (every Railway redeploy cuts in-flight requests)
 - **Where:** `src/index.ts:564-568` (`shutdown()`), `src/transports/http-server.ts:123-135` (the `app.listen()` return value is **discarded**, so no server handle even exists to close)

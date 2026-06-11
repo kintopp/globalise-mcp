@@ -27,6 +27,7 @@ import {
   RESOURCE_MIME_TYPE,
 } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
+import type { Server } from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -550,7 +551,7 @@ async function main() {
     const port = parseInt(process.env.PORT || '3000', 10);
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 
-    createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, createServer });
+    httpServer = createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, createServer });
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const server = createServer();
@@ -561,10 +562,48 @@ async function main() {
   }
 }
 
+/**
+ * Grace period for draining in-flight HTTP requests on shutdown. Railway sends
+ * SIGTERM, waits, then SIGKILLs; this backstop forces exit if a connection
+ * never closes, so we never hang past the platform's window.
+ */
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+/** The running HTTP listener (set only in http mode), so shutdown() can drain it. */
+let httpServer: Server | undefined;
+
+/**
+ * Graceful shutdown. In HTTP mode, stop accepting new connections and let
+ * in-flight /mcp requests finish before closing the DB and exiting — a bare
+ * exit cuts every in-flight response on each Railway redeploy (finding 5).
+ * Stdio mode has no listener to drain, so it exits synchronously.
+ */
 function shutdown(signal: string) {
   console.error(`[SHUTDOWN] ${signal} received, cleaning up...`);
-  closeDatabase();
-  process.exit(0);
+
+  if (!httpServer) {
+    closeDatabase();
+    process.exit(0);
+  }
+
+  // Backstop: if a connection never closes, exit anyway before SIGKILL. unref()
+  // so this timer alone can't keep the process alive once draining is done.
+  const forceExit = setTimeout(() => {
+    console.error('[SHUTDOWN] drain timed out; forcing exit');
+    closeDatabase();
+    process.exit(0);
+  }, SHUTDOWN_TIMEOUT_MS);
+  forceExit.unref();
+
+  // Stop accepting new connections and release idle keep-alive sockets, so
+  // close() waits only on requests still in flight, then tear down once they
+  // finish.
+  httpServer.closeIdleConnections();
+  httpServer.close(() => {
+    clearTimeout(forceExit);
+    closeDatabase();
+    process.exit(0);
+  });
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
