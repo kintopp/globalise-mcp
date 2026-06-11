@@ -28,13 +28,20 @@ Word-level coordinates exist in PageXML files but aren't exposed through the pub
 ### Add RGP Published Edition Links (Retroboeken + GitHub)
 
 **Priority:** Medium
-**Status:** Ready to implement (mapping complete)
+**Status:** Ready to implement (mapping + sources re-verified live 2026-06-11; raw fields already exposed)
 
-558 of 950 Generale Missiven have RGP published editions available via Retroboeken (interactive viewer) and GitHub (plain text). Add links to `globalise_find_archival_documents` output when `rgp_volume` and `rgp_page` exist.
+558 of 950 Generale Missiven have RGP published editions available via Retroboeken (interactive viewer) and GitHub (plain text). The raw `rgpVolume`/`rgpPage` fields are already surfaced in GM output (`mapGmRow`, `src/tools/archival-index.ts:303-304`); what remains is turning them into clickable URLs when `rgp_volume` and `rgp_page` exist.
 
-**Implementation:** URL generator with verified offsets for all 14 volumes. Modify `src/tools/archival-index.ts`.
+**Two link targets, both verified live (HTTP 200) 2026-06-11:**
 
-**Documentation:** `offline/resources/Overzicht van Generale Missiven.../RETROBOEKEN_MAPPING.md` and `GITHUB_RGP_TRANSCRIPTIONS.md`
+- **Retroboeken** (page-precise, interactive viewer with scans+OCR): `#source={vol}&page={rgp_page + offset}&view={mode}`. Needs the per-volume offset table — all 14 offsets in `RETROBOEKEN_MAPPING.md` (verified). The website page ≠ printed page, hence the offset.
+- **GitHub** (plain text, CC BY-NC-SA 4.0 — link only, no caching): **letter-precise is possible and trivial** — the per-page files `txt/GM{vol}/{vol}_{rgp_page}.txt` are keyed directly by `rgp_page` (no offset; front matter stripped so arabic page 1 = first letter page), ~2-3 KB each. Verified: `3_1.txt`/`3_4.txt`/`1_21.txt` land exactly on the expected missives. Full-volume files (`full_volumes/GM_{vol}.txt`, 0.4-3.6 MB, ~25.6 MB total) are line-keyed `{vol} {page}:{line}` and can be blob-deep-linked via `#L{line}` after building an `rgp_page→line` index. **This corrects `GITHUB_RGP_TRANSCRIPTIONS.md`'s old "no letter-level mapping" claim** (see the corrected "Page Number Mapping" section).
+
+**Implementation:** URL generator wired into `mapGmRow`. Parse multi-page `rgp_page` (14 rows like `"172;173"`, `"350-1"`) by taking the first page (`split(/[;,-]/)[0]`). For the GitHub TSV link use `GM{vol}.tsv` (verified 200) — **not** `GM_{vol}.tsv` (404); the doc's "URL Pattern" section has this wrong, the pseudocode is right.
+
+**Before coding (decisions to flag — Editorial Decisions rule):** (1) default Retroboeken `view` (`htmlPane` vs `imagePane`); (2) which GitHub link(s) to surface — letter-level per-page `.txt`, full volume, and/or TSV. Adding fields means updating `gmOutputSchema` + `mapGmRow` (strict output schema since v2.5.4), CHANGELOG, and a version bump — not a passthrough.
+
+**Documentation:** repo-root `offline/resources/Overzicht van Generale Missiven in het archief van de VOC, 1.04.02/` — `RETROBOEKEN_MAPPING.md` and `GITHUB_RGP_TRANSCRIPTIONS.md` (note: `offline/` is gitignored and lives at the repo root, **not** under `globalise-mcp-server/`).
 
 ---
 
@@ -54,14 +61,10 @@ Could share a single `data/reference.sqlite` database. Follows `globalise_find_a
 
 ### Review and Edit Tool Descriptions
 
-**Priority:** Medium
-**Status:** Not started
+**Priority:** Low
+**Status:** Open-ended pass; both previously-flagged issues resolved
 
-Review all tool descriptions in `src/index.ts` for accuracy, clarity, and consistency. Specific known issues:
-
-1. **`matchAll` parameter discovery:** Users asking for "documents in both English and Dutch" don't get AND behavior because the LLM doesn't set `matchAll=true`. Make the AND vs OR distinction more explicit.
-
-2. **`globalise_retrieve_document` URL description** is outdated — should lead with Transcriptions Viewer as primary link.
+Review all tool descriptions in `src/index.ts` for accuracy, clarity, and consistency.
 
 ---
 
@@ -83,18 +86,20 @@ LLMs can translate entries themselves. Multilingual descriptions in the archived
 
 ---
 
-### Deploy Size Review
+### Draft MCP Spec Migration (stateless protocol) + CacheableResult
 
 **Priority:** Low
-**Status:** Not started
+**Status:** Watching — blocked on `@modelcontextprotocol/sdk` shipping draft support (draft is not yet a released protocol version; see https://modelcontextprotocol.io/specification/draft/changelog)
 
-The deploy image includes ~56 MB of unused Bun binaries pulled in by `@modelcontextprotocol/ext-apps`'s `postinstall` script. We only use a single string constant (`RESOURCE_MIME_TYPE`) from that package.
+The draft makes MCP **stateless**: removes the `initialize`/`initialized` handshake (protocol version, clientInfo, capabilities move to `_meta`), removes protocol-level sessions and `Mcp-Session-Id`, removes `ping`/`logging/setLevel`, adds a mandatory `server/discover` RPC, requires `Mcp-Method`/`Mcp-Name` POST headers, changes resource-not-found from `-32002` to `-32602`, and deprecates Roots/Sampling/Logging.
 
-1. **Check ext-apps PR [#451](https://github.com/modelcontextprotocol/ext-apps/pull/451):** Moves Bun/Rollup binaries to devDependencies. If merged and released, upgrading eliminates the bloat. If stalled, consider inlining `RESOURCE_MIME_TYPE = "text/html;profile=mcp-app"` and dropping the dependency.
+**Why this is low-effort for us (mostly SDK-internal):** every breaking change lives in the transport/lifecycle layer the SDK owns. The server is already aligned — stateless Streamable HTTP (`sessionIdGenerator: undefined`, GET/DELETE → 405), no server-initiated requests (no sampling/roots/elicitation), no Logging capability (logs to `stderr` via `console.error`, the draft's recommended migration), deterministic `tools/list` order, and `$ref`-free schemas. We use **none** of the removed/deprecated features.
 
-2. **Reconsider committing the archival SQLite database.** Currently gitignored and rebuilt from CSV on every Railway deploy (~183 MB). The rebuild adds build time and requires the CSV source files and build script to remain in the deploy. Committing the pre-built database (or storing it as a release artifact) would skip this step entirely. Before doing so, confirm all data in the CSVs remains relevant and up-to-date.
+**Actions when the SDK lands draft support:**
+1. Bump `@modelcontextprotocol/sdk`; confirm the SDK handles handshake removal, `server/discover`, `_meta` protocol fields, the new POST headers, and the `-32602` error code. Re-run `npm test` (smoke asserts the tool surface) + a live viewer call. No expected change to tool/resource code.
+2. **Adopt `CacheableResult` (additive enhancement, not a fix):** emit `ttlMs` + `cacheScope: "public"` on `tools/list` and `resources/read`. The archival index is static (rebuilt only at deploy) and the corpus is read-only, so it's an ideal fit for long freshness hints — a genuine win, not just conformance.
 
-**Context:** `node_modules` is ~172 MB locally (macOS), potentially ~400 MB+ on Linux due to platform-specific binaries. The SQLite database is the single largest component at 183 MB.
+Migration is directional only until the draft finalizes a version date — do not implement against it now (moving target).
 
 ---
 
@@ -104,5 +109,3 @@ The deploy image includes ~56 MB of unused Bun binaries pulled in by `@modelcont
 **Status:** Ideas
 
 - Navigator mini-map (`showNavigator: true`)
-- Image filters (brightness, contrast for faded manuscripts)
-- Reference strip (thumbnail strip of adjacent pages)
