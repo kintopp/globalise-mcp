@@ -93,11 +93,11 @@ See [Query Syntax](./QUERY_SYNTAX.md#punctuation-and-special-characters) for det
 An MCP (Model Context Protocol) server is available for AI assistant integration. See the [`globalise-mcp-server/`](../globalise-mcp-server/) directory for installation and usage instructions.
 
 **Available Tools:**
+- `globalise_find_archival_documents` - Search local archival finding aids (inventory-level)
 - `globalise_search_transcriptions` - Full-text search with filters
 - `globalise_retrieve_document` - Get document details and transcription
 - `globalise_navigate` - Navigate between pages
-- `globalise_search_by_inventory` - Search within an inventory
-- `globalise_search_by_language` - Filter by language
+- `globalise_view_document_ui` - Open a page in the interactive viewer (MCP Apps UI)
 
 ## Document URN Structure
 

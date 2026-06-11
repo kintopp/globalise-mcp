@@ -54,8 +54,12 @@ paths:
       parameters:
         - name: indexName
           in: query
-          required: true
-          description: Search index name
+          required: false
+          description: >-
+            Search index name. Optional in practice — if omitted, the server falls back to the
+            single available index. An unknown value returns 404 "Unknown index". Note: the
+            value advertised by the SPA's /config (docs-2024-03-18-test) is NOT a valid search
+            index; use globalise-2024.03.18-test (see GET /brinta/globalise/indices).
           schema:
             type: string
             example: globalise-2024.03.18-test
@@ -263,8 +267,9 @@ components:
       type: object
       required:
         - text
-        - terms
-        - aggs
+      description: >-
+        Only `text` is required by the live API; `terms` and `aggs` may be omitted (they
+        default to {}). Sending them explicitly is still recommended for clarity.
       properties:
         text:
           type: string
@@ -569,6 +574,15 @@ components:
             - Image
             - Canvas
             - Text
+            - LogicalText
+          description: >-
+            Target type. `Text` is the physical reading-order text; `LogicalText` is the
+            logical/structural text layer. Both may appear alongside `Image` and `Canvas`.
+        "@context":
+          type: string
+          description: >-
+            Optional JSON-LD context, present on Canvas targets and on selector objects
+            (e.g. https://knaw-huc.github.io/ns/huc-di-tt.jsonld).
         selector:
           type: object
           properties:
@@ -582,22 +596,18 @@ components:
 
     Error:
       type: object
+      required:
+        - code
+        - message
+      description: >-
+        All API errors share this shape: an integer `code` (mirroring the HTTP status) and a
+        human-readable `message`. Examples: {"code":404,"message":"bodyId not found: …"},
+        {"code":400,"message":"Unable to process JSON"},
+        {"code":404,"message":"Unknown index: …"}.
       properties:
-        error:
-          type: string
-          description: Error type or code
+        code:
+          type: integer
+          description: HTTP status code, repeated in the body
         message:
           type: string
           description: Human-readable error message
-        details:
-          type: string
-          description: Additional error details
-        documentId:
-          type: string
-          description: Document ID (for 404 errors)
-        retryAfter:
-          type: integer
-          description: Seconds to wait before retry (for 429)
-        suggestion:
-          type: string
-          description: Suggested action to resolve the error

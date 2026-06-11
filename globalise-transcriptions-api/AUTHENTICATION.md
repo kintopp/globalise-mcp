@@ -13,13 +13,24 @@ Simply make requests directly to the API endpoints.
 
 ## CORS Policy
 
-The API supports Cross-Origin Resource Sharing (CORS) for browser-based applications:
+The API supports Cross-Origin Resource Sharing (CORS) for browser-based applications. CORS headers are returned **only when the request includes an `Origin` header** (i.e. real browser requests and preflight `OPTIONS`); a plain server-to-server request without `Origin` receives none.
+
+The server **reflects the caller's `Origin`** rather than returning a literal `*`, and allows credentials:
 
 ```
-Access-Control-Allow-Origin: *
+Access-Control-Allow-Origin: <your request's Origin>
+Access-Control-Allow-Credentials: true
 ```
 
-This means you can call the API directly from JavaScript running in any web browser without proxy servers or backend intermediaries.
+A preflight `OPTIONS` additionally returns:
+
+```
+Access-Control-Allow-Methods: OPTIONS,GET,PUT,POST,DELETE,HEAD
+Access-Control-Allow-Headers: X-Requested-With,Content-Type,Accept,Origin
+Access-Control-Max-Age: 1800
+```
+
+In practice any origin is accepted, so you can call the API directly from JavaScript running in any web browser without proxy servers or backend intermediaries. (Note: because the response sets `Allow-Credentials: true`, the server must echo a specific origin — the CORS spec forbids combining a literal `*` with credentials.)
 
 **Example Browser Usage:**
 

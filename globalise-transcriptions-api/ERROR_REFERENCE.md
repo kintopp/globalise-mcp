@@ -15,6 +15,38 @@ Complete documentation of HTTP status codes and error handling for the GLOBALISE
 | 503 | Service Unavailable | Service temporarily unavailable |
 | 504 | Gateway Timeout | Request took too long |
 
+> **Note:** 429, 502, and 503 are standard HTTP codes included for client robustness, but
+> have not been observed from this API in practice — there is no documented rate limiting.
+
+---
+
+## Error Response Format
+
+All error responses share a single, consistent shape — an integer `code` (mirroring the
+HTTP status) and a human-readable `message`:
+
+```json
+{ "code": 404, "message": "bodyId not found: urn:globalise:NL-HaNA_1.04.02_9966_9999" }
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | integer | HTTP status code, repeated in the body |
+| `message` | string | Human-readable error description |
+
+**Verified live examples (2026-06):**
+
+| Trigger | HTTP | Body |
+|---------|------|------|
+| Malformed JSON body | 400 | `{"code":400,"message":"Unable to process JSON"}` |
+| Unparseable query | 400 | `{"code":400,"message":"Query not understood: …"}` |
+| Unknown `indexName` | 404 | `{"code":404,"message":"Unknown index: … See /brinta/globalise/indices for known indices"}` |
+| Non-existent / malformed document | 404 | `{"code":404,"message":"bodyId not found: …"}` |
+
+There is **no** `error`, `details`, `documentId`, `suggestion`, or `retryAfter` field — only
+`code` and `message`. Parse `message` for display; branch on `code` (or the HTTP status) for
+logic. The illustrative bodies shown per-status below follow this same `{code, message}` shape.
+
 ---
 
 ## Success Response (200 OK)
@@ -51,13 +83,12 @@ Returned when the request is malformed or contains invalid parameters.
 - Malformed search query syntax
 - Invalid query parameters
 
-**Example Response:**
+**Example Responses (verified):**
 ```json
-{
-  "error": "Invalid query syntax",
-  "details": "Boolean operator 'AND' requires terms on both sides",
-  "query": "AND schip"
-}
+{ "code": 400, "message": "Unable to process JSON" }
+```
+```json
+{ "code": 400, "message": "Query not understood: AND OR (|{}|||" }
 ```
 
 **Solutions:**
@@ -66,7 +97,7 @@ Returned when the request is malformed or contains invalid parameters.
 |---------|----------|
 | Invalid JSON | Validate JSON syntax before sending |
 | Malformed query | Check [Query Syntax](./QUERY_SYNTAX.md) documentation |
-| Missing required field | Ensure `text`, `terms`, and `aggs` are all present |
+| Missing `text` field | Ensure the body includes `text` (only `text` is required; `terms`/`aggs` are optional and default to `{}`) |
 
 **Example - Handling 400 Errors:**
 
@@ -83,7 +114,7 @@ async function search(query) {
 
   if (response.status === 400) {
     const error = await response.json();
-    throw new Error(`Invalid query: ${error.details || error.error}`);
+    throw new Error(`Invalid query: ${error.message}`);
   }
 
   return response.json();
@@ -101,12 +132,9 @@ Returned when the requested document does not exist.
 - Document ID typo
 - Document removed from index
 
-**Example Response:**
+**Example Response (verified):**
 ```json
-{
-  "error": "Document not found",
-  "documentId": "urn:globalise:NL-HaNA_1.04.02_9966_9999"
-}
+{ "code": 404, "message": "bodyId not found: urn:globalise:NL-HaNA_1.04.02_9966_9999" }
 ```
 
 **Solutions:**
@@ -143,16 +171,14 @@ async function getDocument(documentId) {
 
 Returned when rate limits are exceeded (if rate limiting is enabled).
 
-**Note:** As of the current API version, no rate limiting is documented. However, implement handling for future compatibility.
+**Note:** As of the current API version, no rate limiting is documented or observed. However, implement handling for future compatibility.
 
-**Example Response:**
+**Example Response (illustrative — not observed; if it occurs it follows the `{code, message}` shape):**
 ```json
-{
-  "error": "Rate limit exceeded",
-  "retryAfter": 60,
-  "message": "Too many requests. Please wait before trying again."
-}
+{ "code": 429, "message": "Too many requests. Please wait before trying again." }
 ```
+
+There is no `Retry-After` body field; rely on the standard `Retry-After` **response header** if present.
 
 **Solutions:**
 
@@ -208,12 +234,9 @@ Returned when the server encounters an unexpected error.
 - Database connection issues
 - Unexpected query patterns
 
-**Example Response:**
+**Example Response (illustrative — follows the `{code, message}` shape):**
 ```json
-{
-  "error": "Internal server error",
-  "message": "An unexpected error occurred while processing your request"
-}
+{ "code": 500, "message": "An unexpected error occurred while processing your request" }
 ```
 
 **Solutions:**
@@ -252,12 +275,9 @@ Returned when the request takes too long to process.
 - Complex aggregations
 - Server under heavy load
 
-**Example Response:**
+**Example Response (illustrative — follows the `{code, message}` shape):**
 ```json
-{
-  "error": "Request timeout",
-  "suggestion": "Try reducing result set size or narrowing search scope"
-}
+{ "code": 504, "message": "Request timeout — try reducing result set size or narrowing search scope" }
 ```
 
 **Solutions:**
@@ -316,7 +336,7 @@ async function apiRequest(url, options) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, error.message || error.error);
+    throw new ApiError(response.status, error.message);
   }
 
   return response.json();

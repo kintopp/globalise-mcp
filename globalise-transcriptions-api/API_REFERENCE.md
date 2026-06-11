@@ -10,8 +10,8 @@ Complete endpoint documentation for the GLOBALISE Transcriptions API.
 
 | Endpoint | Method | Description | MCP Server Usage |
 |----------|--------|-------------|------------------|
-| [`/projects/globalise/search`](#search-transcriptions) | POST | Full-text search | Used by 3 tools |
-| [`/projects/globalise/{urn}`](#get-document) | GET | Get document details | Used by 2 tools |
+| [`/projects/globalise/search`](#search-transcriptions) | POST | Full-text search | `globalise_search_transcriptions` |
+| [`/projects/globalise/{urn}`](#get-document) | GET | Get document details | `globalise_retrieve_document`, `globalise_navigate`, `globalise_view_document_ui` |
 | [`/config`](#get-configuration) | GET | Application config | Internal only |
 | [`/brinta/globalise/indices`](#get-indices) | GET | Index information | Internal only |
 
@@ -25,7 +25,7 @@ Full-text search across ~4.8 million VOC transcriptions.
 
 **Base URL:** `https://gloccoli.tt.di.huc.knaw.nl`
 
-**MCP Server Usage:** Used by `globalise_search_transcriptions`, `globalise_search_by_inventory`, `globalise_search_by_language`
+**MCP Server Usage:** Used by `globalise_search_transcriptions`
 
 ### Request
 
@@ -33,7 +33,7 @@ Full-text search across ~4.8 million VOC transcriptions.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `indexName` | string | Yes | - | Search index name (e.g., `globalise-2024.03.18-test`) |
+| `indexName` | string | No | (single available index) | Search index name (e.g., `globalise-2024.03.18-test`). Optional in practice: omitting it falls back to the only index the server exposes. Passing an unknown name returns `404 Unknown index`. |
 | `fragmentSize` | integer | No | 100 | Size of text fragments in results |
 | `from` | integer | No | 0 | Offset for pagination (0-indexed) |
 | `size` | integer | No | 10 | Number of results to return (max varies) |
@@ -66,8 +66,10 @@ Full-text search across ~4.8 million VOC transcriptions.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `text` | string | Yes | Search query (see [Query Syntax](./QUERY_SYNTAX.md)) |
-| `terms` | object | Yes | Term filters for faceted search |
-| `aggs` | object | Yes | Aggregation definitions |
+| `terms` | object | No | Term filters for faceted search (defaults to `{}` if omitted) |
+| `aggs` | object | No | Aggregation definitions (defaults to `{}` if omitted) |
+
+> Only `text` is required by the live API. `terms`/`aggs` may be omitted, but sending them (even as `{}`) is recommended for clarity.
 
 **Terms Object (Filtering):**
 
@@ -124,8 +126,11 @@ Request facet counts for filtering UI:
 
 | Header | Value |
 |--------|-------|
-| `Content-Type` | `application/json; charset=utf-8` |
-| `Access-Control-Allow-Origin` | `*` |
+| `Content-Type` | `application/json` |
+| `Access-Control-Allow-Origin` | *reflects the request `Origin`* (only present when an `Origin` header is sent) |
+| `Access-Control-Allow-Credentials` | `true` |
+
+See [Authentication › CORS Policy](./AUTHENTICATION.md#cors-policy) for details — the server echoes the caller's `Origin` rather than returning a literal `*`.
 
 **Response Body:**
 
@@ -347,7 +352,7 @@ Retrieve detailed information for a specific document including transcription, a
 
 **Base URL:** `https://gloccoli.tt.di.huc.knaw.nl`
 
-**MCP Server Usage:** Used by `globalise_retrieve_document`, `globalise_navigate`
+**MCP Server Usage:** Used by `globalise_retrieve_document`, `globalise_navigate`, `globalise_view_document_ui`
 
 ### Request
 
@@ -611,15 +616,23 @@ No parameters required.
 
 ```json
 {
-  "indexName": "globalise-2024.03.18-test",
+  "indexName": "docs-2024-03-18-test",
   "broccoliUrl": "https://gloccoli.tt.di.huc.knaw.nl"
 }
 ```
 
 | Field | Description |
 |-------|-------------|
-| `indexName` | Current search index name |
+| `indexName` | Index name configured for the **frontend SPA** (see warning below) |
 | `broccoliUrl` | Base URL for the search API |
+
+> ⚠️ **Do not use `/config`'s `indexName` for the search API.** As of 2026-06, `/config`
+> advertises `docs-2024-03-18-test`, but searching the Broccoli API with that name returns
+> `404 Unknown index`. The only index the search/document endpoints actually serve is
+> `globalise-2024.03.18-test` (confirm via [`/brinta/globalise/indices`](#get-indices)).
+> `/config` reflects the SPA's own configuration, which has drifted from the search backend.
+> Use the hardcoded `globalise-2024.03.18-test`, or omit `indexName` entirely (it falls back
+> to the single available index).
 
 ### Example
 

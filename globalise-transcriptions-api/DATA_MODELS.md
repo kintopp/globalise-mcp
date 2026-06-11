@@ -23,7 +23,7 @@ Request body for `POST /projects/globalise/search`
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["text", "terms", "aggs"],
+  "required": ["text"],
   "properties": {
     "text": {
       "type": "string",
@@ -71,6 +71,7 @@ Request body for `POST /projects/globalise/search`
       "additionalProperties": { "$ref": "#/$defs/aggregation" }
     }
   },
+  "_note": "Only `text` is required by the live API; `terms` and `aggs` may be omitted (they default to {}). Sending them explicitly is still recommended for clarity.",
   "$defs": {
     "aggregation": {
       "type": "object",
@@ -368,8 +369,12 @@ Response from `GET /projects/globalise/{documentUrn}`
         "source": { "type": "string", "format": "uri" },
         "type": {
           "type": "string",
-          "enum": ["Image", "Canvas", "Text"],
-          "description": "Target type"
+          "enum": ["Image", "Canvas", "Text", "LogicalText"],
+          "description": "Target type. `Text` is the physical reading-order text; `LogicalText` is the logical/structural text layer; both may appear alongside `Image` and `Canvas`."
+        },
+        "@context": {
+          "type": "string",
+          "description": "Optional JSON-LD context (present on Canvas and on selector objects, e.g. https://knaw-huc.github.io/ns/huc-di-tt.jsonld)"
         },
         "selector": {
           "type": "object",
@@ -495,11 +500,11 @@ interface TermFilters {
   [key: string]: string[] | undefined;
 }
 
-/** Search request body */
+/** Search request body. Only `text` is required; `terms`/`aggs` default to {} server-side. */
 interface SearchRequest {
   text: string;
-  terms: TermFilters;
-  aggs: Aggregations;
+  terms?: TermFilters;
+  aggs?: Aggregations;
 }
 
 /** Search query parameters */
@@ -588,7 +593,8 @@ interface TextAnchorSelector {
 /** Annotation target */
 interface AnnotationTarget {
   source: string;
-  type: "Image" | "Canvas" | "Text";
+  type: "Image" | "Canvas" | "Text" | "LogicalText";
+  "@context"?: string;
   selector?: TextAnchorSelector;
 }
 
@@ -668,14 +674,11 @@ interface ParsedUrn {
   documentId: string;
 }
 
-/** API error response */
+/** API error response. Every error uses this shape: an integer `code` (mirrors the HTTP
+ *  status) and a human-readable `message`. No `error`/`details`/`documentId`/`suggestion`. */
 interface ApiError {
-  error: string;
-  details?: string;
-  message?: string;
-  documentId?: string;
-  retryAfter?: number;
-  suggestion?: string;
+  code: number;
+  message: string;
 }
 ```
 
