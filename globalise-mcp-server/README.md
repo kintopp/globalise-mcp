@@ -34,12 +34,14 @@ An MCP server for searching and retrieving ~4.8M transcribed pages from the Dutc
 https://globalise-mcp-production.up.railway.app/mcp
 ```
 
-**Local (stdio):**
+**Local** (requires **Node 24** — the server uses the built-in `node:sqlite`):
+
+stdio:
 ```bash
-npm run build && node dist/index.js
+npm install && npm run build && node dist/index.js
 ```
 
-**Local (HTTP):**
+HTTP:
 ```bash
 TRANSPORT=http PORT=3000 node dist/index.js
 ```
@@ -62,22 +64,22 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ## Development
 
 ```bash
-npm run build       # Build everything (UI, TypeScript, archival DB)
-npm run dev         # Watch mode
-npm run inspector   # Test with MCP Inspector
+npm run build       # Viewer UI + TypeScript + archival index DB
+npm run dev         # tsc watch mode
+npm run inspector   # Build + run against MCP Inspector
+npm test            # Archival-index + viewer-build + smoke tests
 ```
 
 ## Project Structure
 
 ```
 src/
-├── index.ts                 # Entry point, tool/resource definitions
-├── tools/                   # Tool implementations
-├── resources/               # MCP resource definitions
-├── transports/http-server.ts
-└── utils/                   # API client, cache, types
+├── index.ts                 # Entry point, tool + resource registration
+├── tools/                   # Tool implementations (search, document, viewer, archival-index)
+├── transports/http-server.ts  # Streamable HTTP transport
+└── utils/                   # API client, cache, SQLite, IIIF, types
 apps/
-└── document-viewer/         # Interactive viewer (Vite SPA)
+└── document-viewer/         # Interactive viewer (Vite SPA, bundled at build)
 ```
 
 ## License
