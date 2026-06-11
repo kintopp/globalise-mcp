@@ -26,7 +26,7 @@ Any page opens in the web viewer at
 | Tool | Use it to… | Backed by |
 |------|-----------|-----------|
 | `globalise_find_archival_documents` | **Scope first.** Search a *local* index of 228K archival document descriptions (finding aids) by text + metadata, to narrow down inventories/places/years before touching transcriptions. | Local SQLite + FTS5 |
-| `globalise_lookup_commodity` | **Expand a term.** Resolve a trade good to its period-Dutch spelling variants + a sourced definition, from the ~3,500-concept VOC commodities glossary; feed the variants into a search to beat spelling-blind matching. | Local SQLite + FTS5 |
+| `globalise_lookup_commodity` | **Resolve a term.** Turn a modern/English trade good into the Dutch word the corpus uses, with a sourced definition (and period spelling variants where the glossary has them — only ~10% do). | Local SQLite + FTS5 |
 | `globalise_search_transcriptions` | Full-text search across the ~4.8M transcribed pages; filter by inventory and/or language. | Remote search API (Broccoli) |
 | `globalise_retrieve_document` | Get one page by ID/URN: full line-by-line transcription, metadata (languages, dates, license), prev/next IDs, viewer + scan links. | Remote |
 | `globalise_navigate` | Read sequentially — fetch the previous or next page relative to an ID. | Remote |
@@ -48,10 +48,10 @@ For a known page ID, skip straight to `retrieve_document`. For statistics only
 (e.g. the language breakdown of an inventory), call `search_transcriptions` with
 `query="*"` and `size=1` and read the aggregations.
 
-**Vocabulary expansion** rides alongside step 2: `globalise_lookup_commodity`
-turns a trade good (modern or Dutch) into the period spelling variants the corpus
-actually uses, which you then OR or fuzz into `search_transcriptions` — see
-"Expanding commodity terms" below.
+**Vocabulary lookup** rides alongside step 2: `globalise_lookup_commodity` turns a
+trade good into the Dutch term the corpus uses (plus period variants where the
+glossary has them), which you then expand with fuzzy/wildcards for
+`search_transcriptions` — see "Looking up commodities" below.
 
 ## The two data sources behind `find_archival_documents`
 
@@ -329,30 +329,50 @@ querying them. There's no reliable way to match a literal `*` or `?`.
 languages**, which post-filters a capped 500-hit candidate window and adds a
 `note`. When you see `"gte"` or a note, treat the count as a lower bound.
 
-## Expanding commodity terms with `lookup_commodity`
+## Looking up commodities with `lookup_commodity`
 
 `globalise_lookup_commodity` is a **local glossary** of ~3,500 VOC trade goods and
-trade-related concepts, each with bilingual labels, **period spelling variants**,
-and a sourced, confidence-rated definition. It exists because both search engines
-are spelling-naive — archival FTS5 has no stemming (Trap 1) and
-`search_transcriptions` no normalization — so its headline use is **query
-expansion**: look a commodity up once, then feed the returned `altLabels` into a
-search.
+trade-related concepts. Its reliable value is **(1) bilingual label resolution** —
+turn a modern or English term into the Dutch word the corpus actually uses
+(coffee → *koffie*, mace → *foelie*) — and **(2) a sourced, confidence-rated
+definition** per concept. Treat **period spelling variants (`altLabels`) as a
+bonus, not the main event: only ~1 concept in 10 has any, and the big commodities
+(pepper, coffee, nutmeg) have none.**
 
-- → `search_transcriptions`: OR or fuzz the variants (`peper OR piper`, `coffij~1`).
-  This is what turns `koffie` (119 pages) into `coffij` (25,124).
-- → `find_archival_documents`: OR period spellings into the FTS5 `query` to widen a
-  serendipitous description search (Trap 3).
+**Getting recall in the transcriptions — the usual goal.** The corpus is HTR'd
+17th-c. Dutch with no spelling normalization, so one modern spelling finds almost
+nothing (`koffie` → 119 pages; the period `coffij` → 25,124). So:
+
+1. Look the term up → take the **Dutch `prefLabel`** and any `altLabels`.
+2. If it *has* `altLabels` (silk, *zijde*, has 23), OR them into the search.
+3. **If it has none (the usual case), reconstruct the period form yourself** — the
+   corpus prefers *c-* over *k-* and *-ij* over *-ie* (`koffie`→`coffij`) — **and
+   add fuzzy `~1` / wildcards** (`coffij~1`, `peper~1`) for spelling + HTR noise.
+   Don't assume one spelling is enough just because it already returns hits.
+4. Feed the forms into `search_transcriptions` (space = OR there) or OR them into
+   the `find_archival_documents` FTS5 `query` (Trap 3).
 
 It is a **flat term-lookup, not a category browser** (the source's classifications
-were too unreliable to surface): search by term, or omit `query` to page the
-glossary alphabetically. Query mechanics (FTS5 operators, label-over-definition
-ranking) are in the tool description — don't re-derive them here.
+were too unreliable to surface): search by term, or omit `query` to page
+alphabetically. FTS5 operators / ranking are in the tool description.
 
-**Trust the labels, weigh the definitions.** Over half the definitions are
-LLM-generated and ~a third are low-confidence — use labels/variants freely for
-expansion, but present a *definition* tentatively unless its `definitionSource` is
-authoritative (`wnt`, `aat`, `vocGlossarium`, `PoolParty`).
+**Weight each definition by its source and confidence — over half are
+machine-written.** Each result carries `definitionSource` and `confidence`; ~a
+third are low/medium-low and many are LLM-generated (`llm`/`llm_sparse`; "no corpus
+contexts" ≈ a guess).
+- **Keep source + confidence visible — even in long lists**, and flag
+  machine-generated / low-confidence entries as tentative.
+- **Say only what the definition states.** Don't assert or quote beyond its text;
+  mark your own inferences (e.g. "lower quality") as *yours*, not the source's.
+  This matters most for sensitive entries (people trafficked as commodities).
+- **Prefer the definition over the English label** — `prefLabelEn` is sometimes a
+  mistranslation (`raapfoelie` is gathered mace, not "rapeseed oil"), and
+  `confidence` rates the *definition*, not the labels.
+- **Expand source codes for the reader**: *WNT* = standard historical dictionary of
+  Dutch (IVDNT); *AAT* = Getty Art & Architecture Thesaurus; *vocGlossarium* =
+  Huygens VOC-Glossarium; *PoolParty* = the GLOBALISE project thesaurus. Some
+  definitions embed raw citations ("Cited from… Classified on…") — give the
+  substance, drop the boilerplate.
 
 ## HTR transcription caveats (data quality)
 
@@ -409,10 +429,11 @@ language aggregation.
 → `search_transcriptions(query="amsterdam~1")` — fuzzy matching, which
 `find_archival_documents` (FTS5) has no operator for.
 
-**"Search transcriptions for coffee, catching period spellings."**
-→ `lookup_commodity(query="coffee")` → take its `altLabels` (`coffij`, `coffie`,
-`kofij`…) → `search_transcriptions(query="coffij OR coffie OR kofij")` (or
-`coffij~1`). Beats betting on the modern `koffie` (119 vs 25,124 pages).
+**"Find transcriptions for a trade good, catching period spellings."**
+→ `lookup_commodity(query="<good>")` for the Dutch label (and any `altLabels`) —
+most goods have none, so reconstruct the period spelling and fuzz it →
+`search_transcriptions`. (Coffee: the modern `koffie` finds 119 pages; the period
+form ~25,000.)
 
 **"Show me page NL-HaNA_1.04.02_7535_0011 with 'Batavia' highlighted."**
 → `view_document_ui(documentId="NL-HaNA_1.04.02_7535_0011", highlightTerms=["Batavia"])`.
@@ -439,7 +460,7 @@ language aggregation.
 - ✅ Put **places in the `settlement` filter**, content words in `query`.
 - ✅ Read the exact **settlement spelling from the aggregation** (`includeAggregations`) — it's `Malakka`, not `Malacca`.
 - ✅ Use **period spellings or prefixes** (`Ceijlon*`, `Makass*`) for free-text places.
-- ✅ **Expand commodity terms** with `lookup_commodity` — search on the real period `altLabels`, not a guessed modern spelling.
+- ✅ **Resolve commodity terms** with `lookup_commodity` — get the Dutch label, then (most have no `altLabels`) reconstruct period spellings + fuzzy `~1` rather than betting on the modern form.
 - ✅ Check the response **`note`** when results look off (phrase-escape / lower-bound totals).
 - ✅ Offer **scan links** for non-Roman-script and Malay pages.
 - ✅ For a **published GM**, offer the `publishedEdition` links and say whether you're giving the **edited RGP text** or the **HTR** original.
@@ -453,4 +474,4 @@ language aggregation.
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.
 - ❌ Don't read `year_earliest=1600` (or any wide range) as a precise date.
 - ❌ Don't treat `language="unknown"` as unidentifiable, or `"art"` as a real language.
-- ❌ Don't present a `lookup_commodity` **definition** as fact when it's low-confidence/LLM-sourced — its reliable payload is the **labels/variants**.
+- ❌ Don't present a `lookup_commodity` **definition** as fact — or quote/assert beyond its text — when it's low-confidence/LLM-sourced; its reliable payload is the **Dutch label**.

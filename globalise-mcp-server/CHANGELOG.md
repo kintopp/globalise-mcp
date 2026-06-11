@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.2] - 2026-06-11
+
+Refined the `globalise_lookup_commodity` guidance (tool description + research skill) after evaluating eight test prompts across Sonnet/Opus/Fable. No code-logic change — only the tool's description string and the skill content. Driven by one verified data fact: **`altLabels` (period spelling variants) exist for only ~9.6% of the 3,508 concepts** — pepper, coffee, and nutmeg have none — so the prior "main use is query expansion via altLabels" framing oversold a feature that's mostly absent.
+
+### Changed
+- **Tool description (`src/index.ts`)** reframed: the reliable value is (1) bilingual label resolution (modern/English → the Dutch term the corpus uses) and (2) a sourced, confidence-rated definition; `altLabels` is a bonus present for ~10% of concepts. For transcription recall, take the Dutch label, OR in any altLabels, then add fuzzy (`~1`)/wildcards (the corpus prefers `c-` over `k-`, `-ij` over `-ie`: `koffie`→`coffij`). Added: present low-confidence/LLM definitions tentatively and **say only what the definition states**; `prefLabelEn` is occasionally a mistranslation, so **prefer the definition**.
+- **Skill (`skills/globalise-voc-research/SKILL.md`)** "Expanding commodity terms" section rewritten as "Looking up commodities": inverts the emphasis (label resolution + definition as core; period-spelling reconstruction + fuzzy as the recall engine; altLabels a bonus, rich for silk/`zijde`'s 23 variants, null for most). Adds explicit, imperative handling of the empty-`altLabels` case; keeps source/confidence visible even in lists; flags model inference vs. source-stated facts; prefers the definition over a possibly-mistranslated English label; expands source codes (WNT/AAT/vocGlossarium/PoolParty) for readers; notes the embedded citation cruft in some definitions. Tool table row, workflow note, worked pattern, and do/don'ts updated to match. Repackaged `globalise-voc-research.skill`.
+
+### Why
+Evaluation findings: the prior framing's flagship examples (`pepper→peper/piper`, `coffee→coffij/coffie/kofij`) have **null** `altLabels` and would fail as written; the model correctly found "no altLabels" and (on a weaker model) then bet on a single spelling. The recall *numbers* in the skill (`koffie` 119 vs `coffij` 25,124 pages) are live-confirmed and retained — only the mechanism attribution was corrected. The source `.trig` was checked and carries no additional SKOS labels, so this is a documentation fix, not a data fix.
+
 ## [2.7.1] - 2026-06-11
 
 Internal cleanup pass (`/simplify`) over the v2.7.0 commodities tool — no behavior change; all tool inputs, outputs, and the response contract are identical (full test suite + end-to-end smoke test green).

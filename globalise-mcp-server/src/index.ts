@@ -453,10 +453,10 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_lookup_commodity',
-    'Look up VOC trade goods in the commodities glossary — ~3,500 commodities and trade-related concepts with bilingual Dutch/English labels, period spelling variants, and a sourced definition per concept. ' +
-      'Main use is query expansion: the transcription search is spelling-blind, so resolve a term here and feed the returned altLabels (period variants) into globalise_search_transcriptions to catch documents a single spelling misses. ' +
+    'Look up VOC trade goods in the commodities glossary — ~3,500 commodities and trade-related concepts, each with a Dutch (usually also English) label and a sourced, confidence-rated definition. ' +
+      'Two main uses: (1) resolve a modern/English term to the Dutch word the corpus uses (coffee→koffie, mace→foelie); (2) read a sourced definition. Some concepts also carry period spelling variants (altLabels), but only ~10% do — pepper, coffee, nutmeg have none — so for recall in globalise_search_transcriptions take the Dutch label, OR in any altLabels, then add fuzzy (~1)/wildcards (the corpus prefers c- over k-, -ij over -ie: koffie→coffij). ' +
       'The query field uses SQLite FTS5 over labels + variants + definitions (a bare space means AND; plus OR/NOT, prefix*, "exact phrase"); label/variant hits rank above definition hits. Omit the query to page through the glossary alphabetically. ' +
-      'Every definition carries its definitionSource and a confidence rating — over half are LLM-generated, so present low/medium-low ones tentatively and prefer the authoritative sources (wnt, aat, vocGlossarium, PoolParty) when available. Concept IDs are internal and not returned.',
+      'Every definition carries its definitionSource and a confidence rating — over half are LLM-generated, so present low/medium-low ones tentatively, say only what the definition states, and prefer the authoritative sources (wnt, aat, vocGlossarium, PoolParty). prefLabelEn is occasionally a mistranslation — prefer the definition. Concept IDs are internal and not returned.',
     lookupCommodityToolInputSchema,
     lookupCommodityOutputSchema,
     lookupCommodity,
