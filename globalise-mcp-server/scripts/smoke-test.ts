@@ -31,6 +31,7 @@ const EXPECTED_TOOLS = [
   'globalise_navigate',
   'globalise_find_archival_documents',
   'globalise_lookup_commodity',
+  'globalise_lookup_measure',
   'globalise_view_document_ui',
 ];
 

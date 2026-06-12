@@ -6,6 +6,25 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.8.0] - 2026-06-12
+
+New tool **`globalise_lookup_measure`** — a flat-glossary lookup over the GLOBALISE VOC weights & measures dataset, the second vocabulary in the shared reference DB and a near-clone of the v2.7.0 commodities tool (plan 004). MINOR bump: a new tool, no behavior change to existing tools.
+
+### Added
+- **`globalise_lookup_measure`** (`src/tools/measures.ts`): look up ~213 historical VOC units of weight/volume/length/area/quantities/misc. Each result reliably carries the unit `label`, its `type`, period spelling `variants`, and the `conversions` (period-reported ratios) the unit appears on either side of — each ratio tagged with the settlement/commodity `context` it was recorded for. `query` runs SQLite FTS5 over label + variants + the (sparse) definition text (bm25 weights `10, 5, 1` — label > variants > definition body); omit `query` to page all units alphabetically by label. `definitions[]` carry only `nl`/`en` (no source key) and are sparse — only ~22% of units have any (English ~6%) — so the tool description and SKILL.md lead with label/type/variants/ratios, not definitions. The always-loaded tool description frames this as **NOT a unit converter**: early-modern units are unstable, so a ratio holds only for its `context`; `type` is load-bearing (a few labels like `roede`/`voet`/`ammonam` are homonyms distinguished only by type); and variants feed `globalise_search_transcriptions` (spelling-blind) for recall. The internal `unit_id` (e.g. `SU_0003`) is never surfaced.
+- **Source data**: `data/sources/weights-measures.json` (copied verbatim from `archived-resources/weights-measures/weights-measures.json` — v3.0; **213 units, 385 variants, 731 conversions**; from the *Memoriën van Munten, Maaten, en Gewigten* 1764–1771; GLOBALISE Project / Huygens Institute, hdl:10622/MDNVH5, **CC-BY-SA-4.0**).
+- **Tests**: `scripts/test-measures.ts` (`npm run test:measures`, 18 assertions, chained into `npm test` after `test:commodities`). Smoke-test `EXPECTED_TOOLS` now lists **7** tools.
+
+### Changed
+- **`scripts/build-commodities-db.ts` now builds the WHOLE reference DB** (commodities **+** weights & measures). Because both tools read the single `data/reference.sqlite` and the build deletes-and-recreates it, the measures tables must be built in the same run. Added the `measures` and `measure_conversions` tables (+ `idx_conversions_from`/`idx_conversions_to`) and the external-content `measures_fts` FTS5 index. The npm script keeps its historical name `build:db:commodities` (the ensure-flow and docs reference it; a rename to `build:db:reference` is deferred). Committed `data/reference.sqlite.gz` regenerated.
+- **Build-time data-integrity gates** (fail the build, never warn): every `lookup` variant and every conversion `from`/`to` must resolve to a known unit, and the parsed counts must equal the dataset's self-reported `_meta` (213/385/731).
+- **Docs**: `skills/globalise-voc-research/SKILL.md` — the "Weights & measures (external reference, not a tool here)" section was rewritten **in place** to introduce `lookup_measure` (keeping its existing unstable-units caveat, which is the tool's framing), and the overview heading went "six tools" → "seven tools" with a new table row; `.skill` repackaged. `TODO.md` — the Weights & Measures roadmap item is marked Done (v2.8.0).
+
+### Editorial decisions (per the Editorial-decisions rule)
+- The dataset ships **as-is** — no filtering, no truncation. This explicitly includes the **22 self-referential conversions** (`from === to`, e.g. `1 Mutsje = 1 Mutsje | Cochin`) and the few exact-duplicate rows: a self-ratio attests the unit was in use in that context without a recorded local equivalence — an incomplete attestation, not an error. They are KEPT.
+- The only transformations are **structural**: `'; '`-joining the spelling variants into one column (the exact convention `commodities.alt_labels` uses — which means the lowercased label itself, present among its own `lookup` variants, is echoed in the `variants[]` output; this is KEPT and costs nothing for FTS recall), and JSON-serializing each unit's `definitions` array into one column.
+- The English definition translations are shipped intact. This now conflicts with the open TODO item "Remove Unnecessary Translations from Weights & Measures JSON" (only ~13 of 213 units carry EN); that item has been annotated as a maintainer decision point rather than acted on here.
+
 ## [2.7.16] - 2026-06-12
 
 39 further Getty-AAT wrong-sense corrections (Tier 1 + Tier 2 of the full 429-row audit) plus a provenance retrofit of the earlier 10. Data-only — no `src/`/schema/`.skill` change. (Editorial Decisions rule). Continues v2.7.14–15.

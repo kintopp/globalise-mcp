@@ -58,6 +58,11 @@ import {
   lookupCommodityInputSchema,
   lookupCommodityOutputSchema,
 } from './tools/commodities.js';
+import {
+  lookupMeasure,
+  lookupMeasureInputSchema,
+  lookupMeasureOutputSchema,
+} from './tools/measures.js';
 import { closeDatabase } from './utils/database.js';
 import { ToolError } from './utils/errors.js';
 import { VIEWER_URL_PREFIX } from './utils/api-client.js';
@@ -328,6 +333,7 @@ const retrieveToolInputSchema = getDocumentInputSchema.strict();
 const navigateToolInputSchema = navigateInputSchema.strict();
 const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
 const lookupCommodityToolInputSchema = lookupCommodityInputSchema.strict();
+const lookupMeasureToolInputSchema = lookupMeasureInputSchema.strict();
 const viewDocumentUiToolInputSchema = viewDocumentUiInputSchema.strict();
 
 // UI Resource URI and tool name for the Document Viewer MCP App
@@ -493,6 +499,20 @@ export function createServer(): McpServer {
     lookupCommodityToolInputSchema,
     lookupCommodityOutputSchema,
     lookupCommodity,
+  );
+
+  registerJsonTool(
+    server,
+    'globalise_lookup_measure',
+    'Look up VOC weights & measures — ~213 historical units of weight, volume, length, area, quantity, and misc used in Dutch East India Company records (from the 1764–1771 Memoriën van Munten, Maaten, en Gewigten). ' +
+      'Each result reliably carries: the unit label, its type (weight/volume/length/area/quantities/misc — load-bearing, since a few labels like roede/voet are homonyms distinguished only by type), period spelling variants, and the conversion ratios it appears in (~731 across the dataset). ' +
+      'This is NOT a precise unit converter: early-modern units were unstable, so a ratio holds only for the settlement and commodity it was recorded for (a bahar of pepper ≠ a bahar of cloves) — always read each conversion against its `context` field, and do not convert to modern equivalents without it. A self-referential ratio ("1 X = 1 X") attests the unit was used in that context without a recorded local equivalence. ' +
+      'Spelling variants double as query expansion: feed them into globalise_search_transcriptions (which is spelling-blind) to catch documents a modern spelling misses. ' +
+      'Definitions are sparse (only ~22% of units carry any, mostly Dutch) — a bonus, not the core; most units have none. ' +
+      'The query field uses SQLite FTS5 over label + variants + definition text — ' + FTS_OPERATORS + '; label/variant hits rank above definition hits. ' + FTS_AUTOQUOTE + ' Omit the query to page through the unit list alphabetically.',
+    lookupMeasureToolInputSchema,
+    lookupMeasureOutputSchema,
+    lookupMeasure,
   );
 
   // ==========================================================================

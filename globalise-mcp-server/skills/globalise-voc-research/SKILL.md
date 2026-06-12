@@ -21,12 +21,13 @@ Document IDs look like `NL-HaNA_1.04.02_7535_0011` = `{archive}_{inventory}_{sca
 Any page opens in the web viewer at
 `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:{id}`.
 
-## The six tools
+## The seven tools
 
 | Tool | Use it to… | Backed by |
 |------|-----------|-----------|
 | `globalise_find_archival_documents` | **Scope first.** Search a *local* index of 228K archival document descriptions (finding aids) by text + metadata, to narrow down inventories/places/years before touching transcriptions. | Local SQLite + FTS5 |
 | `globalise_lookup_commodity` | **Resolve a term.** Turn a modern/English trade good into the Dutch word the corpus uses, with a sourced definition (and period spelling variants where the glossary has them — only ~10% do). | Local SQLite + FTS5 |
+| `globalise_lookup_measure` | **Resolve a unit.** Look up a VOC weight/volume/length/area/quantity unit (~213): its type, period spelling variants, and the conversion ratios it appears in. Not a converter — ratios are period claims tagged by place/commodity. | Local SQLite + FTS5 |
 | `globalise_search_transcriptions` | Full-text search across the ~4.8M transcribed pages; filter by inventory and/or language. | Remote search API (Broccoli) |
 | `globalise_retrieve_document` | Get one page by ID/URN: full line-by-line transcription, metadata (languages, dates, license), prev/next IDs, viewer + scan links. | Remote |
 | `globalise_navigate` | Read sequentially — fetch the previous or next page relative to an ID. | Remote |
@@ -415,16 +416,30 @@ Description is also **uneven**: European actors are named far more consistently 
 Asian individuals (whom GLOBALISE addresses with separate remediation datasets), so
 name- and actor-based searches over the metadata skew toward European subjects.
 
-## Weights & measures (external reference, not a tool here)
+## Looking up weights & measures with `lookup_measure`
 
-GLOBALISE also publishes a **weights & measures glossary** (~213 units) that this
-server does *not* expose as a tool, but it's worth knowing when you read a
-quantity: early-modern units (`bahar`, `last`, `man`, `seer`, `maat`) are **not
-stable** — a unit's value shifts by place, period, and even the commodity measured
-(a *bahar* of pepper ≠ a *bahar* of cloves; a *maat* of rice ≠ a *maat* of
-peanuts), and a unit name often doubles as the name of the measuring container.
-When a transcription quotes a quantity, don't convert it to a modern equivalent
-without that context.
+`globalise_lookup_measure` is a **local glossary** of ~213 historical VOC units of
+weight, volume, length, area, and quantity (from the 1764–1771 *Memoriën van Munten,
+Maaten, en Gewigten*). Each result reliably carries the unit **label**, its **type**,
+period **spelling variants**, and the **conversion ratios** it appears in (731 in the
+dataset); definitions are sparse (~22% of units, mostly Dutch) — a bonus, not the
+core. Search by term, or omit `query` to page alphabetically.
+
+**It is NOT a unit converter — that caveat is the whole framing.** Early-modern units
+(`bahar`, `last`, `man`, `seer`, `maat`) are **not stable**: a unit's value shifts by
+place, period, and even the commodity measured (a *bahar* of pepper ≠ a *bahar* of
+cloves; a *maat* of rice ≠ a *maat* of peanuts), and a unit name often doubles as the
+name of the measuring container. So:
+- **Each ratio is a period-reported claim tagged with its `context`** (the settlement
+  and/or commodity it was recorded for). Read it against that context; never give a
+  modern equivalent without it. A self-referential ratio ("1 X = 1 X") attests the
+  unit was in use there without a recorded local equivalence — incomplete, not an error.
+- **`type` is load-bearing**: a few labels (`roede`, `voet`, `ammonam`) are homonyms
+  distinguished only by type (a *roede* of length vs of area).
+- **Variants → search recall** (the same move as "Looking up commodities" above): the
+  transcription search is spelling-blind, so feed a unit's `variants` into
+  `search_transcriptions` (or OR them into a `find_archival_documents` FTS5 `query`)
+  to catch quantity mentions a modern spelling misses.
 
 ## Worked patterns
 

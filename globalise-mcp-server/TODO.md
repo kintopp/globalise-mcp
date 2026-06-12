@@ -28,14 +28,14 @@ Word-level coordinates exist in PageXML files but aren't exposed through the pub
 ### Reimplement Removed Resources as SQLite-backed Tools
 
 **Priority:** Medium
-**Status:** In progress — Commodities shipped (v2.7.0); Weights & Measures + Query Syntax remain
+**Status:** In progress — Commodities (v2.7.0) and Weights & Measures (v2.8.0) shipped; Query Syntax remains
 
 Archived content in `archived-resources/`. Reimplement as on-demand lookup tools:
 - **Commodities** → `globalise_lookup_commodity` — ✅ **Done (v2.7.0).** Term → concepts, hierarchy, variants; backed by the shared `data/reference.sqlite` (built by `scripts/build-commodities-db.ts`, ensured by `scripts/ensure-reference-db.ts`, tested by `scripts/test-commodities.ts`).
-- **Weights & Measures** → `globalise_lookup_measure` (term → variants, conversions) — slots into the same `data/reference.sqlite` as a second table + tool, mirroring `src/tools/commodities.ts`.
+- **Weights & Measures** → `globalise_lookup_measure` — ✅ **Done (v2.8.0).** Term → type + variants + period-reported conversion ratios (sparse definitions); 213 units / 385 variants / 731 conversions from `data/sources/weights-measures.json` (v3.0). Added to the same `data/reference.sqlite` as `measures` + `measure_conversions` tables (built by the now-extended `scripts/build-commodities-db.ts`, tested by `scripts/test-measures.ts`), with the tool module `src/tools/measures.ts` cloned from `commodities.ts`.
 - **Query Syntax** → integrate into search tool descriptions or simple help tool.
 
-The shared `data/reference.sqlite` database this item proposed now exists and follows the `globalise_find_archival_documents` pattern (read-only DB, per-connection state via `createConnectionState`, shared FTS sanitizer). Adding `lookup_measure` is mostly a second table + a tool module cloned from `commodities.ts`.
+The shared `data/reference.sqlite` database this item proposed now serves two tools and follows the `globalise_find_archival_documents` pattern (read-only DB, per-connection state via `createConnectionState`, shared FTS sanitizer). A third vocabulary would follow the same recipe.
 
 ---
 
@@ -60,9 +60,11 @@ README serves multiple audiences (end users, developers, API reference) without 
 ### Remove Unnecessary Translations from Weights & Measures JSON
 
 **Priority:** Low
-**Status:** Pending
+**Status:** Pending — now a decision point (conflicts with v2.8.0)
 
 LLMs can translate entries themselves. Multilingual descriptions in the archived JSON are unnecessary overhead.
+
+**Note (v2.8.0):** `globalise_lookup_measure` shipped the JSON **as-is**, definition translations intact (per the Editorial-decisions rule — ship source data unmodified unless a transform is flagged). In practice this is a small surface: only ~13 of 213 units carry any English text. This item and v2.8.0 now point in opposite directions, so it is a maintainer call: either close this item (keep the EN translations) or pursue translation-stripping as a separate, flagged, data-only change that re-runs `npm run build:db:commodities` and regenerates `data/reference.sqlite.gz`. Do **not** treat it as a routine cleanup.
 
 ---
 
