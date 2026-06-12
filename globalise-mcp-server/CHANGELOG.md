@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.7.12] - 2026-06-12
+
+Give the three network-backed tools and the graceful-shutdown path their first tests. Tests-only — no server behavior change, no DB rebuild, no `.skill` change. (plans/002)
+
+### Added
+- **`scripts/test-live-api.ts` + `test:live`** — opt-in live integration suite (6 cases, 16 assertions) for the three tools the rest of the suite never executes: `search_transcriptions` (basic, inventory-filtered, and matchAll paths), `retrieve_document`, and `navigate`. Every live response is validated against the tool's own **output** zod schema, so this suite doubles as the upstream-contract-drift detector. Deliberately **not** in the `npm test` chain (it needs network + a healthy upstream; `npm test` is offline-capable by design); documented in the README "Development" block. Run with `npm run test:live`.
+- **`scripts/test-http-shutdown.ts` + `test:http-shutdown`** (chained into `npm test` after `test:smoke` — both need `dist/`) — spawns the built server in HTTP mode, polls `/health`, sends SIGTERM, and asserts a clean exit 0 (was 143 before the v2.7.5 graceful-shutdown fix) plus the `[SHUTDOWN] SIGTERM received` log line. Verified non-flaky across consecutive runs.
+
+### Notes
+- One live assertion was corrected against the real contract while writing the suite: a search result's `id` is the `urn:globalise:NL-HaNA_…` URN form (uniform with `retrieve_document`'s id), not the bare document id the plan sketched. The output-schema `.parse()` stayed green throughout — this was a wrong expectation in the plan, not upstream drift.
+
 ## [2.7.11] - 2026-06-12
 
 Harden the HTTP transport edges and make the four-file version-bump ritual self-enforcing. No server-logic behavior change for clients, no DB rebuild, no `.skill` change. (plans/001)

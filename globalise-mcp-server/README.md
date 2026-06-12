@@ -67,7 +67,8 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 npm run build       # Viewer UI + TypeScript + archival index DB
 npm run dev         # tsc watch mode
 npm run inspector   # Build + run against MCP Inspector
-npm test            # Archival-index + viewer-build + smoke tests
+npm test            # Full offline suite (version-sync, FTS, SQLite tools, viewer, smoke, HTTP shutdown)
+npm run test:live   # Opt-in: live integration tests for search/retrieve/navigate (network required)
 ```
 
 ## Project Structure
