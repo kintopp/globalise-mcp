@@ -86,7 +86,7 @@ Migration is directional only until the draft finalizes a version date — do no
 ### Type-check the Document Viewer (`apps/`) — add an apps tsconfig + `test:viewer-typecheck`
 
 **Priority:** Low
-**Status:** Deferred residual from code-review finding 10 (v2.7.7)
+**Status:** ✅ **Done (v2.7.13).** Added `apps/document-viewer/tsconfig.json` + `test:viewer-typecheck` (`tsc -p apps/document-viewer`), wired into `npm test` immediately before `test:viewer-build`. The viewer is now type-checked; previously it was only vite-transpiled. Two deliberate divergences from the sketch below: `moduleResolution: bundler` (not `NodeNext` — `bundler` is what verified clean and better matches how vite resolves the viewer's `.js`-suffixed imports), and the anticipated "first-pass cleanup" of OSD/ext-apps/DOM type errors **did not materialize** — the viewer sources type-checked clean on the first run, zero errors. `openseadragon` ships its own types, so `types: ["openseadragon", "node"]` resolves with no `@types/` package. Negative test confirmed the gate bites (a deliberate `const x: number = 'oops'` failed the suite, then reverted).
 
 `apps/document-viewer` is **excluded from `tsc`** (root `tsconfig.json` `include: ["src/**/*"]`, `exclude: ["apps"]`) and only transpiled by vite/esbuild, which does **not** type-check. So a type error *inside* `viewer.ts` (e.g. misusing a field after the server contract changes) is caught by neither `npm run build` nor `npm test` — it surfaces only at runtime in the iframe.
 

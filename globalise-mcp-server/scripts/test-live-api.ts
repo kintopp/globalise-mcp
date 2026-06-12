@@ -42,7 +42,7 @@ async function main() {
   check(basic.total.value > 100, `peper has many hits (total.value=${basic.total.value})`);
   check(basic.results.length === 2, `size=2 returns 2 results (got ${basic.results.length})`);
   check(/^urn:globalise:NL-HaNA_/.test(basic.results[0].id), `first result id is a globalise document URN (got ${basic.results[0].id})`);
-  check(Boolean(basic.aggregations), 'aggregations present on the default path');
+  check(basic.aggregations !== undefined, 'aggregations present on the default path');
 
   console.log('2. search, filtered by inventory 9966');
   const filtered = searchOutputSchema.parse(
@@ -72,8 +72,10 @@ async function main() {
   console.log('4. retrieve a known-good page');
   const doc = getDocumentOutputSchema.parse(await getDocument({ documentId: DOC }));
   check(doc.id === DOC_URN, `retrieve normalizes id to URN (got ${doc.id})`);
-  check((doc.text?.lines.length ?? 0) > 0, `page has transcribed lines (${doc.text?.lines.length ?? 0})`);
-  check((doc.metadata?.languages.length ?? 0) > 0, `page metadata lists languages (${doc.metadata?.languages.length ?? 0})`);
+  const lineCount = doc.text?.lines.length ?? 0;
+  check(lineCount > 0, `page has transcribed lines (${lineCount})`);
+  const langCount = doc.metadata?.languages.length ?? 0;
+  check(langCount > 0, `page metadata lists languages (${langCount})`);
   check(
     Boolean(doc.urls?.transcriptionsViewer.startsWith('https://transcriptions.globalise')),
     `viewer URL points at the GLOBALISE viewer (got ${doc.urls?.transcriptionsViewer})`,

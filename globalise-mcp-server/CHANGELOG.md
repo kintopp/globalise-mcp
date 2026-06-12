@@ -6,6 +6,16 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.7.13] - 2026-06-12
+
+Type-check the document-viewer app as part of `npm test`. Build-infra only — no `src/` change, no viewer-source change, no DB rebuild, no `.skill` change. Retires the deferred residual of code-review finding 10 (v2.7.7) and the TODO.md "Type-check the Document Viewer" item. (plans/003)
+
+### Added
+- **`apps/document-viewer/tsconfig.json` + `test:viewer-typecheck`** (`tsc -p apps/document-viewer`, chained into `npm test` immediately before `test:viewer-build`). The viewer (`apps/document-viewer/src/*.ts`) was excluded from the root tsc project (`exclude: ["apps"]`) and only vite-transpiled, so a type error inside viewer code — e.g. using a renamed server-contract field — compiled green and surfaced only at runtime in the iframe. It is now type-checked (`strict`, DOM + node libs, `types: ["openseadragon", "node"]`, `noEmit`, `skipLibCheck`). The root `tsconfig.json` is unchanged — the two compilations have incompatible `lib`/`types` needs (the viewer needs DOM, the server must not see it); server `tsc --noEmit` and the vite build are confirmed unaffected.
+
+### Notes
+- Two deliberate divergences from the TODO sketch, both empirically grounded: `moduleResolution: bundler` (not the sketched `NodeNext` — `bundler` verified clean and matches how vite resolves the viewer's `.js`-suffixed cross-boundary `import type`), and the anticipated "first-pass cleanup" of OSD/ext-apps/DOM type errors did **not** materialize — the viewer sources type-checked clean on the first run with zero errors.
+
 ## [2.7.12] - 2026-06-12
 
 Give the three network-backed tools and the graceful-shutdown path their first tests. Tests-only — no server behavior change, no DB rebuild, no `.skill` change. (plans/002)

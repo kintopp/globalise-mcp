@@ -1,0 +1,22 @@
+{
+  // Standalone (NOT extending ../../tsconfig.json) by design: this browser
+  // bundle and the server compilation have incompatible needs — the viewer
+  // requires the DOM lib + bundler resolution + noEmit, while the server must
+  // NOT see DOM and emits to dist/. The handful of options shared with the
+  // root (target, strict, esModuleInterop, etc.) are duplicated deliberately;
+  // keep the two in sync by hand.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["openseadragon", "node"],
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts"]
+}

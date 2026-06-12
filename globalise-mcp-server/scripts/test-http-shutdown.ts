@@ -21,7 +21,7 @@ const PORT = 3917;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Poll /health every 200ms until it returns 200 or the timeout elapses. */
+/** Poll /health every 50ms until it returns 200 or the timeout elapses. */
 async function waitForHealth(timeoutMs: number): Promise<Response> {
   const deadline = Date.now() + timeoutMs;
   let lastErr: unknown;
@@ -32,7 +32,7 @@ async function waitForHealth(timeoutMs: number): Promise<Response> {
     } catch (err) {
       lastErr = err;
     }
-    await sleep(200);
+    await sleep(50);
   }
   throw new Error(`/health did not become ready within ${timeoutMs}ms (last error: ${lastErr})`);
 }
