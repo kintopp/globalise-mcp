@@ -1,21 +1,21 @@
 ---
 name: globalise-voc-research
 description: >-
-  Search and read Dutch East India Company (VOC) archives through the GLOBALISE
-  MCP server — ~4.8M HTR-transcribed pages plus a 228K-entry finding-aids index,
-  17th–18th-century early-modern Dutch. Use this whenever a task involves the
+  Search and read the 17th–18th-century Dutch East India Company (VOC) archives 
+  through the GLOBALISE MCP server. Use this whenever a task involves the
   GLOBALISE/VOC corpus or its tools: finding archival documents by
   place/year/inventory, full-text searching transcriptions, reading or paging
-  through pages, resolving a trade good to its period spelling variants, or
-  opening the interactive viewer. Reach for it even when the user names a VOC
-  topic obliquely.
+  through pages, resolving a trade good to its period spelling variants or
+  definitions, looking up a VOC unit of weight/volume/length (its type, 
+  spelling variants, and period conversion ratios), or opening the interactive 
+  viewer. Reach for it even when the user names a VOC topic obliquely.
 ---
 
 # Researching VOC archives with the GLOBALISE MCP server
 
 GLOBALISE serves machine transcriptions (HTR) of ~4.8M pages of Dutch East India
 Company (Verenigde Oostindische Compagnie, VOC) records from the Dutch National
-Archives — mostly 17th–18th-century early-modern Dutch. 
+Archives (1618-1793). 
 
 Document IDs look like `NL-HaNA_1.04.02_7535_0011` = `{archive}_{inventory}_{scan}`.
 Any page opens in the web viewer at
@@ -271,23 +271,19 @@ into three ready-made URLs — present them with **plain labels** ("page scan",
 **Two different texts — keep them distinct.** The RGP edition behind these links is a
 **selective, edited scholarly edition** — summaries plus verbatim passages, partly
 modernized — published in the *Rijks Geschiedkundige Publicatiën* (Grote Serie), 14
-vols. spanning 1610–1767, begun by W. Ph. Coolhaas and continued by later editors.
-(The GitHub plain text extracts the original-letter passages only — introductions,
-footnotes, indices and the modern-Dutch summaries are stripped.) The **HTR
-transcription** (via `search_transcriptions`/`retrieve_document`) is the *machine*
-reading of the *manuscript original*. For a published GM the RGP text is the
-authoritative edited version and the HTR is the full original — offer whichever fits
-the need, and say which is which.
+vols. spanning 1610–1767, begun by W. Ph. Coolhaas and continued by later editors. (The
+GitHub plain text extracts the original-letter passages only — introductions, footnotes,
+indices and modern-Dutch summaries are stripped.) The **HTR transcription** (via
+`search_transcriptions`/`retrieve_document`) is the *machine* reading of the *manuscript
+original*. For a published GM the RGP text is the authoritative edited version and the HTR
+the full original — offer whichever fits, and say which is which.
 
-**Work from the material in hand.** When you describe the published edition, ground it
-in what the record and this section actually provide — the `rgpVolume`/`rgpPage`
-citation and the edition facts above. If a user wants more specific bibliography (the
-editor of a particular volume, an ISBN, a related edition), point them to the RGP
-series record or the GitHub repo, which carry it — the dataset surfaced here does not.
-
-**Reference-only.** The server never fetches the RGP text, and clients generally
-can't fetch these raw URLs inline either — hand the user the link to open rather than
-promising to paste the text.
+**Ground claims in the material in hand.** Describe the published edition from what the
+record and this section provide — the `rgpVolume`/`rgpPage` citation and the facts above;
+for more specific bibliography (a volume's editor, ISBN, related editions) point users to
+the RGP series record or the GitHub repo, which carry it. **The server never fetches the
+RGP text**, and clients usually can't fetch these raw URLs inline — hand the user the link
+rather than promising to paste the text.
 
 ## Searching transcriptions: a different query engine
 
@@ -439,10 +435,9 @@ name of the measuring container. So:
   recorded local equivalence — incomplete, not an error.
 - **`type` is load-bearing**: a few labels (`roede`, `voet`, `ammonam`) are homonyms
   distinguished only by type (a *roede* of length vs of area).
-- **Variants → search recall** (the same move as "Looking up commodities" above): the
-  transcription search is spelling-blind, so feed a unit's `variants` into
-  `search_transcriptions` (or OR them into a `find_archival_documents` FTS5 `query`)
-  to catch quantity mentions a modern spelling misses.
+- **Variants → search recall** (as in "Looking up commodities" above): the transcription
+  search is spelling-blind, so feed a unit's `variants` into `search_transcriptions` (or OR
+  them into a `find_archival_documents` FTS5 `query`) to catch mentions a modern spelling misses.
 
 ## Worked patterns
 
