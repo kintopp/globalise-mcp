@@ -6,6 +6,24 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.7.16] - 2026-06-12
+
+39 further Getty-AAT wrong-sense corrections (Tier 1 + Tier 2 of the full 429-row audit) plus a provenance retrofit of the earlier 10. Data-only — no `src/`/schema/`.skill` change. (Editorial Decisions rule). Continues v2.7.14–15.
+
+### Fixed
+- **Tier 1 — 3 definition-misassignment bugs** (imported def text belonged to an unrelated word): `kruiden` (def was "Wollen stoffen" → herbs/spices), `koekenpan` (def was a textile → frying pan), `vorm` (def was "Gujarat cloth" → casting mould).
+- **Tier 2 — 36 homonym wrong-senses** re-grounded against the GLOBALISE corpus — e.g. `comptoir` (home-office→VOC trading post), `mutsje` (cap→liquid measure ~1/8 kan), `Tol` (toy top→toll/customs), `harp` (instrument→pepper-sieve), `kiel` (smock→ship's keel), `gewas` (plant kingdom→crop/harvest), `koord` (lanyard→cord/garrote), `Pokhout` (hackia→lignum vitae), `roodkoper` (tombac→pure copper), `prop` (stage prop→gun wadding), `knie` (furniture leg→ship's knee), `naaf` (coin-die→wheel hub), `beslag` (campaign trim→metal fittings), `zonnescherm` (awning→ceremonial parasol). Full list in `plans/aat-wrong-sense-findings.md`.
+- All 39 use the established provenance scheme: `definitionSource: editorial`, `definitionLanguage: nl`, `web_verification: verified`, `definitionSource_desc` citing the corpus evidence; Dutch definitions with an "NB:" disambiguator naming the rejected sense.
+
+### Provenance retrofit (the earlier 10, v2.7.14–15)
+- Added `web_verification: verified` (the file's existing flag for a checked definition — TSV-only, not surfaced by the tool), and fixed `fanum`'s `definitionSource_url` to the deterministic VOC-Glossarium deep-link (`…/zoekvoc/vocoutp?zoekterm=fanum`), replacing the bare homepage.
+
+### Held back (9 — AAT sense defensible, NOT corrected)
+- `pees` (tendon/sinew is a real material), `japon` (the *Japonse rok*/banyan was a trade garment), `tabijn` (tabby/watered silk — the agent's "Persian title" reading rejected), `dril` (drill-cloth is real), `pers` (the commodity is a mechanical press), `klink` (door-latch is valid), `broodmes` (bread knife is correct), `handgreep` (generic handle — marginal), `Ophaler` (def corrupt but correct sense unclear). Flagged for maintainer review.
+
+### Notes
+- Tier 3 (proper-noun/abbreviation noise — `mossel`, `hars`, `veer`…) and Tier 4 (ambiguous/polysemous) left untouched. Total stays **3,508**; `aat`-sourced rows 429→380; `npm run test:commodities` green; committed `data/reference.sqlite.gz` regenerated.
+
 ## [2.7.15] - 2026-06-12
 
 Five more Getty-AAT wrong-sense corrections in `commodities.tsv` (+ regenerated `data/reference.sqlite.gz`), from the corpus-grounded sweep of the remaining `aat`-sourced rows. Data-only — no `src/`/schema/`.skill` change. (Editorial Decisions rule). Continues v2.7.14.
