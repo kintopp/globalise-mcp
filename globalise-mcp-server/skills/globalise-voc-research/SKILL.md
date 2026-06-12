@@ -431,9 +431,12 @@ place, period, and even the commodity measured (a *bahar* of pepper ≠ a *bahar
 cloves; a *maat* of rice ≠ a *maat* of peanuts), and a unit name often doubles as the
 name of the measuring container. So:
 - **Each ratio is a period-reported claim tagged with its `context`** (the settlement
-  and/or commodity it was recorded for). Read it against that context; never give a
-  modern equivalent without it. A self-referential ratio ("1 X = 1 X") attests the
-  unit was in use there without a recorded local equivalence — incomplete, not an error.
+  and/or commodity it was recorded for, e.g. `"rijst, Batavia"`, `"goud, zilver, Mokka"`).
+  The context routinely names the **commodity**, and the same unit's ratio differs by
+  good — so the commodity-specific value lives in the `context`, not in the (sparse)
+  definition. Read each ratio against its context; never give a modern equivalent without
+  it. A self-referential ratio ("1 X = 1 X") attests the unit was in use there without a
+  recorded local equivalence — incomplete, not an error.
 - **`type` is load-bearing**: a few labels (`roede`, `voet`, `ammonam`) are homonyms
   distinguished only by type (a *roede* of length vs of area).
 - **Variants → search recall** (the same move as "Looking up commodities" above): the

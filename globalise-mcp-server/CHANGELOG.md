@@ -6,6 +6,16 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.8.1] - 2026-06-12
+
+Doc-only refinement of **`globalise_lookup_measure`** — no code-logic change, no DB rebuild, no schema change. Driven by a live finding from driving the local stdio server with 7 test prompts.
+
+### Changed
+- **Tool description (`src/index.ts`) + SKILL.md**: the conversion `context` field is routinely **commodity-qualified, not just place-qualified** (e.g. `"rijst, Batavia"`, `"goud, zilver, Mokka"`), and the *same* unit's ratio differs by good — so the commodity-specific value lives in the `context`, not in the (sparse) definition. The "NOT a unit converter" clause and the SKILL.md context bullet now state this explicitly with the literal format, so a client LLM routes the commodity caveat through `context` rather than over-relying on the prose definition (only ~22% of units carry one). `.skill` repackaged. Mirrors the v2.7.2 commodities doc-refinement precedent.
+
+### Tests
+- **`scripts/test-measures.ts` grown 18 → 30 assertions** (cases §9–§12), locking the documented behaviors the v2.8.0 suite left uncovered: **§9** homonyms (`roede` → ≥2 units distinguished by `type`); **§10** every conversion carries a non-empty `context`, a unit's ratios span multiple contexts (Bahar: 14 distinct — the v2.8.1 commodity-varying claim as a contract), and ratios are retrieved from *both* sides of the relationship (the `from_unit OR to_unit` arm, via Frasila); **§11** the 22 self-referential `1 X = 1 X` rows are kept, not filtered (editorial-decision guard); **§12** every result validates against `lookupMeasureOutputSchema` (schema-drift guard, the direct-call analogue of `test:live`) and definitions carry only `nl`/`en` keys. Test-only — no `src/` logic, schema, or DB change.
+
 ## [2.8.0] - 2026-06-12
 
 New tool **`globalise_lookup_measure`** — a flat-glossary lookup over the GLOBALISE VOC weights & measures dataset, the second vocabulary in the shared reference DB and a near-clone of the v2.7.0 commodities tool (plan 004). MINOR bump: a new tool, no behavior change to existing tools.
