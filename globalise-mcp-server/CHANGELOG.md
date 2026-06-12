@@ -6,6 +6,40 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.7.15] - 2026-06-12
+
+Five more Getty-AAT wrong-sense corrections in `commodities.tsv` (+ regenerated `data/reference.sqlite.gz`), from the corpus-grounded sweep of the remaining `aat`-sourced rows. Data-only — no `src/`/schema/`.skill` change. (Editorial Decisions rule). Continues v2.7.14.
+
+### Fixed
+- **Five more `definitionSource: aat` rows carried the wrong word-sense**, replaced with corpus-grounded definitions (`definitionLanguage: nl`, `definitionSource: editorial`):
+  - `lei` — was "Chinese bronze ritual wine vessel" → slate (writing-slate "cijferlei" + slate stone "leijsteen").
+  - `ledikant` — was "cribs (children's beds)" → adult bedstead (with mattress/curtains).
+  - `soldeerbout` — was "grozing irons (plumbing tools)" → soldering iron.
+  - `chamois` — was "chamois (animal material)" leather → a tan/buff textile colour ("1/3 bruijn, 1/3 chamois"; "drap chamois").
+  - `priem` — was "bodkins (fabric piercing tools)" → awl / priming-iron (VOC "laadpriem" cannon-pricker, "maarlpriem" marlinspike).
+- `confidence`: `high` for the well-attested `ledikant`, else `medium`. Concept UUIDs and `prefLabel_nl` unchanged; total stays **3,508**.
+
+### Notes
+- From corpus-checking the remaining ~396 `aat` rows via a parallel agent sweep. **The sweep is incomplete**: an account session-limit terminated 11 of 12 batches before they reported, so only batch 04 (33 terms) plus the `lei`/`beeldje`/`pop` deep-dive completed. `beeldje` ("statuettes") and `pop` ("dolls") were re-examined and KEPT (figurines/dolls are real, if rare, trade goods); `peer` ("pear") confirmed CORRECT. ~330 `aat` rows (batches 01–03, 05–12) remain unchecked.
+- `npm run test:commodities` green; committed `data/reference.sqlite.gz` regenerated.
+
+## [2.7.14] - 2026-06-12
+
+Data correction to `commodities.tsv` (+ regenerated `data/reference.sqlite.gz`): fix five Getty-AAT wrong-sense definitions surfaced by a corpus-grounded review of the `aat`-sourced rows. Data-only — no `src/` change, no schema change, no `.skill` change. (Editorial Decisions rule)
+
+### Fixed
+- **Five `definitionSource: aat` entries carried the wrong word-sense.** The enrichment pipeline string-matched each Dutch lemma to a Getty AAT concept (an art/architecture vocabulary) and imported its scope note at `confidence: high` with no sense check. Each is now replaced with a corpus-grounded definition (`definitionLanguage: nl`; `definitionSource: vocGlossarium` for `fanum`, else `editorial`):
+  - `fanum` — was "Gallo-Roman temple" (AAT 300400628) → small South-Indian coin, a subdivision of the pagode (VOC-Glossarium; corroborated by the W&M dataset's own `1 Pagood = 10 Fanum`, Nagapattinam).
+  - `manufacturen` — was "manufactories" (organisations) → manufactured textile piece-goods (1,187 corpus attestations: "zijde/wolle manufacturen" in cargo manifests, moth-perishable). Distinct from `factorij` (trading post) and `manufactuur` (production works).
+  - `staalwerk` — was "steel frame construction" (anachronism: skyscrapers/I-beams) → steel goods / steelware (corpus "Engelsch staalwerk").
+  - `muurplaat` — was modern "wall-board" (wood-pulp/gypsum/plastic) → carpentry wall-plate, the roof-bearing timber atop a wall (102 corpus attestations, unanimous).
+  - `bloedsteen` — was "bloodstone" (green chalcedony) → hematite, the styptic medicinal mineral (corpus: apothecary/Japan trade; maintainer chose the hematite sense).
+- Concept UUIDs and `prefLabel_nl` are unchanged; `confidence` is `medium` except the strongly-attested `manufacturen`/`muurplaat` (`high`). Total stays **3,508** rows.
+
+### Notes
+- Method: the `fanum` wrong-sense prompted a sweep of all **429** `aat`-sourced rows; an art/architecture/anachronism keyword pass flagged 34, which were then checked against the GLOBALISE transcription corpus. These five are the confirmed wrong-senses. `foelie (metaal)` was confirmed CORRECT (a deliberately disambiguated rare second sense — mace exists as its own entry). Three homonym-noise cases (`beeldje`, `lei`, `pop`) remain under review; the other ~395 `aat` rows are not yet corpus-checked.
+- `npm run test:commodities` green; committed `data/reference.sqlite.gz` regenerated.
+
 ## [2.7.13] - 2026-06-12
 
 Type-check the document-viewer app as part of `npm test`. Build-infra only — no `src/` change, no viewer-source change, no DB rebuild, no `.skill` change. Retires the deferred residual of code-review finding 10 (v2.7.7) and the TODO.md "Type-check the Document Viewer" item. (plans/003)
