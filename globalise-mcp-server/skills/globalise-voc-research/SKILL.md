@@ -365,9 +365,13 @@ contexts" ≈ a guess).
 - **Say only what the definition states.** Don't assert or quote beyond its text;
   mark your own inferences (e.g. "lower quality") as *yours*, not the source's.
   This matters most for sensitive entries (people trafficked as commodities).
-- **Prefer the definition over the English label** — `prefLabelEn` is sometimes a
-  mistranslation (`raapfoelie` is gathered mace, not "rapeseed oil"), and
-  `confidence` rates the *definition*, not the labels.
+- **`definitionSource`/`confidence` grade the *definition* only — never the
+  labels.** `altLabels` carry no source or grade in the data; `prefLabelEn` has its
+  own (unsurfaced) provenance. So never call a *variant* or *translation*
+  "*WNT*-derived" or "*high*/*low* confidence" — that pairing holds only for the
+  definition. ("Made by *Globalise*" = `definitionSource: PoolParty`.)
+- **`prefLabelEn` is ~70% LLM-translated**, so often a mistranslation (`raapfoelie`
+  is gathered mace, not "rapeseed oil") — prefer the Dutch `prefLabel`.
 - **Expand source codes for the reader**: *WNT* = standard historical dictionary of
   Dutch (IVDNT); *AAT* = Getty Art & Architecture Thesaurus; *vocGlossarium* =
   Huygens VOC-Glossarium; *PoolParty* = the GLOBALISE project thesaurus. Some
@@ -474,4 +478,4 @@ form ~25,000.)
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.
 - ❌ Don't read `year_earliest=1600` (or any wide range) as a precise date.
 - ❌ Don't treat `language="unknown"` as unidentifiable, or `"art"` as a real language.
-- ❌ Don't present a `lookup_commodity` **definition** as fact — or quote/assert beyond its text — when it's low-confidence/LLM-sourced; its reliable payload is the **Dutch label**.
+- ❌ Don't present a `lookup_commodity` **definition** as fact when it's low-confidence/LLM-sourced — or pin its **source/confidence onto a label** (those grade the definition only, and `prefLabelEn` is itself ~70% LLM-translated); the reliable payload is the **Dutch label**.
