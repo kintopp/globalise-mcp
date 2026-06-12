@@ -104,3 +104,12 @@ v2.7.7 (finding 10) closed the worst of this: the viewer now `import type`s the 
 **Status:** Ideas
 
 - Navigator mini-map (`showNavigator: true`)
+
+---
+
+### Revise SKILL.md to link further GLOBALISE reference datasets
+
+**Priority:** Low
+**Status:** Not started
+
+SKILL.md names external GLOBALISE resources in prose but rarely links them — the "Weights & measures" section describes the ~213-unit glossary with no URL, and the "Colonial-era language" note cites "separate remediation datasets" for Asian individuals without pointers. Add links to further GLOBALISE references (weights & measures, places/geography, persons/actors, and similar gazetteers/authority files) so the model can hand users a citable source for material this server doesn't expose as a tool. Favour a compact "Further references" table over inline prose, and mind the ~500-line SKILL.md budget (currently 481).
