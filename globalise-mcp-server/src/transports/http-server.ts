@@ -54,7 +54,7 @@ export function createHttpServer(options: HttpServerOptions): Server {
   // Health Check Endpoint
   // ==========================================================================
 
-  app.get('/health', (_req: Request, res: Response) => {
+  app.get('/health', originGuard, (_req: Request, res: Response) => {
     res.json({
       status: 'healthy',
       name,
@@ -85,8 +85,10 @@ export function createHttpServer(options: HttpServerOptions): Server {
     });
 
     res.on('close', () => {
-      transport.close();
-      server.close();
+      // Fire-and-forget teardown: a rejected close must not become an
+      // unhandledRejection (fatal on Node 24); there is nothing to recover.
+      transport.close().catch(() => {});
+      server.close().catch(() => {});
     });
 
     try {

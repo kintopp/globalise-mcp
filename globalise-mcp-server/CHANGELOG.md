@@ -4,7 +4,21 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
 > **Archive:** Versions 1.0.0–1.16.5 (Dec 2025 – Jan 2026) are in `offline/outdated/CHANGELOG-v1.0-v1.16.md`.
 >
-> **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
+> **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
+
+## [2.7.11] - 2026-06-12
+
+Harden the HTTP transport edges and make the four-file version-bump ritual self-enforcing. No server-logic behavior change for clients, no DB rebuild, no `.skill` change. (plans/001)
+
+### Fixed
+- **Floating promises in the per-request close handler** (`src/transports/http-server.ts`): the `res.on('close')` teardown called `transport.close()` and `server.close()` (the per-request `McpServer`) without awaiting or catching them. On Node 24 an unhandled rejection terminates the process, so a rare close-time failure on one request could kill the server for every connected client. Both calls are now `.catch(() => {})`'d fire-and-forget (nothing to recover at teardown).
+- **Stale CHANGELOG deployment header**: it claimed production was at v1.23.0 / beta at v1.24.1 while the package is at 2.7.x. Replaced with a version-agnostic pointer — production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"); the live version is verifiable via `GET /health`.
+
+### Security
+- **`/health` now passes through `originGuard`** like the three `/mcp` routes (MCP-spec MUST, DNS-rebinding mitigation). Requests with no Origin header (curl, Railway health checks) still pass; a malicious page that rebinds DNS can no longer read the server name/version/Node runtime. Same guard instance — no extra startup log. Verified: curl matrix returns 200 (no Origin) / 403 (evil Origin) / 200 (claude.ai) on `/health`.
+
+### Added
+- **`scripts/check-version-sync.ts` + `test:version`** (prepended to the `npm test` chain — cheapest check first): asserts all four version locations agree — `package.json`, `package-lock.json` (root + `packages[""]`), the root `CLAUDE.md` `### Current Version:` line, and the newest `CHANGELOG.md` entry. The ritual has silently drifted before (`package-lock.json` sat at 2.4.0 through v2.5.3); this makes the drift fail `npm test`.
 
 ## [2.7.10] - 2026-06-12
 
