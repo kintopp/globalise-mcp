@@ -18,8 +18,10 @@
  *
  * Produces data/reference.sqlite (+ a gzipped deploy artifact), with a
  * `commodities` table and an FTS5 index over labels/variants/definition. The
- * PoolParty UUID is stored as an internal key only — never surfaced by the tool
- * (the PoolParty links are not publicly resolvable).
+ * `uuid` column holds the original PoolParty concept URI: that URI is not
+ * publicly resolvable, but its trailing UUID was preserved on the vocabulary's
+ * public Skosmos home, so the lookup tool derives a stable handle permalink from
+ * it (see src/tools/commodities.ts) — the build itself stores only the key.
  */
 
 import { DatabaseSync } from 'node:sqlite';

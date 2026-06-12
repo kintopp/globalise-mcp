@@ -17,8 +17,11 @@
  * feeding those back into globalise_search_transcriptions surfaces documents a
  * single-spelling search would miss.
  *
- * The PoolParty concept UUID is an internal key only — never surfaced, since
- * the PoolParty links are not publicly resolvable.
+ * The stored concept key is the original PoolParty URI; that URI itself is not
+ * publicly resolvable and is never surfaced. But its trailing UUID was preserved
+ * verbatim when the vocabulary moved to its public Skosmos home, so we derive a
+ * stable handle permalink (`thesaurusUrl`) from it — letting the user open the
+ * concept in the SKOS hierarchy and reach its cited sources (e.g. a Zotero record).
  */
 
 import { z } from 'zod';
@@ -50,6 +53,7 @@ const commodityResultSchema = z.object({
   confidence: z.string().nullable()
     .describe('Confidence in the definition: "high", "medium", "medium-low", "low" (or rarely "medium-high"). ~31% are low/medium-low — present these tentatively, especially when definitionSource is an "llm" source.'),
   definitionSourceUrl: z.string().nullable().describe('Link to the source entry where one exists (e.g. a WNT or Getty AAT permalink)'),
+  thesaurusUrl: z.string().nullable().describe('Stable handle permalink to this concept in the public GLOBALISE Commodities thesaurus (Skosmos). Opens the concept in its SKOS subject hierarchy (broader/narrower terms) and links its cited source (often a Zotero record) — the context this flat lookup omits. Offer it to a user who wants to place a good in its trade taxonomy or follow a source. Null only if the stored concept key is malformed.'),
 });
 
 export const lookupCommodityOutputSchema = z.object({
@@ -74,6 +78,7 @@ export type LookupCommodityInput = z.infer<typeof lookupCommodityInputSchema>;
 export type LookupCommodityOutput = z.infer<typeof lookupCommodityOutputSchema>;
 
 type CommodityDbRow = {
+  uuid: string | null;
   pref_nl: string | null;
   pref_en: string | null;
   alt_labels: string | null;
@@ -95,6 +100,21 @@ function splitAltLabels(value: string | null): string[] {
   return value.split(/;\s*/).map((s) => s.trim()).filter(Boolean);
 }
 
+// The vocabulary's public home (Skosmos) preserved each concept's UUID when it
+// migrated off PoolParty, re-exposing it under a GLOBALISE handle. The stored
+// `uuid` column holds the full original PoolParty URI (…/globalise/<UUID>); we
+// take its trailing UUID and mint the handle permalink, which 302-redirects to
+// the live concept page. The format guard keeps a malformed key from producing a
+// broken link (returns null instead). Verified: all 3,508 keys resolve live.
+const THESAURUS_HANDLE_PREFIX = 'https://hdl.handle.net/20.500.14722/thesaurus:commodities:';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function buildThesaurusUrl(conceptKey: string | null): string | null {
+  if (!conceptKey) return null;
+  const uuid = conceptKey.split('/').pop() ?? '';
+  return UUID_RE.test(uuid) ? THESAURUS_HANDLE_PREFIX + uuid : null;
+}
+
 function mapRow(row: CommodityDbRow) {
   return {
     prefLabelNl: row.pref_nl,
@@ -106,6 +126,7 @@ function mapRow(row: CommodityDbRow) {
     definitionSourceDescription: row.definition_source_desc,
     confidence: row.confidence,
     definitionSourceUrl: row.definition_source_url,
+    thesaurusUrl: buildThesaurusUrl(row.uuid),
   };
 }
 

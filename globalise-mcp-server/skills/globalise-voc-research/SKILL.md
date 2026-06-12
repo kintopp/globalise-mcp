@@ -377,6 +377,13 @@ contexts" ≈ a guess).
   Huygens VOC-Glossarium; *PoolParty* = the GLOBALISE project thesaurus. Some
   definitions embed raw citations ("Cited from… Classified on…") — give the
   substance, drop the boilerplate.
+- **Offer `thesaurusUrl` for the hierarchy this lookup drops.** Every result
+  carries a stable handle permalink into the public GLOBALISE Commodities
+  thesaurus (Skosmos), where the curated SKOS hierarchy (broader/narrower terms)
+  and the cited source (often a Zotero record) live — the taxonomy this flat tool
+  deliberately omits. Hand it to a user who wants to place a good in its trade
+  hierarchy or follow a source, the same way you'd offer a scan link for an
+  untrustworthy transcription.
 
 ## HTR transcription caveats (data quality)
 

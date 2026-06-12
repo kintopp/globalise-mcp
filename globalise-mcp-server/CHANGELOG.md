@@ -6,6 +6,19 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production (`main`) is at **v1.23.0**. Beta (`feature/*`) is at **v1.24.1** with MCP Apps Document Viewer changes not yet merged to main.
 
+## [2.7.10] - 2026-06-12
+
+Surface a public link from each commodity to the live GLOBALISE Commodities thesaurus. Read-path only — no DB rebuild (the `uuid` column already shipped) and no change to search, ranking, or the committed artifacts.
+
+### Added
+- **`thesaurusUrl` on every `lookup_commodity` result** — a stable handle permalink (`https://hdl.handle.net/20.500.14722/thesaurus:commodities:<UUID>`) into the public Skosmos thesaurus, where the curated SKOS hierarchy (broader/narrower terms) and the concept's cited source (often a Zotero record) live — the taxonomy the flat tool deliberately omits. Derived in JS from the already-stored PoolParty UUID; the committed DBs stay byte-identical.
+  - The vocabulary migrated off PoolParty to a handle-based Skosmos home but preserved every concept UUID verbatim, so the UUID previously stored as an "internal, unresolvable key" is now publicly resolvable. Validated end-to-end: all **3,508** glossary UUIDs resolve to a live concept page (live scheme has 3,621 concepts; our set is a clean subset — **0 dead links**). A UUID-format guard yields `null` rather than a broken link for any malformed key.
+
+### Changed
+- The always-loaded `globalise_lookup_commodity` tool description (`src/index.ts`) now names `thesaurusUrl` and when to offer it, and its stale "Concept IDs are internal and not returned" clause (which implied no link exists) was corrected. This is the dependable channel for surfacing behavior: a per-field output-schema `.describe()` alone does not reliably reach the client LLM, and non-skill clients never load SKILL.md — so the trigger had to live in the tool description.
+- Refreshed the now-false "never surfaced / not publicly resolvable" rationale in `src/tools/commodities.ts` and `scripts/build-commodities-db.ts` to describe the derived permalink.
+- `skills/globalise-voc-research/SKILL.md`: note that `thesaurusUrl` is the escape hatch to the hierarchy and sources the flat lookup omits.
+
 ## [2.7.9] - 2026-06-11
 
 Build-script dedup (code-review finding 19). Tooling only — no change to the server, the DBs, or the committed artifacts; the build/ensure scripts run via tsx and aren't part of the tsc project, so this was verified by running them.
