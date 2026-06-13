@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { getDatabase, isDatabaseAvailable, createConnectionState, type ConnectionState } from '../utils/database.js';
+import { ensureDatabaseFile, getDatabase, isDatabaseAvailable, createConnectionState, type ConnectionState } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
 import { sanitizeFtsQuery, FTS_OPERATORS, FTS_AUTOQUOTE } from '../utils/fts.js';
 
@@ -449,6 +449,18 @@ export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput
     settlement: rawInput.settlement?.trim() || undefined,
     chamber: rawInput.chamber?.trim() || undefined,
   };
+
+  // Thin-bundle first-run provisioning: download the index now if it isn't on
+  // disk yet and a source URL is configured. No-op for the full bundle (the DB
+  // is shipped) and for dev without a URL (falls through to available:false).
+  try {
+    await ensureDatabaseFile();
+  } catch (error) {
+    throw new ToolError(
+      `Could not download the archival index: ${error instanceof Error ? error.message : String(error)}`,
+      'Check the index download URL in the extension settings — it must serve archival-index.sqlite (or .sqlite.gz) over HTTP. The other GLOBALISE tools work without this local index.',
+    );
+  }
 
   // Check database availability
   if (!isDatabaseAvailable()) {

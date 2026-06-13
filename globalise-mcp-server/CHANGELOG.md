@@ -4,7 +4,22 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 
 > **Archive:** Versions 1.0.0–1.16.5 (Dec 2025 – Jan 2026) are in `offline/outdated/CHANGELOG-v1.0-v1.16.md`.
 >
-> **Deployment:** Production deploys from `main`, beta from the active feature branch (see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
+> **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
+
+## [2.9.0] - 2026-06-13
+
+`.mcpb` (MCP Bundle / Desktop Extension) packaging brought onto `main` from the retired `feature/mcpb` branch, refreshed for the current 7-tool server. MINOR bump: a new build/packaging path plus an additive, thin-bundle-only runtime code path; no behavior change to the running server in its existing (Railway / full-bundle) configurations.
+
+### Added
+- **`.mcpb` build tooling** — package the server as a one-click local install for Claude Desktop. `scripts/build-mcpb.ts` stages a clean runtime tree (compiled `dist/`, bundled glossaries, production-only `node_modules`) and packs it via `@anthropic-ai/mcpb`; `scripts/test-mcpb-bundle.ts` drives the staged bundle over stdio (initialize handshake, served-tools == manifest-declared-tools, viewer MCP App resource, an offline archival query). New npm scripts: `build:mcpb`, `build:mcpb:thin`, `validate:mcpb[:thin]`, `test:mcpb`. New `manifest.json` (full) + `manifest.thin.json` (thin), `.mcpbignore`, and `MCPB.md` (build/maintain guide). The manifest version is stamped from `package.json` at pack time, so it never drifts.
+- **Full and thin variants.** The **full** bundle ships the ~112 MB finding-aid index inside the `.mcpb` (queried on-device, no network). The **thin** bundle omits it (smaller download) and the server fetches it once, lazily, on first use of `globalise_find_archival_documents` — via the new `ensureDatabaseFile()` in `src/utils/database.ts` (atomic temp-file download + gunzip + rename; configured by the `ARCHIVAL_DB_URL` / `ARCHIVAL_DB_PATH` env the thin manifest sets). The full bundle never triggers it (the index is present), so its behavior is unchanged.
+
+### Changed
+- **Both manifests now declare all 7 tools** (added `globalise_lookup_commodity` and `globalise_lookup_measure`, the v2.7.0 / v2.8.0 reference-glossary tools the v2.6.x branch predated), and their long-descriptions/READMEs updated from "five tools" accordingly.
+- **`build-mcpb.ts` now stages `data/reference.sqlite` in both variants.** The script predated the reference DB, so the commodities/measures tools would have silently degraded to "unavailable" inside the bundle. The reference glossaries are small (~a few MB), so they ship in the thin variant too; only the large archival index is thinned out. A build-time prerequisite check now fails if `data/reference.sqlite` is missing.
+
+### Notes
+- Grafted from `feature/mcpb` (the v2.6.0/v2.6.1 `.mcpb` work) onto `main` rather than rebasing the branch — the machinery is almost entirely additive (6 new files + 5 npm scripts + an appended `ensureDatabaseFile()` and a guard at the top of `findArchivalDocuments`), so re-deriving it onto the evolved v2.8.1 `src/` was cleaner than replaying the branch's stale version bumps. `feature/mcpb` retired afterwards.
 
 ## [2.8.1] - 2026-06-12
 

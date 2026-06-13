@@ -1,0 +1,21 @@
+# Patterns excluded from the packed .mcpb bundle (combined with the CLI's
+# built-in defaults). Syntax matches .gitignore / .npmignore.
+#
+# This file is copied into the staging tree by scripts/build-mcpb.ts. The
+# staging tree is already curated, so these patterns mainly strip build
+# by-products that are useless at runtime and only inflate the bundle.
+
+# TypeScript build by-products (the bundle runs compiled JS, not the sources)
+*.map
+*.d.ts
+*.d.ts.map
+*.tsbuildinfo
+
+# Lockfile is only needed to produce node_modules, not to run the server
+package-lock.json
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.log

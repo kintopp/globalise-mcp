@@ -11,7 +11,10 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
+import { createGunzip } from 'zlib';
 
 /**
  * Driver type aliases re-exported from the wrapper. Consumers reference these
@@ -151,6 +154,81 @@ export function closeDatabase(): void {
  */
 export function getDatabasePath(): string {
   return DB_PATH;
+}
+
+// ---------------------------------------------------------------------------
+// First-run provisioning (thin .mcpb bundle)
+//
+// The full bundle ships data/archival-index.sqlite, so DB_PATH already exists
+// and everything below is a no-op. The *thin* bundle ships without the DB: it
+// sets ARCHIVAL_DB_URL (the .gz to fetch) and points ARCHIVAL_DB_PATH at a
+// writable cache dir. ensureDatabaseFile() downloads the index once, lazily, on
+// first use of globalise_find_archival_documents — so startup and the other
+// (network-backed) tools never wait on it.
+// ---------------------------------------------------------------------------
+
+/** Shared in-flight download so concurrent tool calls trigger only one fetch. */
+let provisionPromise: Promise<void> | null = null;
+
+/**
+ * Ensure the archival index exists at DB_PATH, downloading it once if it is
+ * absent and ARCHIVAL_DB_URL is configured. Resolves as a no-op when:
+ *   - the file already exists (full bundle, or already provisioned), or
+ *   - no ARCHIVAL_DB_URL is set — the caller then reports
+ *     databaseInfo.available:false, preserving the graceful-degradation path.
+ * Rejects only when a *configured* download fails, so the tool can surface why.
+ */
+export function ensureDatabaseFile(): Promise<void> {
+  if (existsSync(DB_PATH)) return Promise.resolve();
+
+  const url = process.env.ARCHIVAL_DB_URL;
+  if (!url) return Promise.resolve();
+
+  if (!provisionPromise) {
+    provisionPromise = downloadArchivalDb(url, DB_PATH).catch((error: unknown) => {
+      provisionPromise = null; // a failed download is retryable on the next call
+      throw error;
+    });
+  }
+  return provisionPromise;
+}
+
+/**
+ * Download the index to a temp file (gunzipping when the URL ends in .gz) and
+ * atomically rename into place, so an interrupted run never leaves a half file.
+ * Mirrors scripts/ensure-archival-db.ts, the build-time equivalent.
+ */
+async function downloadArchivalDb(url: string, target: string): Promise<void> {
+  console.error(`[archival-db] index not present; downloading from ${url} ...`);
+
+  const headers: Record<string, string> = { accept: 'application/octet-stream' };
+  if (process.env.ARCHIVAL_DB_TOKEN) {
+    headers.authorization = `Bearer ${process.env.ARCHIVAL_DB_TOKEN}`;
+  }
+
+  const response = await fetch(url, { headers, redirect: 'follow' });
+  if (!response.ok || !response.body) {
+    throw new Error(`HTTP ${response.status} fetching ${url}`);
+  }
+
+  mkdirSync(dirname(target), { recursive: true });
+  const tmp = `${target}.tmp`;
+  const gzipped = new URL(url).pathname.endsWith('.gz');
+  const source = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
+
+  try {
+    if (gzipped) {
+      await pipeline(source, createGunzip(), createWriteStream(tmp));
+    } else {
+      await pipeline(source, createWriteStream(tmp));
+    }
+    renameSync(tmp, target);
+  } catch (error) {
+    if (existsSync(tmp)) unlinkSync(tmp);
+    throw error;
+  }
+
+  console.error(`[archival-db] index ready at ${target}`);
 }
 
 /**
