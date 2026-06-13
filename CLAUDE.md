@@ -15,6 +15,8 @@ npm run dev        # tsc --watch (npm run dev:ui rebuilds the viewer on change)
 npm run inspector  # build + MCP Inspector against dist/index.js
 npm start          # run the built server (node dist/index.js)
 npm test           # archival-index + viewer-build + smoke tests
+npm run build:mcpb # pack the full .mcpb (ships the ~112MB index); :thin omits it (downloads on first use)
+npm run test:mcpb  # stdio smoke-test the staged bundle (NOT in `npm test` — needs build:mcpb first)
 ```
 
 ## Structure (globalise-mcp-server/)
@@ -26,6 +28,7 @@ npm test           # archival-index + viewer-build + smoke tests
 - `apps/document-viewer/` — MCP Apps UI, bundled by vite during build
 - `scripts/build-archival-db.ts` — regenerates `data/archival-index.sqlite` (committed as `.gz`)
 - `skills/globalise-voc-research/` — the `globalise-voc-research` skill: `SKILL.md` (the source) + `globalise-voc-research.skill` (the committed package).
+- `manifest.json` / `manifest.thin.json`, `.mcpbignore`, `MCPB.md`, `scripts/build-mcpb.ts`, `scripts/test-mcpb-bundle.ts` — the `.mcpb` (Claude Desktop bundle) packaging (since v2.9.0, on `main`). `mcpb-build/` (generated output) is gitignored.
 
 ### Rebuilding the `.skill` package
 
@@ -37,6 +40,10 @@ rm -f globalise-voc-research/globalise-voc-research.skill
 zip -X globalise-voc-research/globalise-voc-research.skill globalise-voc-research/SKILL.md
 # verify: unzip -p .../globalise-voc-research.skill 'globalise-voc-research/SKILL.md' | diff - globalise-voc-research/SKILL.md
 ```
+
+### Building the `.mcpb` bundles
+
+`npm run build:mcpb` (full) / `build:mcpb:thin` from `globalise-mcp-server/` — each runs `npm run build`, stages a clean runtime tree under `mcpb-build/stage/`, and packs via `npx -y @anthropic-ai/mcpb` (no committed dep). **Full** ships the ~112 MB archival index in the bundle (30.4 MB `.mcpb`); **thin** omits it (4.7 MB) and the server downloads it on first `find_archival_documents` call (`ensureDatabaseFile()` in `database.ts`). Both stage `data/reference.sqlite` (the commodities + measures glossaries — small, so even thin ships it; without it those two tools degrade to "unavailable"). The manifest version is stamped from `package.json` at pack time. `npm run test:mcpb` stdio-smoke-tests the staged tree (auto-detects variant; thin run exercises the real first-run download). `.mcpb` output and the build are documented in `MCPB.md`. See [memory: mcpb-node24-baseline] for history.
 
 ## Conventions
 
