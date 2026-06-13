@@ -10,6 +10,8 @@ An MCP server for searching and retrieving ~4.8M transcribed pages from the Dutc
 | `globalise_retrieve_document` | Retrieve a document by ID |
 | `globalise_navigate` | Browse to next/previous page |
 | `globalise_find_archival_documents` | Query 228K+ archival document indexes |
+| `globalise_lookup_commodity` | Resolve a trade good to its Dutch label, definition, and period spelling variants |
+| `globalise_lookup_measure` | Look up a VOC weight/measure unit — type, spelling variants, and period conversion ratios |
 | `globalise_view_document_ui` | Interactive viewer with page scan and transcription |
 
 ## Resources

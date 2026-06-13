@@ -27,15 +27,13 @@ Word-level coordinates exist in PageXML files but aren't exposed through the pub
 
 ### Reimplement Removed Resources as SQLite-backed Tools
 
-**Priority:** Medium
-**Status:** In progress — Commodities (v2.7.0) and Weights & Measures (v2.8.0) shipped; Query Syntax remains
+**Priority:** Low
+**Status:** Commodities (v2.7.0) and Weights & Measures (v2.8.0) shipped (see archive); **Query Syntax** remains
 
-Archived content in `archived-resources/`. Reimplement as on-demand lookup tools:
-- **Commodities** → `globalise_lookup_commodity` — ✅ **Done (v2.7.0).** Term → concepts, hierarchy, variants; backed by the shared `data/reference.sqlite` (built by `scripts/build-commodities-db.ts`, ensured by `scripts/ensure-reference-db.ts`, tested by `scripts/test-commodities.ts`).
-- **Weights & Measures** → `globalise_lookup_measure` — ✅ **Done (v2.8.0).** Term → type + variants + period-reported conversion ratios (sparse definitions); 213 units / 385 variants / 731 conversions from `data/sources/weights-measures.json` (v3.0). Added to the same `data/reference.sqlite` as `measures` + `measure_conversions` tables (built by the now-extended `scripts/build-commodities-db.ts`, tested by `scripts/test-measures.ts`), with the tool module `src/tools/measures.ts` cloned from `commodities.ts`.
-- **Query Syntax** → integrate into search tool descriptions or simple help tool.
+Two of the three archived `archived-resources/` resources are now SQLite-backed lookup tools (`globalise_lookup_commodity`, `globalise_lookup_measure`) over the shared `data/reference.sqlite`. The last one:
+- **Query Syntax** → integrate into the search tool descriptions or a simple help tool.
 
-The shared `data/reference.sqlite` database this item proposed now serves two tools and follows the `globalise_find_archival_documents` pattern (read-only DB, per-connection state via `createConnectionState`, shared FTS sanitizer). A third vocabulary would follow the same recipe.
+A third vocabulary would follow the same recipe: read-only DB, per-connection state via `createConnectionState`, shared FTS sanitizer (the `globalise_find_archival_documents` pattern).
 
 ---
 
@@ -85,33 +83,9 @@ Migration is directional only until the draft finalizes a version date — do no
 
 ---
 
-### Type-check the Document Viewer (`apps/`) — add an apps tsconfig + `test:viewer-typecheck`
-
-**Priority:** Low
-**Status:** ✅ **Done (v2.7.13).** Added `apps/document-viewer/tsconfig.json` + `test:viewer-typecheck` (`tsc -p apps/document-viewer`), wired into `npm test` immediately before `test:viewer-build`. The viewer is now type-checked; previously it was only vite-transpiled. Two deliberate divergences from the sketch below: `moduleResolution: bundler` (not `NodeNext` — `bundler` is what verified clean and better matches how vite resolves the viewer's `.js`-suffixed imports), and the anticipated "first-pass cleanup" of OSD/ext-apps/DOM type errors **did not materialize** — the viewer sources type-checked clean on the first run, zero errors. `openseadragon` ships its own types, so `types: ["openseadragon", "node"]` resolves with no `@types/` package. Negative test confirmed the gate bites (a deliberate `const x: number = 'oops'` failed the suite, then reverted).
-
-`apps/document-viewer` is **excluded from `tsc`** (root `tsconfig.json` `include: ["src/**/*"]`, `exclude: ["apps"]`) and only transpiled by vite/esbuild, which does **not** type-check. So a type error *inside* `viewer.ts` (e.g. misusing a field after the server contract changes) is caught by neither `npm run build` nor `npm test` — it surfaces only at runtime in the iframe.
-
-v2.7.7 (finding 10) closed the worst of this: the viewer now `import type`s the server's zod-inferred `ViewDocumentUiOutput`/`ArchivalContext` (single source), and `scripts/test-viewer-protocol.ts` cross-checks the extracted `parse-result.ts` against a schema-built payload. But the viewer's own *usage* of those types is still unchecked.
-
-**Approach:** add `apps/document-viewer/tsconfig.json` (`lib: ["DOM","DOM.Iterable","ES2022"]`, `moduleResolution: NodeNext`, `noEmit`, `skipLibCheck`) covering `apps/document-viewer/src/**` plus the cross-boundary `import type` from `src/tools/document-viewer.ts`; wire a `test:viewer-typecheck` script (`tsc -p apps/document-viewer/tsconfig.json --noEmit`) into `npm test`.
-
-**Watch for:** incidental type errors in the never-checked viewer code (OpenSeadragon, the ext-apps SDK, DOM globals) — `skipLibCheck` + the right `types`/`lib` should contain them, but expect a first-pass cleanup. Keep zod out of the viewer *bundle* (the `import type` already guarantees this; the typecheck doesn't change bundling).
-
----
-
-### Document Viewer: OpenSeadragon Enhancements
-
-**Priority:** Low
-**Status:** Ideas
-
-- Navigator mini-map (`showNavigator: true`)
-
----
-
 ### Revise SKILL.md to link further GLOBALISE reference datasets
 
 **Priority:** Low
 **Status:** Not started
 
-SKILL.md names external GLOBALISE resources in prose but rarely links them — the "Weights & measures" section describes the ~213-unit glossary with no URL, and the "Colonial-era language" note cites "separate remediation datasets" for Asian individuals without pointers. Add links to further GLOBALISE references (weights & measures, places/geography, persons/actors, and similar gazetteers/authority files) so the model can hand users a citable source for material this server doesn't expose as a tool. Favour a compact "Further references" table over inline prose, and mind the ~500-line SKILL.md budget (currently 481).
+SKILL.md names external GLOBALISE resources in prose but rarely links them — the "Weights & measures" section describes the ~213-unit glossary with no URL, and the "Colonial-era language" note cites "separate remediation datasets" for Asian individuals without pointers. Add links to further GLOBALISE references (weights & measures, places/geography, persons/actors, and similar gazetteers/authority files) so the model can hand users a citable source for material this server doesn't expose as a tool. Favour a compact "Further references" table over inline prose, and mind the ~500-line SKILL.md budget (currently 501 — already at the cap, so trim elsewhere to add a table).
