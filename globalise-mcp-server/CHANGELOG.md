@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.9.2] - 2026-06-15
+
+Doc-accuracy fixes to the `globalise-voc-research` skill. Skill-only — no `src/`, DB, or schema change; the `.skill` package was repackaged and verified byte-identical to `SKILL.md`. Both gaps were found by auditing the skill against the live tool schemas.
+
+### Fixed
+- **Transcription sorting is now documented (and no longer implicitly denied).** The skill stated flatly *"There is no `sortBy`/`sortOrder` parameter"* under a generically-titled "Sorting and pagination" section that is in fact `find_archival_documents`-scoped. That is correct for the finding-aid tool, but `globalise_search_transcriptions` **does** expose `sortBy` (`_score` / `document` / `invNr`, default `_score`) and `sortOrder` (`asc` / `desc`, default `desc`) — see `src/tools/search.ts:114` and `:118` — which the skill documented nowhere, so the blanket statement suppressed a real capability. The find-aid sentence is now scoped and forward-references the search tool, and the "Searching transcriptions" section gains a short "Sorting — this tool *does* have it" paragraph.
+- **The `chamber` filter is no longer hidden behind "read it from results".** `find_archival_documents` accepts a `chamber` filter (`"Amsterdam"` / `"Zeeland"`, GM-only; `src/tools/archival-index.ts:29`), but the skill described `chamber` only as a readable GM *field*, and its worked example ("Letters from the Amsterdam chamber in the 1680s") post-filtered from results instead of passing `chamber="Amsterdam"`. The GM-field bullet and the worked example now name `chamber` as a usable server-side filter.
+
+### Notes
+- No tool-description (`src/index.ts`) change was needed: the `sortBy` / `sortOrder` params self-document via their Zod schema `.describe()` at call time, so a client always sees them — only the skill prose was stale. This mirrors the v2.7.2 / v2.8.1 SKILL-refinement precedent.
+
 ## [2.9.1] - 2026-06-15
 
 Railway start command changed from `npm start` to `node dist/index.js`. Deploy-config only (`railway.json`) — no `src/`, DB, schema, or `.skill` change, and no change to the server's request handling.

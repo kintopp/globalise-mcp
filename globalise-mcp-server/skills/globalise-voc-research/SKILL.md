@@ -71,8 +71,9 @@ dedup note below):
 - **GM — Generale Missiven** (`source=gm`, ~950 entries). The official summary
   letters from Batavia to the Heren XVII. Fields: `chamber`, dates, RGP
   references (with `publishedEdition` links for the ~558 published letters), scan
-  URLs, `htrAvailable`. **`chamber` and `htrAvailable` are
-  GM-only.** Folio filters require an `inventoryNumber`.
+  URLs, `htrAvailable`. **`chamber` and `htrAvailable` are GM-only**; `chamber`
+  (`"Amsterdam"` / `"Zeeland"`) is also a usable **filter**. Folio filters require an
+  `inventoryNumber`.
 
 `includeAggregations: true` adds settlement / year / inventory breakdowns (OBP)
 or chamber (GM) — cheap and useful for "what's in here?" questions.
@@ -189,7 +190,9 @@ that word, missing those filed generically as "Missive van den gouverneur…". T
 
 ## Sorting and pagination
 
-There is **no `sortBy`/`sortOrder` parameter.** Ordering is fixed:
+`find_archival_documents` has **no `sortBy`/`sortOrder` parameter** (unlike
+`search_transcriptions`, which does — see "Searching transcriptions" below). Its
+ordering is fixed:
 
 - **OBP:** `year_earliest`, then `inventory_number` (compared as **text**, so
   "10435" sorts before "2393"), then `folio_start`.
@@ -325,6 +328,12 @@ querying them. There's no reliable way to match a literal `*` or `?`.
 160,366, `"eq"`); the case that returns a floor is **`matchAll` across multiple
 languages**, which post-filters a capped 500-hit candidate window and adds a
 `note`. When you see `"gte"` or a note, treat the count as a lower bound.
+
+**Sorting — this tool *does* have it** (unlike `find_archival_documents`). `sortBy`
+takes `_score` (relevance, the default), `document` (page ID), or `invNr` (inventory);
+`sortOrder` is `asc`/`desc` (default `desc`). Relevance order suits most queries — reach
+for `sortBy="document"` or `"invNr"` with `sortOrder="asc"` when you want to walk an
+inventory's pages in archival order instead of by score.
 
 ## Looking up commodities with `lookup_commodity`
 
@@ -463,8 +472,8 @@ form ~25,000.)
 → `view_document_ui(documentId="NL-HaNA_1.04.02_7535_0011", highlightTerms=["Batavia"])`.
 
 **"Letters from the Amsterdam chamber in the 1680s."**
-→ `find_archival_documents(source="gm", query="...", yearFrom=1680, yearTo=1689)`
-(chamber is a GM field; filter/read it from results).
+→ `find_archival_documents(source="gm", chamber="Amsterdam", yearFrom=1680, yearTo=1689)`
+(`chamber` is a GM-only **filter** — values `"Amsterdam"` / `"Zeeland"`).
 
 **"Read the next few pages after this one."**
 → `navigate(documentId=..., direction="next")`, repeat.
