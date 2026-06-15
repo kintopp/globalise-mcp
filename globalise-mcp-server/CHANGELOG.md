@@ -6,6 +6,16 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.9.1] - 2026-06-15
+
+Railway start command changed from `npm start` to `node dist/index.js`. Deploy-config only (`railway.json`) — no `src/`, DB, schema, or `.skill` change, and no change to the server's request handling.
+
+### Fixed
+- **Graceful HTTP shutdown now actually runs on Railway, and the `npm error signal SIGTERM` log lines are gone.** The container entrypoint was `npm start`, which makes **npm PID 1** with `node dist/index.js` as a child. npm does not forward `SIGTERM` to that child, so the v2.7.5 graceful-shutdown handler (`process.on('SIGTERM', …)` in `src/index.ts`) **never ran in the deployed environment** — proven by the `[SHUTDOWN] SIGTERM received` line being absent from every deploy log — and npm exited non-zero, emitting the misleading `npm error signal SIGTERM` lines. Setting `startCommand` to `node dist/index.js` makes `node` the direct process (Railway's `sh -c` `exec`s a single trailing command, so `node` becomes the signal recipient): the handler now runs — logs `[SHUTDOWN]`, drains in-flight `/mcp` requests, exits 0. `railway.json` is shared by both services, so production gets working drain-on-redeploy too.
+
+### Notes
+- The `npm error signal SIGTERM` that prompted this was observed on **beta** because beta has Railway **app-sleep** enabled (`Sleep when inactive: true`; production does not). After a few minutes with no inbound traffic Railway stops the idle container (`SIGTERM`) and wakes it on the next request — a normal lifecycle event (deployment state `SLEEPING`), not a crash. App-sleep on beta is intentionally left enabled. This fix only changes how that (and every redeploy) `SIGTERM` is handled.
+
 ## [2.9.0] - 2026-06-13
 
 `.mcpb` (MCP Bundle / Desktop Extension) packaging brought onto `main` from the retired `feature/mcpb` branch, refreshed for the current 7-tool server. MINOR bump: a new build/packaging path plus an additive, thin-bundle-only runtime code path; no behavior change to the running server in its existing (Railway / full-bundle) configurations.
