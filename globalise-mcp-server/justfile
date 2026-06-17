@@ -1,0 +1,42 @@
+# GLOBALISE MCP CLI (glob-mcp) — CLI-only setup + run recipes.
+#
+# `just` is a command runner (https://github.com/casey/just). Install it (see the README
+# "CLI" → "Install (CLI-only, via just)"), then run `just` with no arguments to list recipes.
+#
+# Transports:
+#   stdio (default) — spawns `node dist/index.js`; needs `just setup` (deps + build, which
+#                     decompresses the local SQLite DBs). Network only for search/retrieve/navigate.
+#   http            — talks to a running server; needs only `just deps` + network. No build, no DBs.
+#
+# `$@` forwards recipe args verbatim, so CLI flags (--max, --quiet, --help, …) reach glob-mcp
+# unchanged — they are recipe arguments, never parsed as `just`'s own options. `just`'s own
+# command-echo goes to stderr, so `just cli` keeps stdout pure JSONL for piping.
+
+set positional-arguments
+
+# List the recipes (runs when you invoke `just` with no arguments).
+default:
+    @just --list
+
+# Install npm dependencies (needed for BOTH transports — the CLI imports the MCP SDK).
+deps:
+    npm install
+
+# Build the server: vite UI -> tsc -> decompress the bundled ~115 MB SQLite DBs (stdio only).
+build:
+    npm run build
+
+# Cold-start prep for the default stdio transport: deps + build.
+setup: deps build
+
+# Run glob-mcp over stdio (default; run `just setup` once first): just cli search "peper" --max 5
+cli *args:
+    node scripts/cli.mjs "$@"
+
+# Run glob-mcp against a remote HTTP server (only `just deps` + network): just http <url> search "peper"
+http url *args:
+    node scripts/cli.mjs --http "$@"
+
+# Smoke-test the CLI (needs dist/ + DBs + network; out of the default `npm test` chain).
+test:
+    npm run test:cli
