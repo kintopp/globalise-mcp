@@ -276,7 +276,7 @@ Started the http transport, confirmed `/health`, sent SIGTERM: process exited **
 
 ## [2.7.4] - 2026-06-11
 
-Fixed the four P1 findings from the v2.7.3 whole-codebase review (`CODE-REVIEW-FINDINGS.md`): one hard-failure edge case, two silent-wrong-answer bugs, and one contradictory tool description. No database rebuild; no `.skill` change.
+Fixed the four P1 findings from the v2.7.3 whole-codebase review (`offline/outdated/CODE-REVIEW-FINDINGS.md`): one hard-failure edge case, two silent-wrong-answer bugs, and one contradictory tool description. No database rebuild; no `.skill` change.
 
 ### Fixed
 - **`retrieve_document` / `navigate` no longer error when an upstream page lacks a license** (finding 1). `getDocument` mapped `license: metadata.comment` unconditionally, but both output schemas declared `license` as a **required** string — with `STRUCTURED_CONTENT` on (the default), the SDK validates `structuredContent` against the schema, so a page whose annotation metadata omits `comment` produced `license: undefined` → a zod required-string failure → the whole tool call errored instead of returning the transcription. `license` is now `.optional()` in `getDocumentOutputSchema` (`document.ts`) and `navigateOutputSchema` (`convenience.ts`), `PageMetadata.comment` is `optional` in `types.ts`, and a shared `normalizeLicense()` helper (`document.ts`, reused by `document-viewer.ts`) handles the field one way everywhere — guarding the missing case **and** stripping the `"license: "` prefix. *Output-format note:* `retrieve_document`/`navigate` now return the bare license value (e.g. `"CC-BY-4.0"`) instead of the raw `"license: CC-BY-4.0"`, matching what the viewer already did.
