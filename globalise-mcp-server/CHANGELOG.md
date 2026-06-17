@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.9.3] - 2026-06-17
+
+Dependency hygiene. Build/dev-tooling only — no `src/`, DB, schema, `.skill`, or runtime-behavior change. Both the deployed Railway server and the `.mcpb` runtime are unaffected.
+
+### Fixed
+- **`npm audit fix` clears the lone high-severity finding → `npm audit` now reports 0 vulnerabilities.** The advisory was a transitive `esbuild` (`≤0.28.0`) pulled in under `tsx`, a build/test-time tool that never ships to the running server or the `.mcpb` bundle. The two flagged CVEs (Deno-loader RCE via `NPM_CONFIG_REGISTRY`; esbuild dev-server arbitrary file read on Windows) did not apply to this project's usage (Node, not Deno; macOS/Linux; no esbuild dev server), but the fix bumps `tsx`'s nested `esbuild` past the vulnerable range regardless. `package-lock.json` only.
+
+### Changed
+- **`@types/node` `^24.13.1 → ^24.13.2`** — the latest patch on the **24** line. Note `@types/node`'s minor/patch follow DefinitelyTyped's own cadence, *not* Node's, so there is no `@types/node@24.16`; only the **major** (24) must match the Node 24 runtime. `engines.node` is deliberately **left** at `>=24.15.0 <25.0.0` (the Claude-Desktop-parity floor; Railway's builder selects the patch). Server + viewer `tsc` and the full `npm test` suite stay green.
+- **`csv-parse` `^6.2.1 → ^7.0.0`** (a major bump) — used only by the two DB-build scripts (`scripts/build-archival-db.ts`, `scripts/build-commodities-db.ts`), never by the running server or the `.mcpb` runtime. Verified as a **byte-identical drop-in**: both scripts were rebuilt to a temp path with v7 and every table is content-identical to the committed v6-built DBs (`obp_documents` 227,526, `generale_missiven` 950, `commodities` 3,508, `measures` 213, `measure_conversions` 731 — matching row counts *and* matching SHA-256 content hashes), and all three DB test suites pass against the v7 output. v7's breaking changes are option/error-constant renames (`relax`→`relax_quotes`, `group_columns_by_name`, `skip_records_with_error`, `skip_records_with_empty_values`); the scripts use none of them (only `columns`, `skip_empty_lines`, `bom`, `relax_column_count`, `delimiter`, `quote`), so no script change was needed. **No DB rebuild is committed** — the committed `data/*.sqlite{,.gz}` are untouched; the next routine `npm run build:db` / `build:db:commodities` will produce identical output under v7.
+
 ## [2.9.2] - 2026-06-15
 
 Doc-accuracy fixes to the `globalise-voc-research` skill. Skill-only — no `src/`, DB, or schema change; the `.skill` package was repackaged and verified byte-identical to `SKILL.md`. Both gaps were found by auditing the skill against the live tool schemas.
