@@ -439,7 +439,7 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_search_transcriptions',
-    'Search the ~4.8M transcribed VOC pages by free text, with composable filters for inventory number(s) and language(s). ' +
+    'Search the ~4.8M transcribed VOC pages by free text, with filters for inventory number(s) and language(s). ' +
       'Query syntax (Elasticsearch): a bare space means OR — use uppercase AND for all-terms; plus NOT, wildcards (* ?), fuzzy matching (~N, for HTR/OCR spelling noise), exact phrases in quotes; query defaults to "*" (match everything). ' +
       'Languages accept ISO 639-3 codes or English names; matchAll=true requires pages to contain ALL listed languages (bilingual documents) by post-filtering a capped candidate window — totals are then a lower bound, see the response note. ' +
       'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +
@@ -468,7 +468,7 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_navigate',
-    'Fetch the previous or next page relative to a given document ID, for reading through archival materials sequentially. ' +
+    'Fetch the previous or next page relative to a document ID, to read through archival materials sequentially. ' +
       'Returns the target page\'s full details (text, metadata, links); errors if no page exists in that direction.',
     navigateToolInputSchema,
     navigateOutputSchema,
@@ -479,7 +479,7 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_find_archival_documents',
-    'Query a local index of 228K+ VOC archival document descriptions (finding aids) — useful for scoping by archival metadata before searching transcriptions. ' +
+    'Search a local index of 228K+ VOC finding-aid entries to scope by metadata before searching transcriptions. ' +
       'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, scan URLs, and — for the ~558 published in RGP — published-edition links to Retroboeken scans + GitHub plain text). ' +
       'The query field uses SQLite FTS5 — ' + FTS_OPERATORS + ', and (expr) grouping. ' + FTS_AUTOQUOTE + ' ' +
       'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
@@ -492,7 +492,7 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_lookup_commodity',
-    'Look up VOC trade goods in the commodities glossary — ~3,500 commodities and trade-related concepts, each with a Dutch (usually also English) label and a sourced, confidence-rated definition. ' +
+    'Look up VOC trade goods in a ~3,500-entry glossary: bilingual labels plus a sourced, confidence-rated definition. ' +
       'Two main uses: (1) resolve a modern/English term to the Dutch word the corpus uses (coffee→koffie, mace→foelie); (2) read a sourced definition. Some concepts also carry period spelling variants (altLabels), but only ~10% do — pepper, coffee, nutmeg have none — so for recall in globalise_search_transcriptions take the Dutch label, OR in any altLabels, then add fuzzy (~1)/wildcards (the corpus prefers c- over k-, -ij over -ie: koffie→coffij). ' +
       'The query field uses SQLite FTS5 over labels + variants + definitions — ' + FTS_OPERATORS + '; label/variant hits rank above definition hits. Omit the query to page through the glossary alphabetically. ' +
       'Every definition carries its definitionSource and a confidence rating — over half are LLM-generated, so present low/medium-low ones tentatively, say only what the definition states, and prefer the authoritative sources (wnt, aat, vocGlossarium, PoolParty). prefLabelEn is occasionally a mistranslation — prefer the definition. The raw concept ID stays internal, but each result includes thesaurusUrl, a public permalink to the concept in the GLOBALISE thesaurus (its SKOS hierarchy of broader/narrower terms + cited source, often a Zotero record) — offer it when a user wants to place a good in its trade taxonomy or follow its source.',
@@ -504,7 +504,8 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_lookup_measure',
-    'Look up VOC weights & measures — ~213 historical units of weight, volume, length, area, quantity, and misc used in Dutch East India Company records (from the 1764–1771 Memoriën van Munten, Maaten, en Gewigten). ' +
+    'Look up VOC weights & measures: ~213 historical units of weight, volume, length, area, quantity, and misc. ' +
+      'They come from the 1764–1771 Memoriën van Munten, Maaten, en Gewigten. ' +
       'Each result reliably carries: the unit label, its type (weight/volume/length/area/quantities/misc — load-bearing, since a few labels like roede/voet are homonyms distinguished only by type), period spelling variants, and the conversion ratios it appears in (~731 across the dataset). ' +
       'This is NOT a precise unit converter: early-modern units were unstable, so a ratio holds only for the settlement and commodity it was recorded for (a bahar of pepper ≠ a bahar of cloves) — always read each conversion against its `context` field, and do not convert to modern equivalents without it. The context often pins the commodity as well as the place (e.g. "rijst, Batavia", "goud, zilver, Mokka"), and the same unit\'s ratio routinely differs by good — so the context is where the commodity-specific value lives, not just the prose definition. A self-referential ratio ("1 X = 1 X") attests the unit was used in that context without a recorded local equivalence. ' +
       'Spelling variants double as query expansion: feed them into globalise_search_transcriptions (which is spelling-blind) to catch documents a modern spelling misses. ' +
@@ -526,8 +527,8 @@ export function createServer(): McpServer {
     VIEW_DOCUMENT_UI_TOOL_NAME,
     {
       description:
-        'Display a VOC page in an interactive viewer: IIIF scan image (zoom/pan/rotate) and the transcription with line numbers, side-by-side, with optional search-term highlighting. ' +
-        'Takes a document ID or URN. ' +
+        'Display a VOC page in an interactive viewer: a zoomable IIIF scan image beside its line-numbered transcription. ' +
+        'Takes a document ID or URN; supports optional search-term highlighting. ' +
         'When the user selects text in the transcription panel they typically want a translation of those words from 17th/18th-century Dutch to modern English.',
       // Pass the strict schema at runtime (registerAppTool forwards it verbatim
       // to registerTool, which honors .strict() and rejects unknown params),

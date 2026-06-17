@@ -6,6 +6,23 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.10.1] - 2026-06-17
+
+Doc-only trim of the always-loaded tool-description **first sentences** so each fits the MCP-client tool-list truncation budget. `src/index.ts` tool descriptions only — **no code-logic change**, no DB rebuild, no schema change, no `.skill` change. Patch bump (mirrors the v2.7.2 / v2.8.1 / v2.9.2 doc-refinement precedent).
+
+### Changed
+- **Trimmed every tool-description first sentence to ≤114 characters.** Premise (user-discovered): a client like claude.ai renders only the **leading ~117 characters + `…`** of each tool description in its tool list/picker (the observed truncation is 118 chars *including* the 1-char ellipsis ⇒ 117 of content kept; the threshold constant is likely 120, with ~3 reserved for a legacy 3-dot ellipsis but only 1 spent). A first sentence longer than ~117 is therefore cut **mid-word** in that view, hiding the tool's actual payload. Four leads were over budget and cut mid-word — `find` (`…archival metad`), `commodity` (`…each with a Dutc`), `measure` (`…used in Du`), `view_document_ui` (`…line number`) — and two (`search`, `navigate`) were sitting *exactly* on the 117 boundary with zero slack.
+  - `globalise_find_archival_documents`: 153 → **107**.
+  - `globalise_lookup_commodity`: 191 → **113**.
+  - `globalise_lookup_measure`: 210 → **106**.
+  - `globalise_view_document_ui`: 173 → **111**.
+  - `globalise_search_transcriptions`: 117 → **106** (dropped "composable").
+  - `globalise_navigate`: 117 → **107** ("given … for reading" → "to read").
+  - `globalise_retrieve_document`: **103**, already within budget — unchanged.
+- **No payload lost — relocated, not deleted.** `measure`'s provenance (the 1764–1771 *Memoriën van Munten, Maaten, en Gewigten* source) moved to a new second sentence; `view_document_ui`'s optional search-term-highlighting note folded into its "Takes a document ID or URN" sentence. `commodity` dropped the "(usually also English)" nuance from the lead (still implied by "bilingual"; the body still warns `prefLabelEn` can mistranslate).
+- Margin chosen at **≤114** (a few chars below the 117 boundary) so the leads stay clear even if the limit turns out to be byte-based — the rewritten leads use the multi-byte `—`/`–`/`ë` glyphs. First sentences were re-measured **live** from the running server via the CLI's `tools --json` (the authoritative wire surface), not from the source literals.
+- SKILL.md is **unchanged** — it has no equivalent length constraint, and the relocated content is preserved in the descriptions. tsc + full `npm test` green.
+
 ## [2.10.0] - 2026-06-17
 
 Headless CLI (`scripts/cli.mjs`) — an MCP **client** over the existing server. New build/run surface; **no behavior change** to the running server (no `src/` tool change, no DB rebuild, no schema change, no `.skill` change). MINOR bump.
