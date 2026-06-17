@@ -1,14 +1,19 @@
 ---
 name: globalise-voc-research
 description: >-
-  Search and read the 17th–18th-century Dutch East India Company (VOC) archives 
-  through the GLOBALISE MCP server. Use this whenever a task involves the
-  GLOBALISE/VOC corpus or its tools: finding archival documents by
-  place/year/inventory, full-text searching transcriptions, reading or paging
-  through pages, resolving a trade good to its period spelling variants or
-  definitions, looking up a VOC unit of weight/volume/length (its type, 
-  spelling variants, and period conversion ratios), or opening the interactive 
-  viewer. Reach for it even when the user names a VOC topic obliquely.
+  Search and read the 17th–18th-century Dutch East India Company (VOC /
+  Verenigde Oostindische Compagnie) archives — ~4.8M HTR-transcribed pages
+  from the Dutch National Archives (Nationaal Archief, fonds 1.04.02) — via
+  the GLOBALISE MCP server. Use it to find out what a VOC document says,
+  trace a shipment or commodity, or pull letters about a place or person:
+  find archival documents by place/year/inventory, full-text search
+  transcriptions, read or page through scans, resolve a trade good to its
+  period spellings and definition, look up a VOC weight/volume/length unit
+  (type, variants, conversion ratios), or open the interactive scan viewer.
+  Reach for it for a bare document ID like NL-HaNA_1.04.02_9966_0106, or
+  topics like Batavia, Ceylon, Malabar, the Cape, the Generale Missiven,
+  pepper, nutmeg, or coffee — even when the user never says "VOC" or
+  "GLOBALISE".
 ---
 
 # Researching VOC archives with the GLOBALISE MCP server
@@ -17,7 +22,7 @@ GLOBALISE serves machine transcriptions (HTR) of ~4.8M pages of Dutch East India
 Company (Verenigde Oostindische Compagnie, VOC) records from the Dutch National
 Archives (1618-1793). 
 
-Document IDs look like `NL-HaNA_1.04.02_7535_0011` = `{archive}_{inventory}_{scan}`.
+Document IDs look like `NL-HaNA_1.04.02_9966_0106` = `{archive}_{inventory}_{scan}`.
 Any page opens in the web viewer at
 `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:{id}`.
 
@@ -468,15 +473,15 @@ most goods have none, so reconstruct the period spelling and fuzz it →
 `search_transcriptions`. (Coffee: the modern `koffie` finds 119 pages; the period
 form ~25,000.)
 
-**"Show me page NL-HaNA_1.04.02_7535_0011 with 'Batavia' highlighted."**
-→ `view_document_ui(documentId="NL-HaNA_1.04.02_7535_0011", highlightTerms=["Batavia"])`.
+**"Show me page NL-HaNA_1.04.02_9966_0106 with 'Batavia' highlighted."**
+→ `view_document_ui(documentId="NL-HaNA_1.04.02_9966_0106", highlightTerms=["Batavia"])`.
 
 **"Letters from the Amsterdam chamber in the 1680s."**
 → `find_archival_documents(source="gm", chamber="Amsterdam", yearFrom=1680, yearTo=1689)`
 (`chamber` is a GM-only **filter** — values `"Amsterdam"` / `"Zeeland"`).
 
 **"Read the next few pages after this one."**
-→ `navigate(documentId=..., direction="next")`, repeat.
+→ `navigate(currentDocumentId=..., direction="next")`, repeat.
 
 ## Operational notes
 

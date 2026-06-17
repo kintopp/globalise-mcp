@@ -113,7 +113,7 @@ Corpus caveats that apply to every tool:
 - Language metadata: "unknown" means not yet classified, not unidentifiable. The code "art" ("Cipher") marks encrypted Dutch text, not an artificial language.
 - The HTR model was trained on Latin script only: transcriptions of non-Roman-script languages (Persian, Bengali, Tamil, Sinhala, Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) are unreliable gibberish — offer the user the National Archives page-scan link from the document metadata instead. Malay ("msa") is a macrolanguage with no script metadata, so offer scan links for it too.
 - The search tokenizer strips punctuation and treats hyphens as word separators ("oost-indie" matches like "oost indie").
-- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages.`;
+- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages. Two local glossaries resolve VOC vocabulary alongside search — globalise_lookup_commodity (trade good → the Dutch term the corpus uses, a sourced definition, and any period spelling variants) and globalise_lookup_measure (unit of weight/volume/length → its type, spelling variants, and period conversion ratios).`;
 
 /**
  * Per-tool builders that turn a result into clickable viewer markdown links,

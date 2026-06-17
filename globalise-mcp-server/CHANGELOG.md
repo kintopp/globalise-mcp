@@ -6,6 +6,25 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.10.3] - 2026-06-17
+
+SKILL front-matter `description` rewritten to widen the skill's triggering surface. The front-matter `description` is the **gate** — if it doesn't match the user's phrasing, none of the SKILL.md body ever loads — so trigger coverage there has outsized leverage. Doc-only — **no code-logic change**, no DB rebuild, no schema change, no `src/` change; `.skill` repackaged. Four levers applied (866-char result, within the ~1024 skill-`description` budget):
+
+- **(1) Alternate corpus names.** Adds "Verenigde Oostindische Compagnie", "Dutch National Archives (Nationaal Archief)", and the fonds code `1.04.02` alongside the existing VOC / Dutch East India Company / GLOBALISE — the forms researchers actually type.
+- **(2) Bare document ID as a trigger.** Names the `NL-HaNA_1.04.02_9966_0106` ID shape explicitly, so a pasted ID with no surrounding words now has match surface (near-zero false-positive, high recall).
+- **(3) Qualified signature proper nouns.** Batavia, Ceylon, Malabar, the Cape, the Generale Missiven, pepper, nutmeg, coffee — kept tethered to VOC/early-modern-Dutch-colonial context to avoid over-triggering on generic colonial/trade queries.
+- **(4) Intent-shaped phrasings.** The capability list is now led by the user-questions "find out what a VOC document says / trace a shipment or commodity / pull letters about a place or person" instead of tool-name-first prose, matching how users phrase requests.
+
+All seven capabilities are still named; the "even when the user never says 'VOC'/'GLOBALISE'" oblique-trigger close is retained. Lever 5 (a "prefer over web search" disambiguation line) was offered but **not** applied per the request. Patch bump mirroring the v2.9.2 SKILL-refinement precedent. **Layout correction:** the `.skill` package and a `.skill.zip` copy of it now live **alongside** the `globalise-voc-research/` directory (at `skills/` level), not inside it; the old in-dir `globalise-voc-research/globalise-voc-research.skill` was removed. CLAUDE.md's Structure + "Rebuilding the `.skill` package" sections updated to match (the prior doc pointed inside the dir and omitted the `.skill.zip`).
+
+## [2.10.2] - 2026-06-17
+
+Doc-only consistency fixes across the two always-loaded "what is GLOBALISE" surfaces — the server `instructions` string (`SERVER_INSTRUCTIONS` in `src/index.ts`) and the `globalise-voc-research` SKILL.md. **No code-logic change**, no DB rebuild, no schema change. `.skill` repackaged. Patch bump (mirrors the v2.9.2 SKILL-refinement precedent).
+
+- **Server `instructions` now mentions the two reference-glossary tools.** The "Typical workflow" line listed only `find` → `search` → `retrieve`/`view` (4 of 7 tools), silently omitting `globalise_lookup_commodity` and `globalise_lookup_measure` — so a client reading only the server instructions (every non-skill client) was never steered toward vocabulary resolution. The workflow line now names both, parallel to how the SKILL front-matter already advertised them.
+- **Canonical example document ID aligned.** SKILL.md used `NL-HaNA_1.04.02_7535_0011` in three places (intro + the highlight worked-example) while all 5 `src/` locations (server instructions, three tool input-schema `.describe()`s, the document-ID validator hint) and the live-test stable doc use `…_9966_0106`. SKILL.md aligned to `…_9966_0106`; the distinct inv-7545/scan-27 URN-padding example is intentional and left unchanged.
+- **Fixed a broken `navigate` worked example (found while editing).** SKILL.md showed `navigate(documentId=..., direction="next")`, but the tool's param is `currentDocumentId` (`src/tools/convenience.ts`) and the input schema is `.strict()` — an LLM copying the example would hit a validation error. Corrected to `currentDocumentId`.
+
 ## [2.10.1] - 2026-06-17
 
 Doc-only trim of the always-loaded tool-description **first sentences** so each fits the MCP-client tool-list truncation budget. `src/index.ts` tool descriptions only — **no code-logic change**, no DB rebuild, no schema change, no `.skill` change. Patch bump (mirrors the v2.7.2 / v2.8.1 / v2.9.2 doc-refinement precedent).
