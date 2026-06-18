@@ -6,6 +6,10 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.10.6] - 2026-06-18
+
+Viewer-only hardening — the `open-failed` "Open image directly" link now passes its IIIF `imageUrl` through the existing `sanitizeUrl()` helper (the one URL sink in the viewer that bypassed it), matching the sibling external links at `viewer.ts:281–283`. `sanitizeUrl()` allows only `http:`/`https:` and returns `'#'` for anything else. No server-tool/DB/schema/`.skill` change; low reachability (the viewer needs a poisoned IIIF upstream response and runs in a sandboxed iframe), but closes the one inconsistent URL sink — consistency/defense-in-depth. `test:viewer-typecheck` + `test:viewer-build` both confirmed green.
+
 ## [2.10.5] - 2026-06-18
 
 CLI fix (client-only — no `src/`/server/DB/schema/`.skill` change; deployed server unaffected). The `tokenize()` function in `scripts/cli.mjs` now throws `UsageError` (exit 2) when a non-boolean space-form flag (`--max 5`) has a missing or flag-shaped next token, instead of silently coercing to `NaN` (and swallowing the next flag). The `--http` pre-scan is guarded too: `--http` with no URL now exits 2 with "–-http requires a URL". The `=`-form (`--max=5`, `--http=<url>`) is unchanged and still works. `scripts/test-cli.ts` gains cases 16–19 (+8 checks) covering both error cases and the happy-path inline-value regression guard. All 19 cases pass.

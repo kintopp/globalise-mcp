@@ -445,7 +445,7 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
       viewerContainer.innerHTML = `
         <div class="image-error">
           <p>Image could not be loaded</p>
-          <p><a href="${imageUrl}" target="_blank">Open image directly</a></p>
+          <p><a href="${sanitizeUrl(imageUrl)}" target="_blank">Open image directly</a></p>
         </div>
       `;
     }
