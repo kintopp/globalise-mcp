@@ -120,8 +120,20 @@ function tokenize(args, boolSet) {
     }
     key = FLAG_ALIASES[key] || key;
     if (val === undefined) {
-      if (boolSet.has(key)) val = true;
-      else { val = args[i + 1]; i++; }
+      if (boolSet.has(key)) {
+        val = true;
+      } else {
+        const next = args[i + 1];
+        // A non-boolean flag needs a value. Reject end-of-args and the case
+        // where the next token is itself a flag (e.g. `--max --json`, which
+        // would otherwise silently swallow --json). The `--key=value` form is
+        // the escape hatch for any value that must start with `--`.
+        if (next === undefined || next.startsWith("--")) {
+          throw new UsageError(`--${key} requires a value (use --${key}=<value> if the value starts with --)`);
+        }
+        val = next;
+        i++;
+      }
     }
     if (key in flags) flags[key] = [].concat(flags[key], val);
     else flags[key] = val;
@@ -489,7 +501,14 @@ async function main() {
   let verb;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--http") { httpUrl = argv[i + 1]; i++; continue; }
+    if (a === "--http") {
+      if (argv[i + 1] === undefined) {
+        process.stderr.write("Error: --http requires a URL\n");
+        process.exitCode = 2;
+        return;
+      }
+      httpUrl = argv[i + 1]; i++; continue;
+    }
     if (a.startsWith("--http=")) { httpUrl = a.slice("--http=".length); continue; }
     if (a.startsWith("-")) {
       const key = a.replace(/^--?/, "").split("=")[0];

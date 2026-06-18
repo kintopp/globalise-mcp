@@ -248,6 +248,39 @@ async function main() {
     );
   }
 
+  // ── 16. missing flag value → usage error (exit 2), not a NaN tool error ───────
+  console.log('16. find ... --max (no value) → exit 2');
+  {
+    const r = await runCli(['find', 'Amsterdam', '--source', 'gm', '--max']);
+    check(r.code === 2, `exit 2 (got ${r.code})`);
+    check(/requires a value/.test(r.stderr), 'stderr names the missing value');
+  }
+
+  // ── 17. flag-shaped value is rejected, not silently swallowed ─────────────────
+  console.log('17. find ... --max --table (next token is a flag) → exit 2');
+  {
+    const r = await runCli(['find', 'Amsterdam', '--source', 'gm', '--max', '--table']);
+    check(r.code === 2, `exit 2 (got ${r.code})`);
+    check(/requires a value/.test(r.stderr), 'stderr names the missing value (did not swallow --table)');
+  }
+
+  // ── 18. --http with no URL → usage error (exit 2) ─────────────────────────────
+  console.log('18. --http (no url) → exit 2');
+  {
+    const r = await runCli(['--http']);
+    check(r.code === 2, `exit 2 (got ${r.code})`);
+    check(/--http requires a URL/.test(r.stderr), 'stderr names the missing URL');
+  }
+
+  // ── 19. --max=5 (inline value) still parses correctly ─────────────────────────
+  console.log('19. --show-call search "peper" --max=5 (inline value preserved)');
+  {
+    const r = await runCli(['--show-call', 'search', 'peper', '--max=5']);
+    check(r.code === 0, `exit 0 (got ${r.code})`);
+    const call = safe(() => JSON.parse(r.stdout.trim()), null) as any;
+    check(call && call.arguments && call.arguments.size === 5, `--max=5 → size:5 (got ${call?.arguments?.size})`);
+  }
+
   finish('CLI smoke test');
 }
 

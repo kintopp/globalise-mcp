@@ -6,6 +6,10 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.10.5] - 2026-06-18
+
+CLI fix (client-only — no `src/`/server/DB/schema/`.skill` change; deployed server unaffected). The `tokenize()` function in `scripts/cli.mjs` now throws `UsageError` (exit 2) when a non-boolean space-form flag (`--max 5`) has a missing or flag-shaped next token, instead of silently coercing to `NaN` (and swallowing the next flag). The `--http` pre-scan is guarded too: `--http` with no URL now exits 2 with "–-http requires a URL". The `=`-form (`--max=5`, `--http=<url>`) is unchanged and still works. `scripts/test-cli.ts` gains cases 16–19 (+8 checks) covering both error cases and the happy-path inline-value regression guard. All 19 cases pass.
+
 ## [2.10.4] - 2026-06-18
 
 Build-infra / test-only change — new `test:cli-typecheck` step added to `npm test`. Runs `tsc -p scripts/tsconfig.cli.json` (a standalone `checkJs` config, mirroring the viewer's `test:viewer-typecheck` gate) over `scripts/cli.mjs`, the ~625-line headless MCP-client CLI added in v2.10.0. The root `tsconfig.json` only includes `src/**/*`, so the CLI had zero static checking before this; a renamed field or wrong-arity call shipped unguarded. The new lenient `checkJs` gate (not strict — strict reports ~76 implicit-`any` noise on untyped JS) catches the real bug class (undefined access, bad property types) and is offline, fast, and deterministic. One JSDoc annotation (`/** @type {Record<string, unknown>} */`) on `buildToolArgs`'s working object clears the 2 pre-existing errors (the only two, both the same trivial class). No runtime change, no `src/`/DB/schema/`.skill` change; deployed server unaffected.
