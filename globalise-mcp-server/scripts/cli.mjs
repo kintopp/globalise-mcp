@@ -182,6 +182,7 @@ function boolSetFor(schema) {
 // Map tokenized flags + positionals → tool arguments (coerced per schema).
 function buildToolArgs(verbCfg, schema, flags, positionals) {
   const props = schema?.properties ?? {};
+  /** @type {Record<string, unknown>} */
   const args = {};
   for (const [key, raw] of Object.entries(flags)) {
     if (GLOBAL_BOOL.has(key) || GLOBAL_VALUE.has(key)) continue;

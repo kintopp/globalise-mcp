@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.10.3",
+  "version": "2.10.4",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -24,7 +24,7 @@
     "cli": "node scripts/cli.mjs",
     "test:cli": "npx tsx scripts/test-cli.ts",
     "inspector": "npm run build && npx @modelcontextprotocol/inspector dist/index.js",
-    "test": "npm run test:version && npm run test:fts && npm run test:archival && npm run test:commodities && npm run test:measures && npm run test:viewer-typecheck && npm run test:viewer-build && npm run test:viewer-protocol && npm run test:smoke && npm run test:http-shutdown",
+    "test": "npm run test:version && npm run test:fts && npm run test:archival && npm run test:commodities && npm run test:measures && npm run test:viewer-typecheck && npm run test:viewer-build && npm run test:viewer-protocol && npm run test:cli-typecheck && npm run test:smoke && npm run test:http-shutdown",
     "test:version": "npx tsx scripts/check-version-sync.ts",
     "test:live": "npx tsx scripts/test-live-api.ts",
     "test:http-shutdown": "npx tsx scripts/test-http-shutdown.ts",
@@ -34,6 +34,7 @@
     "test:commodities": "npx tsx scripts/test-commodities.ts",
     "test:measures": "npx tsx scripts/test-measures.ts",
     "test:viewer-typecheck": "tsc -p apps/document-viewer",
+    "test:cli-typecheck": "tsc -p scripts/tsconfig.cli.json",
     "test:viewer-build": "npx tsx scripts/test-viewer-build.ts",
     "test:viewer-protocol": "npx tsx scripts/test-viewer-protocol.ts"
   },

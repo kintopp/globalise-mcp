@@ -6,6 +6,10 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.10.4] - 2026-06-18
+
+Build-infra / test-only change — new `test:cli-typecheck` step added to `npm test`. Runs `tsc -p scripts/tsconfig.cli.json` (a standalone `checkJs` config, mirroring the viewer's `test:viewer-typecheck` gate) over `scripts/cli.mjs`, the ~625-line headless MCP-client CLI added in v2.10.0. The root `tsconfig.json` only includes `src/**/*`, so the CLI had zero static checking before this; a renamed field or wrong-arity call shipped unguarded. The new lenient `checkJs` gate (not strict — strict reports ~76 implicit-`any` noise on untyped JS) catches the real bug class (undefined access, bad property types) and is offline, fast, and deterministic. One JSDoc annotation (`/** @type {Record<string, unknown>} */`) on `buildToolArgs`'s working object clears the 2 pre-existing errors (the only two, both the same trivial class). No runtime change, no `src/`/DB/schema/`.skill` change; deployed server unaffected.
+
 ## [2.10.3] - 2026-06-17
 
 SKILL front-matter `description` rewritten to widen the skill's triggering surface. The front-matter `description` is the **gate** — if it doesn't match the user's phrasing, none of the SKILL.md body ever loads — so trigger coverage there has outsized leverage. Doc-only — **no code-logic change**, no DB rebuild, no schema change, no `src/` change; `.skill` repackaged. Four levers applied (866-char result, within the ~1024 skill-`description` budget):
