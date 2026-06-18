@@ -97,6 +97,8 @@ An MCP (Model Context Protocol) server is available for AI assistant integration
 - `globalise_search_transcriptions` - Full-text search with filters
 - `globalise_retrieve_document` - Get document details and transcription
 - `globalise_navigate` - Navigate between pages
+- `globalise_lookup_commodity` - Resolve a trade good to its Dutch label, definition, and period spelling variants
+- `globalise_lookup_measure` - Look up a VOC weight/measure unit — type, spelling variants, and period conversion ratios
 - `globalise_view_document_ui` - Open a page in the interactive viewer (MCP Apps UI)
 
 ## Document URN Structure
@@ -134,4 +136,4 @@ NL-HaNA, VOC, [inv.nr.], [scan nr.], transcription GLOBALISE project
 
 - [GLOBALISE Project](https://globalise.huygens.knaw.nl/) - Main project website
 - [National Archives (Nationaal Archief)](https://www.nationaalarchief.nl/) - Source archives
-- [Research Methodology](./research/GLOBALISE_API_Research_Summary.md) - How this API was documented
+- [Research Methodology](./GLOBALISE_API_Research_Summary.md) - How this API was documented

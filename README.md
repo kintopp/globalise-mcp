@@ -13,11 +13,12 @@ Health check: https://globalise-mcp-production.up.railway.app/health
 #### [`globalise-mcp-server/`](./globalise-mcp-server/)
 
 **Features:**
-- Search transcriptions with full-text queries, filters, and aggregations
-- Retrieve document details with metadata, annotations, and IIIF image URLs
-- Navigate between pages within inventories
-- Filter by language (Dutch, Portuguese, Spanish, French, Malay, and more)
-- Filter by inventory number
+- Search transcriptions — full-text queries with inventory/language filters and aggregations
+- Retrieve documents — metadata, annotations, and IIIF image URLs
+- Navigate between pages within an inventory
+- Search archival finding aids — 228K+ VOC document indexes
+- Look up VOC commodities and weights & measures — Dutch labels, definitions, period spellings and conversions
+- View a page interactively — scan alongside transcription
 
 **Supported Transports:**
 - **Stdio** - For Claude Desktop and local integrations
