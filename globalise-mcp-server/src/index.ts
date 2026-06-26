@@ -68,6 +68,12 @@ import { ToolError } from './utils/errors.js';
 import { VIEWER_URL_PREFIX } from './utils/api-client.js';
 import { FTS_OPERATORS, FTS_AUTOQUOTE } from './utils/fts.js';
 import {
+  fitResultToBudget,
+  recordListTrim,
+  searchResultTrim,
+  type TrimStrategy,
+} from './utils/response-size.js';
+import {
   viewDocumentUi,
   viewDocumentUiInputSchema,
   viewDocumentUiOutputSchema,
@@ -95,6 +101,33 @@ export const SERVER_VERSION = (
  * payload either way.
  */
 const STRUCTURED_CONTENT_ENABLED = process.env.STRUCTURED_CONTENT !== 'false';
+
+/**
+ * Response-size budget, derived from the documented platform per-result ceiling
+ * (claude.ai/Desktop ~150,000 chars). Keep 20% headroom for JSON-RPC framing.
+ * Override the ceiling per deployment with RESULT_CHAR_CEILING.
+ */
+const PLATFORM_RESULT_CHAR_CEILING = Number(process.env.RESULT_CHAR_CEILING) || 150_000;
+const SAFE_RESULT_BUDGET = Math.round(PLATFORM_RESULT_CHAR_CEILING * 0.8);
+
+/**
+ * The shared result is serialized into up to two METERED copies today: the text
+ * block (always — currently a full JSON copy the model reads on claude.ai) and
+ * structuredContent (read by ChatGPT now, by Claude soon). Both count toward the
+ * host ceiling, so the shared data must fit `budget / copies`.
+ *
+ * FUTURE: once the host fleet reads structuredContent, the text channel can
+ * become a small summary/marker that no longer duplicates the data — set
+ * RESPONSE_TEXT_DUPLICATES_DATA=false to drop the text copy from the count and
+ * reclaim ~2x capacity. (Implementing the summary text channel itself is a
+ * separate, deferred change — see plans/README.md.)
+ */
+const TEXT_CHANNEL_DUPLICATES_DATA = process.env.RESPONSE_TEXT_DUPLICATES_DATA !== 'false';
+
+function effectiveResultBudgetBytes(): number {
+  const copies = (STRUCTURED_CONTENT_ENABLED ? 1 : 0) + (TEXT_CHANNEL_DUPLICATES_DATA ? 1 : 0);
+  return Math.floor(SAFE_RESULT_BUDGET / Math.max(1, copies));
+}
 
 /** structuredContent mirror of a tool result, behind the R8 gate — spread into every non-error CallToolResult. */
 function structuredPayload(result: unknown): Pick<CallToolResult, 'structuredContent'> {
@@ -319,6 +352,7 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
   outputSchema: z.ZodTypeAny,
   handler: (input: z.output<Schema>) => Promise<unknown>,
   annotations: typeof EXTERNAL_READ_ONLY | typeof LOCAL_READ_ONLY,
+  trimStrategy?: TrimStrategy,
   viewerLinks?: ViewerLinksBuilder,
 ): void {
   server.registerTool(
@@ -333,8 +367,9 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
     },
     async (args): Promise<CallToolResult> =>
       runTool(name, async () => {
-        const result = await handler(args as z.output<Schema>);
-        const links = viewerLinks?.(result as Record<string, unknown>) ?? [];
+        const result = await handler(args as z.output<Schema>) as Record<string, unknown>;
+        fitResultToBudget(result, trimStrategy, effectiveResultBudgetBytes());
+        const links = viewerLinks?.(result) ?? [];
         return toolResponse(name, result, links);
       }),
   );
@@ -468,6 +503,7 @@ export function createServer(): McpServer {
     searchOutputSchema,
     searchTranscriptions,
     EXTERNAL_READ_ONLY,
+    searchResultTrim,
     searchViewerLinks,
   );
 
@@ -482,6 +518,7 @@ export function createServer(): McpServer {
     getDocumentOutputSchema,
     getDocument,
     EXTERNAL_READ_ONLY,
+    undefined,
     documentViewerLinks,
   );
 
@@ -494,6 +531,7 @@ export function createServer(): McpServer {
     navigateOutputSchema,
     navigate,
     EXTERNAL_READ_ONLY,
+    undefined,
     navigateViewerLinks,
   );
 
@@ -509,6 +547,7 @@ export function createServer(): McpServer {
     findArchivalDocumentsOutputSchema,
     findArchivalDocuments,
     LOCAL_READ_ONLY,
+    recordListTrim,
   );
 
   registerJsonTool(
@@ -522,6 +561,7 @@ export function createServer(): McpServer {
     lookupCommodityOutputSchema,
     lookupCommodity,
     LOCAL_READ_ONLY,
+    recordListTrim,
   );
 
   registerJsonTool(
@@ -538,6 +578,7 @@ export function createServer(): McpServer {
     lookupMeasureOutputSchema,
     lookupMeasure,
     LOCAL_READ_ONLY,
+    recordListTrim,
   );
 
   // ==========================================================================
