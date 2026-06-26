@@ -108,6 +108,9 @@ console.log('3. repair applied: pagination.hasMore=true, total unchanged, note n
   const note = result.note as string | undefined;
   check(typeof note === 'string' && note.length > 0, 'note is non-empty string');
   check(typeof note === 'string' && note.includes('KB'), 'note contains KB figure');
+
+  const occurrences = (String(result.note).match(/fetched results \(dropped/g) || []).length;
+  check(occurrences === 1, `row-drop cap message appears exactly once (got ${occurrences})`);
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +203,10 @@ console.log('6b. compact + row-drop when budget requires both');
   check(report.trimmed === true, 'trimmed:true (rows also dropped)');
   check(typeof report.kept === 'number' && report.kept < n, `kept(${report.kept}) < original(${n})`);
   check(report.bytes <= budget, `final bytes (${report.bytes}) <= budget (${budget})`);
+
+  const rowMsgs = (String(result.note).match(/fetched results \(dropped/g) || []).length;
+  check(rowMsgs === 1, `search row-drop cap message appears exactly once (got ${rowMsgs})`);
+  check(String(result.note).includes('snippets were shortened'), 'compact note preserved alongside row-drop note');
 }
 
 // ---------------------------------------------------------------------------

@@ -101,14 +101,22 @@ export function fitResultToBudget(
 export const recordListTrim: TrimStrategy = (result) => {
   const items = result.results as unknown[] | undefined;
   if (!Array.isArray(items)) return null;
+  // Capture the note as it stands on the FIRST onTrim call (which is AFTER any
+  // compact() note was added), then REBUILD from that base each call so repeated
+  // onTrim invocations from fitResultToBudget's shave loop don't stack duplicate
+  // cap messages. Lazy capture (not at strategy creation) is what preserves the
+  // compact note for searchResultTrim.
+  let baseNote: unknown;
+  let baseCaptured = false;
   return {
     items,
     onTrim: (kept, original, budgetBytes) => {
+      if (!baseCaptured) { baseNote = result.note; baseCaptured = true; }
       const pagination = result.pagination as Record<string, unknown> | undefined;
       if (pagination) pagination.hasMore = true;
       const dropped = original - kept;
       const trimNote = `Response size-capped: returned ${kept} of ${original} fetched results (dropped ${dropped} to fit ~${Math.round(budgetBytes / 1000)}KB). The total count is unaffected — page with a higher \`from\`, narrow your filters, or lower \`size\`.`;
-      result.note = result.note ? `${String(result.note)} ${trimNote}` : trimNote;
+      result.note = baseNote ? `${String(baseNote)} ${trimNote}` : trimNote;
     },
   };
 };
