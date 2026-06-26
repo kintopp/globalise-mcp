@@ -119,6 +119,13 @@ export const searchTranscriptionsInputSchema = z.object({
     .optional()
     .default('desc')
     .describe('Sort order: "asc" or "desc" (default: "desc")'),
+  fragmentSize: z.number()
+    .int()
+    .min(20, 'fragmentSize must be at least 20')
+    .max(500, 'fragmentSize cannot exceed 500')
+    .optional()
+    .default(150)
+    .describe('Max length (characters) of each highlighted snippet in highlightedFragments. Lower = smaller responses; higher = more context per hit. 20-500, default 150 (the upstream API default is 100; this tool previously used a fixed 500).'),
 });
 
 export const searchOutputSchema = z.object({
@@ -308,7 +315,7 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
     query: input.query,
     from: useMatchAll ? 0 : input.from,
     size: useMatchAll ? Math.min(input.size * 10, MATCH_ALL_SCAN_CAP) : input.size,
-    fragmentSize: 500,
+    fragmentSize: input.fragmentSize,
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
     // matchAll recomputes aggregations client-side over the post-filtered set

@@ -462,7 +462,8 @@ export function createServer(): McpServer {
       'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +
       'For statistics only (e.g. the language breakdown of an inventory), use query="*" with size=1. ' +
       `Each result id can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}. ` +
-      'For a known document ID use globalise_retrieve_document.',
+      'For a known document ID use globalise_retrieve_document. ' +
+      'Use fragmentSize to trade snippet length for response size (lower = smaller, default 150).',
     searchToolInputSchema,
     searchOutputSchema,
     searchTranscriptions,
