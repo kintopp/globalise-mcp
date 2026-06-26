@@ -35,6 +35,8 @@ export const getDocumentOutputSchema = z.object({
   archive: z.string().optional(),
   text: z.object({
     lines: z.array(z.string()),
+    truncated: z.boolean().optional().describe('True when lines were dropped to fit the response size budget'),
+    totalLines: z.number().optional().describe('Original line count before any size-cap truncation'),
   }).optional(),
   metadata: z.object({
     created: z.string(),

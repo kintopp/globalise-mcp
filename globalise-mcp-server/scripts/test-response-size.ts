@@ -11,6 +11,8 @@ import {
   fitResultToBudget,
   recordListTrim,
   searchResultTrim,
+  documentLineTrim,
+  navigateLineTrim,
 } from '../src/utils/response-size.js';
 import { check, finish } from './test-utils.js';
 
@@ -198,6 +200,118 @@ console.log('6b. compact + row-drop when budget requires both');
   check(report.trimmed === true, 'trimmed:true (rows also dropped)');
   check(typeof report.kept === 'number' && report.kept < n, `kept(${report.kept}) < original(${n})`);
   check(report.bytes <= budget, `final bytes (${report.bytes}) <= budget (${budget})`);
+}
+
+// ---------------------------------------------------------------------------
+// Plan 006 cases: documentLineTrim + navigateLineTrim
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Case 7: retrieve over budget → text.lines trimmed, truncated/totalLines set
+// ---------------------------------------------------------------------------
+console.log('7. retrieve: documentLineTrim trims text.lines, sets truncated+totalLines');
+{
+  const lineCount = 1000;
+  const result: Record<string, unknown> = {
+    id: 'urn:globalise:NL-HaNA_1.04.02_9966_0106',
+    document: 'NL-HaNA_1.04.02_9966_0106',
+    inventoryNumber: '9966',
+    scanNumber: '0106',
+    text: {
+      lines: Array.from({ length: lineCount }, (_, i) => `Line ${i}: ${'word '.repeat(20)}`),
+    },
+    metadata: {
+      created: '2024-01-01',
+      lastChange: '2024-01-01',
+      layoutAnalysis: 'v1',
+      languages: [{ code: 'nld', label: 'Dutch' }],
+    },
+  };
+
+  const budget = 20_000;
+  const originalLines = (result.text as { lines: unknown[] }).lines.slice();
+
+  const report = fitResultToBudget(result, documentLineTrim, budget);
+  check(report.trimmed === true, `trimmed:true (got ${report.trimmed})`);
+
+  const text = result.text as { lines: unknown[]; truncated: boolean; totalLines: number };
+  check(text.lines.length < lineCount, `lines.length (${text.lines.length}) < original (${lineCount})`);
+  check(text.truncated === true, 'text.truncated===true');
+  check(text.totalLines === lineCount, `text.totalLines===${lineCount} (got ${text.totalLines})`);
+  check(report.bytes <= budget, `bytes (${report.bytes}) <= budget (${budget})`);
+
+  // Kept lines are a prefix of the original
+  const keptLines = text.lines as string[];
+  check(
+    keptLines.every((line, i) => line === (originalLines[i] as string)),
+    'kept lines are a prefix of original',
+  );
+
+  // Still valid JSON
+  let ok = false;
+  try { JSON.parse(JSON.stringify(result)); ok = true; } catch { ok = false; }
+  check(ok, 'result is still valid JSON after line trim');
+}
+
+// ---------------------------------------------------------------------------
+// Case 8: navigate nested trim → targetDocument.text.lines trimmed
+// ---------------------------------------------------------------------------
+console.log('8. navigate: navigateLineTrim trims targetDocument.text.lines');
+{
+  const lineCount = 800;
+  const result: Record<string, unknown> = {
+    success: true,
+    currentDocument: { id: 'urn:globalise:NL-HaNA_1.04.02_9966_0106', document: 'NL-HaNA_1.04.02_9966_0106', inventoryNumber: '9966', scanNumber: '0106' },
+    targetDocument: {
+      id: 'urn:globalise:NL-HaNA_1.04.02_9966_0107',
+      document: 'NL-HaNA_1.04.02_9966_0107',
+      inventoryNumber: '9966',
+      scanNumber: '0107',
+      text: {
+        lines: Array.from({ length: lineCount }, (_, i) => `Line ${i}: ${'word '.repeat(20)}`),
+      },
+    },
+    message: 'ok',
+  };
+
+  const budget = 15_000;
+  fitResultToBudget(result, navigateLineTrim, budget);
+
+  const targetDoc = result.targetDocument as { text: { lines: unknown[]; truncated: boolean; totalLines: number } };
+  check(targetDoc.text.lines.length < lineCount, `targetDocument.text.lines trimmed (${targetDoc.text.lines.length} < ${lineCount})`);
+  check(targetDoc.text.truncated === true, 'targetDocument.text.truncated===true');
+  check(targetDoc.text.totalLines === lineCount, `targetDocument.text.totalLines===${lineCount}`);
+}
+
+// ---------------------------------------------------------------------------
+// Case 9: navigate with no text → strategy returns null → irreducible
+// ---------------------------------------------------------------------------
+console.log('9. navigate with no text → null strategy → irreducible');
+{
+  // Under budget: nothing happens (and no error)
+  const resultUnder: Record<string, unknown> = {
+    success: true,
+    currentDocument: { id: 'x', document: 'x', inventoryNumber: '1', scanNumber: '1' },
+    targetDocument: { id: 'y', document: 'y', inventoryNumber: '1', scanNumber: '2' },
+    message: 'ok',
+  };
+  const reportUnder = fitResultToBudget(resultUnder, navigateLineTrim, 1_000_000);
+  check(!reportUnder.trimmed, 'under budget with no text: trimmed:false');
+  // Note: when text is absent the strategy returns null; fitResultToBudget
+  // returns overBudgetIrreducible only when bytes > budget. So the under-budget
+  // case just returns {trimmed:false}.
+
+  // Over budget with no text → overBudgetIrreducible
+  const resultOver: Record<string, unknown> = {
+    success: true,
+    currentDocument: { id: 'x', document: 'x', inventoryNumber: '1', scanNumber: '1' },
+    targetDocument: { id: 'y', document: 'y', inventoryNumber: '1', scanNumber: '2' },
+    // Bloat without lines
+    message: 'x'.repeat(100_000),
+  };
+  const reportOver = fitResultToBudget(resultOver, navigateLineTrim, 1_000);
+  check(reportOver.overBudgetIrreducible === true, 'over budget with no text: overBudgetIrreducible:true');
+  check(!reportOver.trimmed, 'over budget with no text: trimmed:false');
 }
 
 finish('Response-size guard');

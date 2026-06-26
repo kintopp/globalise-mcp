@@ -71,6 +71,8 @@ import {
   fitResultToBudget,
   recordListTrim,
   searchResultTrim,
+  documentLineTrim,
+  navigateLineTrim,
   type TrimStrategy,
 } from './utils/response-size.js';
 import {
@@ -518,7 +520,7 @@ export function createServer(): McpServer {
     getDocumentOutputSchema,
     getDocument,
     EXTERNAL_READ_ONLY,
-    undefined,
+    documentLineTrim,
     documentViewerLinks,
   );
 
@@ -531,7 +533,7 @@ export function createServer(): McpServer {
     navigateOutputSchema,
     navigate,
     EXTERNAL_READ_ONLY,
-    undefined,
+    navigateLineTrim,
     navigateViewerLinks,
   );
 

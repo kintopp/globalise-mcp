@@ -117,6 +117,43 @@ export const recordListTrim: TrimStrategy = (result) => {
 export const SEARCH_COMPACT_MAX_FRAGMENTS = 1;
 export const SEARCH_COMPACT_FRAGMENT_CHARS = 200;
 
+/** Trim strategy for retrieve_document: drop tail lines of result.text.lines. */
+export const documentLineTrim: TrimStrategy = (result) => {
+  const text = result.text as { lines?: unknown[] } | undefined;
+  if (!text || !Array.isArray(text.lines)) return null;
+  const total = text.lines.length;
+  return {
+    items: text.lines,
+    onTrim: (kept) => {
+      // Only flag truncation when lines were actually dropped (kept < total),
+      // so `truncated`/`totalLines` are never set on an untrimmed page.
+      if (kept < total) {
+        (text as Record<string, unknown>).truncated = true;
+        (text as Record<string, unknown>).totalLines = total;
+      }
+    },
+  };
+};
+
+/** Trim strategy for navigate: drop tail lines of result.targetDocument.text.lines. */
+export const navigateLineTrim: TrimStrategy = (result) => {
+  const target = result.targetDocument as { text?: { lines?: unknown[] } } | undefined;
+  const text = target?.text;
+  if (!text || !Array.isArray(text.lines)) return null;
+  const total = text.lines.length;
+  return {
+    items: text.lines,
+    onTrim: (kept) => {
+      // Only flag truncation when lines were actually dropped (kept < total),
+      // so `truncated`/`totalLines` are never set on an untrimmed page.
+      if (kept < total) {
+        (text as Record<string, unknown>).truncated = true;
+        (text as Record<string, unknown>).totalLines = total;
+      }
+    },
+  };
+};
+
 /**
  * Search trim: first shrink each hit's highlightedFragments (keep 1, ≤200 chars)
  * to fit more results, then fall back to dropping whole results.
