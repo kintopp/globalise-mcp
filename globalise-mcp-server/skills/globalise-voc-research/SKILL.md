@@ -34,7 +34,7 @@ Any page opens in the web viewer at
 | `globalise_lookup_commodity` | **Resolve a term.** Turn a modern/English trade good into the Dutch word the corpus uses, with a sourced definition (and period spelling variants where the glossary has them — only ~10% do). | Local SQLite + FTS5 |
 | `globalise_lookup_measure` | **Resolve a unit.** Look up a VOC weight/volume/length/area/quantity unit (~213): its type, period spelling variants, and the conversion ratios it appears in. Not a converter — ratios are period claims tagged by place/commodity. | Local SQLite + FTS5 |
 | `globalise_search_transcriptions` | Full-text search across the ~4.8M transcribed pages; filter by inventory and/or language. | Remote search API (Broccoli) |
-| `globalise_retrieve_document` | Get one page by ID/URN: full line-by-line transcription, metadata (languages, dates, license), prev/next IDs, viewer + scan links. | Remote |
+| `globalise_retrieve_document` | Get one page by ID/URN: line-by-line transcription, metadata (languages, dates, license), prev/next IDs, viewer + scan links. | Remote |
 | `globalise_navigate` | Read sequentially — fetch the previous or next page relative to an ID. | Remote |
 | `globalise_view_document_ui` | Open the interactive split-view widget (zoomable IIIF scan + transcription, optional highlight) for a human to look at. | MCP Apps widget |
 
@@ -61,12 +61,11 @@ glossary has them), which you then expand with fuzzy/wildcards for
 
 ## The two data sources behind `find_archival_documents`
 
-The `source` parameter selects between two indexes over the **same archive**
-(1.04.02) — they carry **different fields**, so always be deliberate about which
-you query (`obp` | `gm` | `all`). They are **not disjoint collections**: GM is a
-*genre within* OBP — the Generale Missiven physically sit in OBP inventory
-volumes, so the same missive is often catalogued in both (see the `source=all`
-dedup note below):
+The `source` parameter selects between two indexes over the **same archive** (1.04.02)
+— they carry **different fields**, so be deliberate about which you query (`obp` | `gm`
+| `all`). They are **not disjoint**: GM is a *genre within* OBP — the Generale Missiven
+physically sit in OBP inventory volumes, so the same missive is often catalogued in both
+(see the `source=all` dedup note below):
 
 - **OBP — Overgekomen Brieven en Papieren** (`source=obp`, ~227,526 entries).
   Digitized index entries / finding aids. Fields you can filter and read:
@@ -113,11 +112,10 @@ or chamber (GM) — cheap and useful for "what's in here?" questions.
 
 ## `find_archival_documents` query syntax (SQLite FTS5)
 
-`find_archival_documents.query` is passed straight to SQLite **FTS5** over the
-`description` text. FTS5 is powerful but literal; the traps below are the #1
-cause of false-empty results. The *other* search tool, `search_transcriptions`,
-runs on a **different engine with opposite defaults** — don't carry these rules
-over to it (see "Searching transcriptions" below).
+`find_archival_documents.query` goes straight to SQLite **FTS5** over the `description`
+text. FTS5 is powerful but literal; the traps below are the #1 cause of false-empty
+results. The *other* tool, `search_transcriptions`, runs on a **different engine with
+opposite defaults** — don't carry these rules over (see "Searching transcriptions").
 
 **Operators (all native, all work):**
 
@@ -203,13 +201,12 @@ ordering is fixed:
   "10435" sorts before "2393"), then `folio_start`.
 - **GM:** `date_numeric`, then `inventory_number`.
 
-The OBP default *is* chronological-ish, but with a catch: it
-sorts by `year_earliest` ascending, and the records with the **lowest** floors
-are the **least date-precise** ones (wide inventory-level ranges). So an
-unfiltered first page (`from=0`, no query) surfaces the most date-ambiguous
-documents first — it is *not* a bug and *not* "sorted by internal id". To get a
-meaningful chronological window, constrain with `yearFrom`/`yearTo` rather than
-trusting page 1.
+The OBP default *is* chronological-ish, but with a catch: it sorts by `year_earliest`
+ascending, and the records with the **lowest** floors are the **least date-precise**
+ones (wide inventory-level ranges). So an unfiltered first page (`from=0`, no query)
+surfaces the most date-ambiguous documents first — *not* a bug, *not* "sorted by
+internal id". For a meaningful chronological window, constrain with `yearFrom`/`yearTo`
+rather than trusting page 1.
 
 **Deep pagination is cheap** — the sort is index-backed, so `from=200000` is as
 fast as `from=0`. No cursor workaround is needed at current corpus size.
@@ -229,69 +226,58 @@ Read a wide `earliest..latest` span as "somewhere in this range," and prefer the
 
 ## Crossing from archival hits to pages
 
-A `find_archival_documents` result hands you an **inventory number** and a
-**folio** range. The inventory always crosses cleanly to the page layer; folios
-and scans need care, and OBP vs GM behave oppositely:
+A `find_archival_documents` result hands you an **inventory number** and a **folio**
+range. The inventory crosses cleanly to the page layer; folios and scans need care,
+and OBP vs GM behave oppositely:
 
 - **The inventory number is the join.** Feed it into `search_transcriptions`'
-  `inventoryNumber` filter (or `retrieve_document`). That's the reliable bridge.
-- **OBP: folio ≠ scan number.** Foliation is the original archival numbering; scans
-  add covers, blanks and section dividers, so folio 372 is *not* scan `_0372` (in
-  inv 1068, scan 0372 is just a "No. 2." divider). Never construct a scan ID from
-  an OBP folio — search the inventory and read the hits' real IDs.
-- **GM is the exception — it carries scans directly.** A `source=gm` result
-  includes `scanStart`/`scanEnd` and ready-made `scanUrlFirst`/`scanUrlLast`, so
-  you *can* build the URN straight from the scan number
-  (`NL-HaNA_1.04.02_{inv}_{scanStart padded to 4}`, e.g. inv 7545 / scan 27 →
-  `…_7545_0027`). Caveat: a minority of GM letters were identified but never
-  located in the archive and lack `scanStart` — confirm it's present first.
-- **GM `rgpVolume`/`rgpPage`** (present for ~558 of the 950 letters) cite the
-  *published* RGP edition and now also drive a **`publishedEdition`** link object on
-  each GM result (page scans + plain text) — see "The RGP published edition links"
-  just below. They mark the letter's *start* in the printed volume, not a
-  page-by-page map to the manuscript.
+  `inventoryNumber` filter (or `retrieve_document`) — the reliable bridge.
+- **OBP: folio ≠ scan number.** Foliation is the original numbering; scans add covers,
+  blanks and dividers, so folio 372 is *not* scan `_0372` (in inv 1068, scan 0372 is
+  just a "No. 2." divider). Never build a scan ID from an OBP folio — search the
+  inventory and read the hits' real IDs.
+- **GM carries scans directly** (the exception). A `source=gm` result has
+  `scanStart`/`scanEnd` + ready-made `scanUrlFirst`/`scanUrlLast`, so you *can* build
+  the URN from the scan number (`NL-HaNA_1.04.02_{inv}_{scanStart→4 digits}`, e.g. inv
+  7545 / scan 27 → `…_7545_0027`). Caveat: some GM letters were never located and lack
+  `scanStart` — confirm it's present first.
+- **GM `rgpVolume`/`rgpPage`** (~558 of 950 letters) cite the *published* RGP edition
+  and drive a **`publishedEdition`** link object (see next section); they mark the
+  letter's *start* in the printed volume, not a page-by-page manuscript map.
 - **No year filter on transcriptions.** `search_transcriptions` exposes only
-  `inventoryNumber` and `languages` (both exact-match) — there is *no* date field.
-  Do all year/place scoping in `find_archival_documents`, then carry the inventory
-  numbers across.
+  `inventoryNumber` and `languages` (exact-match) — *no* date field. Do year/place
+  scoping in `find_archival_documents`, then carry the inventory numbers across.
 
 ## The RGP published edition links (GM only)
 
-For the ~558 Generale Missiven carried in the published RGP edition, a `source=gm`
-result includes a **`publishedEdition`** object; it is `null` for the ~392 not
-published *in this form* (a different copy of the same missive may still appear in
-RGP). The raw `rgpVolume`/`rgpPage` give the print citation; the object turns them
-into three ready-made URLs — present them with **plain labels** ("page scan",
-"plain text", "full volume"), not the raw URL fragments (e.g. `view=imagePane`):
+For the ~558 Generale Missiven in the published RGP edition, a `source=gm` result
+carries a **`publishedEdition`** object (`null` for the ~392 not published *in this
+form* — a different copy of the same missive may still appear in RGP). It turns the
+raw `rgpVolume`/`rgpPage` citation into three ready-made URLs — present them with
+**plain labels** ("page scan", "plain text", "full volume"), not raw URL fragments
+(e.g. `view=imagePane`):
 
-- **`retroboekenUrl`** — Retroboeken viewer opened on the **page scan** of the
-  printed RGP volume at the page where the letter begins. Best for **citing or
-  verifying** against the published book. (The viewer can toggle to a text pane; the
-  link just lands on the scan.) `null` when `rgpPage` is missing.
-- **`githubPageUrl`** — raw plain text of the letter's **first page only**, *not* the
-  whole letter; longer letters continue onto following pages, so use the volume file
-  for the complete text. `null` when `rgpPage` is missing.
-- **`githubVolumeUrl`** — raw plain text of the **entire RGP volume**. Always present
-  when `publishedEdition` exists (it needs only the volume). Use it to read a whole
-  letter (search within for the date / start page), or when the record has a volume
-  but no page (the page-precise links are then `null`).
+- **`retroboekenUrl`** — Retroboeken viewer on the **page scan** of the printed
+  volume where the letter begins; best for **citing/verifying** against the book.
+  `null` when `rgpPage` is missing.
+- **`githubPageUrl`** — raw plain text of the letter's **first page only** (longer
+  letters spill onto following pages — use the volume file for the full text).
+  `null` when `rgpPage` is missing.
+- **`githubVolumeUrl`** — raw plain text of the **entire RGP volume**; always present
+  when `publishedEdition` exists. Use it to read a whole letter (search within for the
+  date / start page), or when there's a volume but no page (page links then `null`).
 
-**Two different texts — keep them distinct.** The RGP edition behind these links is a
-**selective, edited scholarly edition** — summaries plus verbatim passages, partly
-modernized — published in the *Rijks Geschiedkundige Publicatiën* (Grote Serie), 14
-vols. spanning 1610–1767, begun by W. Ph. Coolhaas and continued by later editors. (The
-GitHub plain text extracts the original-letter passages only — introductions, footnotes,
-indices and modern-Dutch summaries are stripped.) The **HTR transcription** (via
-`search_transcriptions`/`retrieve_document`) is the *machine* reading of the *manuscript
-original*. For a published GM the RGP text is the authoritative edited version and the HTR
-the full original — offer whichever fits, and say which is which.
-
-**Ground claims in the material in hand.** Describe the published edition from what the
-record and this section provide — the `rgpVolume`/`rgpPage` citation and the facts above;
-for more specific bibliography (a volume's editor, ISBN, related editions) point users to
-the RGP series record or the GitHub repo, which carry it. **The server never fetches the
-RGP text**, and clients usually can't fetch these raw URLs inline — hand the user the link
-rather than promising to paste the text.
+**Two different texts — keep them distinct.** The RGP edition is a **selective, edited
+scholarly edition** — summaries plus verbatim passages, partly modernized; *Rijks
+Geschiedkundige Publicatiën* (Grote Serie), 14 vols. 1610–1767, begun by W. Ph.
+Coolhaas and continued by later editors (the GitHub text keeps the original-letter
+passages only — intros, footnotes, indices, summaries stripped). The **HTR
+transcription** (`search_transcriptions`/`retrieve_document`) is the *machine* reading
+of the *manuscript original*. Offer whichever fits and say which is which. **Ground
+claims in what's in hand** — the `rgpVolume`/`rgpPage` citation and the facts above;
+for fuller bibliography (a volume's editor, ISBN, related editions) point users to the
+RGP series record or GitHub repo. The server never fetches the RGP text and clients
+usually can't fetch these raw URLs inline — hand over the link, don't promise the text.
 
 ## Searching transcriptions: a different query engine
 
@@ -340,15 +326,21 @@ takes `_score` (relevance, the default), `document` (page ID), or `invNr` (inven
 for `sortBy="document"` or `"invNr"` with `sortOrder="asc"` when you want to walk an
 inventory's pages in archival order instead of by score.
 
+**`fragmentSize` trades snippet length for payload size.** Each hit's
+`highlightedFragments` are capped at `fragmentSize` chars (20–500, **default 150**;
+was a fixed 500). Lower it when scanning many hits (large `size`) to shrink the
+response; raise it for more context per match. It multiplies by `size`, so it's the
+cheapest search-payload lever — and the first thing to lower on a size-capped search
+(see "When a response is size-capped").
+
 ## Looking up commodities with `lookup_commodity`
 
 `globalise_lookup_commodity` is a **local glossary** of ~3,500 VOC trade goods and
 trade-related concepts. Its reliable value is **(1) bilingual label resolution** —
-turn a modern or English term into the Dutch word the corpus actually uses
-(coffee → *koffie*, mace → *foelie*) — and **(2) a sourced, confidence-rated
-definition** per concept. Treat **period spelling variants (`altLabels`) as a
-bonus, not the main event: only ~1 concept in 10 has any, and the big commodities
-(pepper, coffee, nutmeg) have none.**
+turn a modern/English term into the Dutch word the corpus uses (coffee → *koffie*,
+mace → *foelie*) — and **(2) a sourced, confidence-rated definition** per concept.
+Treat **period spelling variants (`altLabels`) as a bonus: only ~1 concept in 10 has
+any, and the big commodities (pepper, coffee, nutmeg) have none.**
 
 **Getting recall in the transcriptions — the usual goal.** The corpus is HTR'd
 17th-c. Dutch with no spelling normalization, so one modern spelling finds almost
@@ -356,10 +348,9 @@ nothing (`koffie` → 119 pages; the period `coffij` → 25,124). So:
 
 1. Look the term up → take the **Dutch `prefLabel`** and any `altLabels`.
 2. If it *has* `altLabels` (silk, *zijde*, has 23), OR them into the search.
-3. **If it has none (the usual case), reconstruct the period form yourself** — the
-   corpus prefers *c-* over *k-* and *-ij* over *-ie* (`koffie`→`coffij`) — **and
-   add fuzzy `~1` / wildcards** (`coffij~1`, `peper~1`) for spelling + HTR noise.
-   Don't assume one spelling is enough just because it already returns hits.
+3. **If it has none (usual), reconstruct the period form** — the corpus prefers *c-*
+   over *k-* and *-ij* over *-ie* (`koffie`→`coffij`) — **and add fuzzy `~1` / wildcards**
+   (`coffij~1`, `peper~1`) for spelling + HTR noise. Don't assume one spelling suffices.
 4. Feed the forms into `search_transcriptions` (space = OR there) or OR them into
    the `find_archival_documents` FTS5 `query` (Trap 3).
 
@@ -371,42 +362,34 @@ alphabetically. FTS5 operators / ranking are in the tool description.
 machine-written.** Each result carries `definitionSource` and `confidence`; ~a
 third are low/medium-low and many are LLM-generated (`llm`/`llm_sparse`; "no corpus
 contexts" ≈ a guess).
-- **Keep source + confidence visible — even in long lists**, and flag
-  machine-generated / low-confidence entries as tentative.
-- **Say only what the definition states.** Don't assert or quote beyond its text;
-  mark your own inferences (e.g. "lower quality") as *yours*, not the source's.
-  This matters most for sensitive entries (people trafficked as commodities).
-- **`definitionSource`/`confidence` grade the *definition* only — never the
-  labels.** `altLabels` carry no source or grade in the data; `prefLabelEn` has its
-  own (unsurfaced) provenance. So never call a *variant* or *translation*
-  "*WNT*-derived" or "*high*/*low* confidence" — that pairing holds only for the
-  definition. ("Made by *Globalise*" = `definitionSource: PoolParty`.)
+- **Keep source + confidence visible — even in long lists**; flag machine-generated /
+  low-confidence entries as tentative, and **say only what the definition states**
+  (mark your own inferences, e.g. "lower quality", as *yours*). This matters most for
+  sensitive entries (people trafficked as commodities).
+- **`definitionSource`/`confidence` grade the *definition* only, never the labels.**
+  `altLabels` carry no source/grade; `prefLabelEn` has its own (unsurfaced) provenance
+  — so never tag a *variant* or *translation* "*WNT*-derived" or "*high*/*low*
+  confidence". (`definitionSource: PoolParty` = "made by *Globalise*".)
 - **`prefLabelEn` is ~70% LLM-translated**, so often a mistranslation (`raapfoelie`
   is gathered mace, not "rapeseed oil") — prefer the Dutch `prefLabel`.
-- **Expand source codes for the reader**: *WNT* = standard historical dictionary of
-  Dutch (IVDNT); *AAT* = Getty Art & Architecture Thesaurus; *vocGlossarium* =
-  Huygens VOC-Glossarium; *PoolParty* = the GLOBALISE project thesaurus. Some
-  definitions embed raw citations ("Cited from… Classified on…") — give the
-  substance, drop the boilerplate.
-- **Offer `thesaurusUrl` for the hierarchy this lookup drops.** Every result
-  carries a stable handle permalink into the public GLOBALISE Commodities
-  thesaurus (Skosmos), where the curated SKOS hierarchy (broader/narrower terms)
-  and the cited source (often a Zotero record) live — the taxonomy this flat tool
-  deliberately omits. Hand it to a user who wants to place a good in its trade
-  hierarchy or follow a source, the same way you'd offer a scan link for an
-  untrustworthy transcription.
+- **Expand source codes**: *WNT* = historical dictionary of Dutch (IVDNT); *AAT* =
+  Getty Art & Architecture Thesaurus; *vocGlossarium* = Huygens VOC-Glossarium;
+  *PoolParty* = the GLOBALISE thesaurus. Some definitions embed raw citations ("Cited
+  from… Classified on…") — give the substance, drop the boilerplate.
+- **Offer `thesaurusUrl`** — a stable handle permalink into the public GLOBALISE
+  Commodities thesaurus (Skosmos), carrying the SKOS hierarchy (broader/narrower) and
+  cited source (often a Zotero record) this flat tool omits. Hand it to a user who
+  wants to place a good in its trade hierarchy or follow a source.
 
 ## HTR transcription caveats (data quality)
 
-The HTR model was trained on **Latin script only**. This shapes what's
-trustworthy:
+The HTR model was trained on **Latin script only** — which shapes what's trustworthy:
 
-- **Non-Roman scripts transcribe as gibberish** — Persian, Bengali,
-  Tamil, Sinhala, Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic,
-  Ancient Greek, Ancient Hebrew. For these, don't present the "transcription" as
-  text; offer the National Archives **page-scan link** from the document metadata
-  instead. Malay (`msa`) is a macrolanguage with no script metadata — offer scan
-  links for it too.
+- **Non-Roman scripts transcribe as gibberish** — Persian, Bengali, Tamil, Sinhala,
+  Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient
+  Hebrew. For these, don't present the "transcription" as text; offer the National
+  Archives **page-scan link** from the document metadata instead. Malay (`msa`) is a
+  macrolanguage with no script metadata — offer scan links for it too.
 - **Language metadata:** `"unknown"` means *not yet classified*, **not**
   unidentifiable. The code `"art"` ("Cipher") marks **encrypted Dutch**, not an
   artificial language. Codes are ISO 639-3 (`nld` dominates at ~754K pages; also
@@ -414,17 +397,16 @@ trustworthy:
 
 ## Colonial-era language and sensitive content
 
-These are 17th–18th-c. VOC records. The OBP/GM `description` text and the
-transcriptions use period colonial language — including terms and framings that are
+These 17th–18th-c. VOC records use period colonial language — terms and framings
 offensive by modern standards (the dataset documentation flags this explicitly). The
-records, and the commodities glossary (which includes concepts for people
-trafficked as commodities), document the VOC's trade in **enslaved people**, who
-appear commodified in shipping lists and accounts. Surface such material with accurate
-historical framing: quote the sources faithfully rather than sanitizing them, but
-don't reproduce period slurs in your own voice or present commodification as neutral.
-Description is also **uneven**: European actors are named far more consistently than
-Asian individuals (whom GLOBALISE addresses with separate remediation datasets), so
-name- and actor-based searches over the metadata skew toward European subjects.
+records and the commodities glossary (which includes concepts for people trafficked as
+commodities) document the VOC's trade in **enslaved people**, who appear commodified in
+shipping lists and accounts. Surface such material with accurate historical framing:
+quote sources faithfully rather than sanitizing them, but don't reproduce period slurs
+in your own voice or present commodification as neutral. Coverage is also **uneven** —
+European actors are named far more consistently than Asian individuals (whom GLOBALISE
+addresses with separate remediation datasets), so name-/actor-based metadata searches
+skew toward European subjects.
 
 ## Looking up weights & measures with `lookup_measure`
 
@@ -436,52 +418,50 @@ dataset); definitions are sparse (~22% of units, mostly Dutch) — a bonus, not 
 core. Search by term, or omit `query` to page alphabetically.
 
 **It is NOT a unit converter — that caveat is the whole framing.** Early-modern units
-(`bahar`, `last`, `man`, `seer`, `maat`) are **not stable**: a unit's value shifts by
-place, period, and even the commodity measured (a *bahar* of pepper ≠ a *bahar* of
-cloves; a *maat* of rice ≠ a *maat* of peanuts), and a unit name often doubles as the
-name of the measuring container. So:
-- **Each ratio is a period-reported claim tagged with its `context`** (the settlement
-  and/or commodity it was recorded for, e.g. `"rijst, Batavia"`, `"goud, zilver, Mokka"`).
-  The context routinely names the **commodity**, and the same unit's ratio differs by
-  good — so the commodity-specific value lives in the `context`, not in the (sparse)
-  definition. Read each ratio against its context; never give a modern equivalent without
-  it. A self-referential ratio ("1 X = 1 X") attests the unit was in use there without a
-  recorded local equivalence — incomplete, not an error.
-- **`type` is load-bearing**: a few labels (`roede`, `voet`, `ammonam`) are homonyms
-  distinguished only by type (a *roede* of length vs of area).
-- **Variants → search recall** (as in "Looking up commodities" above): the transcription
-  search is spelling-blind, so feed a unit's `variants` into `search_transcriptions` (or OR
-  them into a `find_archival_documents` FTS5 `query`) to catch mentions a modern spelling misses.
+(`bahar`, `last`, `man`, `seer`, `maat`) are **not stable**: a value shifts by place,
+period, and even the commodity measured (a *bahar* of pepper ≠ of cloves; a *maat* of
+rice ≠ of peanuts), and a unit name often doubles as its measuring container. So:
+- **Each ratio is a period claim tagged with its `context`** — the settlement and/or
+  commodity it was recorded for (`"rijst, Batavia"`, `"goud, zilver, Mokka"`). The context
+  routinely names the **commodity**, and the ratio differs by good, so the commodity-specific
+  value lives in the `context`, not the (sparse) definition. Read each ratio against its
+  context; never give a modern equivalent without it. A self-referential ratio ("1 X = 1 X")
+  attests use without a recorded local equivalence — incomplete, not an error.
+- **`type` is load-bearing**: a few labels (`roede`, `voet`, `ammonam`) are homonyms split
+  only by type (a *roede* of length vs of area).
+- **Variants → search recall** (as for commodities): search is spelling-blind, so feed a
+  unit's `variants` into `search_transcriptions` (or OR them into a `find_archival_documents`
+  FTS5 `query`) to catch mentions a modern spelling misses.
 
 ## Worked patterns
 
-**"Find documents about cinnamon from Ceylon."**
-→ `find_archival_documents(query="kaneel", settlement="Ceylon", includeAggregations=true)`.
-*Not* `query="kaneel AND Ceylon"` (→ 0, period-spelling trap).
+- **"Cinnamon from Ceylon."** → `find_archival_documents(query="kaneel", settlement="Ceylon", includeAggregations=true)` — *not* `query="kaneel AND Ceylon"` (→ 0, period-spelling trap).
+- **"Languages in inventory 7535?"** → `search_transcriptions(query="*", inventoryNumber="7535", size=1)`, read the language aggregation.
+- **"Amsterdam, tolerant of spelling/OCR noise."** → `search_transcriptions(query="amsterdam~1")` — fuzzy, which `find_archival_documents` (FTS5) has no operator for.
+- **"Transcriptions for a trade good, catching period spellings."** → `lookup_commodity(query="<good>")` for the Dutch label (+ any `altLabels`); most goods have none, so reconstruct the period spelling and fuzz it → `search_transcriptions` (coffee: modern `koffie` 119 pages vs period form ~25,000).
+- **"Show page NL-HaNA_1.04.02_9966_0106 with 'Batavia' highlighted."** → `view_document_ui(documentId="NL-HaNA_1.04.02_9966_0106", highlightTerms=["Batavia"])`.
+- **"Letters from the Amsterdam chamber in the 1680s."** → `find_archival_documents(source="gm", chamber="Amsterdam", yearFrom=1680, yearTo=1689)` (`chamber` is a GM-only **filter** — `"Amsterdam"`/`"Zeeland"`).
+- **"Read the next few pages after this one."** → `navigate(currentDocumentId=..., direction="next")`, repeat.
 
-**"What languages appear in inventory 7535?"**
-→ `search_transcriptions(query="*", inventoryNumber="7535", size=1)` and read the
-language aggregation.
+## When a response is size-capped
 
-**"Find pages mentioning Amsterdam, tolerant of spelling/OCR noise."**
-→ `search_transcriptions(query="amsterdam~1")` — fuzzy matching, which
-`find_archival_documents` (FTS5) has no operator for.
+Responses are bounded to a byte budget (the ~150K-char host per-result limit, split
+across the two wire channels — ≈60KB of *data* with defaults). Over budget, the
+server **trims and flags it**; it never drops data silently:
 
-**"Find transcriptions for a trade good, catching period spellings."**
-→ `lookup_commodity(query="<good>")` for the Dutch label (and any `altLabels`) —
-most goods have none, so reconstruct the period spelling and fuzz it →
-`search_transcriptions`. (Coffee: the modern `koffie` finds 119 pages; the period
-form ~25,000.)
+- **List tools** (`search_transcriptions`, `find_archival_documents`,
+  `lookup_commodity`, `lookup_measure`) drop **tail results**: fewer rows than `size`,
+  `pagination.hasMore=true`, and a `note` reading *"Response size-capped: returned N of
+  M…"*. **`total` stays true** — a short page is not a small corpus. (Search shortens
+  oversized snippets first — keep 1/hit, ≤200 chars — before dropping hits.) **To get
+  the rest:** higher `from`, narrower filters, or lower `size` / `fragmentSize`.
+- **Single pages** (`retrieve_document`, `navigate`) drop **tail transcription lines**
+  of an unusually dense page, setting `text.truncated:true` + `text.totalLines`. Rare.
+  On `truncated`, open `view_document_ui` (**exempt** — always renders the full page)
+  or fetch the scan.
 
-**"Show me page NL-HaNA_1.04.02_9966_0106 with 'Batavia' highlighted."**
-→ `view_document_ui(documentId="NL-HaNA_1.04.02_9966_0106", highlightTerms=["Batavia"])`.
-
-**"Letters from the Amsterdam chamber in the 1680s."**
-→ `find_archival_documents(source="gm", chamber="Amsterdam", yearFrom=1680, yearTo=1689)`
-(`chamber` is a GM-only **filter** — values `"Amsterdam"` / `"Zeeland"`).
-
-**"Read the next few pages after this one."**
-→ `navigate(currentDocumentId=..., direction="next")`, repeat.
+A short result with `hasMore:true` and a size-cap `note` is **expected on a large
+response, not a failed query** — read the `note` and paginate.
 
 ## Operational notes
 
@@ -499,7 +479,7 @@ form ~25,000.)
 - ✅ Read the exact **settlement spelling from the aggregation** (`includeAggregations`) — it's `Malakka`, not `Malacca`.
 - ✅ Use **period spellings or prefixes** (`Ceijlon*`, `Makass*`) for free-text places.
 - ✅ **Resolve commodity terms** with `lookup_commodity` — get the Dutch label, then (most have no `altLabels`) reconstruct period spellings + fuzzy `~1` rather than betting on the modern form.
-- ✅ Check the response **`note`** when results look off (auto-quoted terms / phrase fallback / lower-bound totals).
+- ✅ Check the response **`note`** when results look off (auto-quoted terms / phrase fallback / lower-bound totals / **size-capped results** — fewer rows than `size`, with `pagination.hasMore: true` and `total` still true).
 - ✅ Offer **scan links** for non-Roman-script and Malay pages.
 - ✅ For a **published GM**, offer the `publishedEdition` links and say whether you're giving the **edited RGP text** or the **HTR** original.
 - ✅ In `search_transcriptions`, lean on **fuzzy `~1`** and period spellings for important terms (HTR/OCR noise).
