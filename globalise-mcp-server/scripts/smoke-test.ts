@@ -38,6 +38,20 @@ const EXPECTED_TOOLS = [
 // Consolidated into globalise_search_transcriptions (R6)
 const REMOVED_TOOLS = ['globalise_search_by_inventory', 'globalise_search_by_language'];
 
+// openWorldHint by tool: true for tools that call the live GLOBALISE / IIIF
+// services, false for the local-SQLite glossary + finding-aid lookups. (Per the
+// MCP spec openWorldHint defaults to true, so the load-bearing assertions are
+// the three `false` local tools.)
+const OPEN_WORLD_BY_TOOL: Record<string, boolean> = {
+  globalise_search_transcriptions: true,
+  globalise_retrieve_document: true,
+  globalise_navigate: true,
+  globalise_view_document_ui: true,
+  globalise_find_archival_documents: false,
+  globalise_lookup_commodity: false,
+  globalise_lookup_measure: false,
+};
+
 /** Recursively assert a JSON schema contains no $ref keys (claude.ai rejects them). */
 function hasRef(node: unknown): boolean {
   if (Array.isArray(node)) return node.some(hasRef);
@@ -74,6 +88,10 @@ async function main() {
   for (const tool of tools) {
     check(!hasRef(tool.inputSchema), `$ref-free inputSchema: ${tool.name}`);
     check(tool.annotations?.readOnlyHint === true, `readOnlyHint: ${tool.name}`);
+    check(
+      tool.annotations?.openWorldHint === OPEN_WORLD_BY_TOOL[tool.name],
+      `openWorldHint=${OPEN_WORLD_BY_TOOL[tool.name]}: ${tool.name}`,
+    );
     // Strict schemas: unknown params rejected, not stripped. All five tools are
     // strict — the four data tools via registerJsonTool's .strict() variants,
     // and the viewer via the strict schema passed through registerAppTool

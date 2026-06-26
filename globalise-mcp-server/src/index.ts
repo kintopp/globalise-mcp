@@ -277,11 +277,27 @@ async function runTool(name: string, fn: () => Promise<CallToolResult>): Promise
   }
 }
 
-const READ_ONLY_ANNOTATIONS = {
+const READ_ONLY_BASE = {
   readOnlyHint: true,
   destructiveHint: false,
   idempotentHint: true,
 } as const;
+
+/**
+ * Read-only tools that call the live GLOBALISE / Nationaal Archief / IIIF
+ * services — an open world. (Per the MCP spec openWorldHint defaults to true
+ * when omitted, so this just makes the assumed default explicit.)
+ */
+const EXTERNAL_READ_ONLY = { ...READ_ONLY_BASE, openWorldHint: true } as const;
+
+/**
+ * Read-only tools that read only the bundled/local SQLite glossaries and
+ * finding-aid index — a closed, bounded world. This is the substantive hint
+ * correction: without it, clients assume these local-lookup tools touch an
+ * open world. (The thin-.mcpb one-time index download is provisioning, not the
+ * query-time interaction domain, so the searched domain is still closed.)
+ */
+const LOCAL_READ_ONLY = { ...READ_ONLY_BASE, openWorldHint: false } as const;
 
 /**
  * Register a read-only JSON tool, wrapping its handler with the shared
@@ -302,6 +318,7 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
   schema: Schema,
   outputSchema: z.ZodTypeAny,
   handler: (input: z.output<Schema>) => Promise<unknown>,
+  annotations: typeof EXTERNAL_READ_ONLY | typeof LOCAL_READ_ONLY,
   viewerLinks?: ViewerLinksBuilder,
 ): void {
   server.registerTool(
@@ -312,7 +329,7 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
       // does not resolve against a bare generic type parameter
       inputSchema: schema as z.ZodObject<z.ZodRawShape>,
       ...outputSchemaField(outputSchema),
-      annotations: READ_ONLY_ANNOTATIONS,
+      annotations,
     },
     async (args): Promise<CallToolResult> =>
       runTool(name, async () => {
@@ -449,6 +466,7 @@ export function createServer(): McpServer {
     searchToolInputSchema,
     searchOutputSchema,
     searchTranscriptions,
+    EXTERNAL_READ_ONLY,
     searchViewerLinks,
   );
 
@@ -462,6 +480,7 @@ export function createServer(): McpServer {
     retrieveToolInputSchema,
     getDocumentOutputSchema,
     getDocument,
+    EXTERNAL_READ_ONLY,
     documentViewerLinks,
   );
 
@@ -473,6 +492,7 @@ export function createServer(): McpServer {
     navigateToolInputSchema,
     navigateOutputSchema,
     navigate,
+    EXTERNAL_READ_ONLY,
     navigateViewerLinks,
   );
 
@@ -487,6 +507,7 @@ export function createServer(): McpServer {
     findArchivalToolInputSchema,
     findArchivalDocumentsOutputSchema,
     findArchivalDocuments,
+    LOCAL_READ_ONLY,
   );
 
   registerJsonTool(
@@ -499,6 +520,7 @@ export function createServer(): McpServer {
     lookupCommodityToolInputSchema,
     lookupCommodityOutputSchema,
     lookupCommodity,
+    LOCAL_READ_ONLY,
   );
 
   registerJsonTool(
@@ -514,6 +536,7 @@ export function createServer(): McpServer {
     lookupMeasureToolInputSchema,
     lookupMeasureOutputSchema,
     lookupMeasure,
+    LOCAL_READ_ONLY,
   );
 
   // ==========================================================================
@@ -541,7 +564,7 @@ export function createServer(): McpServer {
       // requires a matching structuredContent on every non-error result, and
       // the STRUCTURED_CONTENT=false branch below emits none.
       ...outputSchemaField(viewDocumentUiOutputSchema as unknown as typeof viewDocumentUiOutputSchema.shape),
-      annotations: READ_ONLY_ANNOTATIONS,
+      annotations: EXTERNAL_READ_ONLY,
       _meta: {
         ui: {
           resourceUri: DOCUMENT_VIEWER_RESOURCE_URI,
