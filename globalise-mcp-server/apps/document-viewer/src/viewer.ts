@@ -427,15 +427,36 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
   });
   viewer = osdViewer;
 
-  // Fit to page width on load, aligned to top
+  // Frame the page on load. Fit-to-width + top-align reads nicely for pages
+  // that fit vertically, but a tall page (or any page in a short pane — e.g. the
+  // narrow stacked embed) would then show only its top strip. So fit-to-width
+  // only when the whole page fits; otherwise fit the ENTIRE page like Reset does
+  // (CODE-REVIEW: "vertical manuscripts only half displayed").
   osdViewer.addHandler('open', () => {
-    // Fit to width
-    osdViewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, 0.001), true);
-    // Get the current bounds after fit-to-width
-    const bounds = osdViewer.viewport.getBounds();
-    // Pan so top of image aligns with top of viewport
-    // The viewport center needs to be at y = half the viewport height
-    osdViewer.viewport.panTo(new OpenSeadragon.Point(0.5, bounds.height / 2), true);
+    const tiledImage = osdViewer.world.getItemAt(0);
+    if (!tiledImage) {
+      osdViewer.viewport.goHome(true);
+      return;
+    }
+
+    // In viewport coordinates the image width is normalised to 1, so the page's
+    // height equals imageHeightPx/imageWidthPx. heightAtFullWidth is how much
+    // vertical space the pane shows once that width fills it.
+    const imageBounds = tiledImage.getBounds();
+    const container = osdViewer.viewport.getContainerSize();
+    const heightAtFullWidth = container.x > 0 ? container.y / container.x : imageBounds.height;
+
+    if (imageBounds.height <= heightAtFullWidth + 1e-6) {
+      // Whole page fits vertically at full width — fit to width, aligned to top.
+      osdViewer.viewport.fitBounds(new OpenSeadragon.Rect(0, 0, 1, 0.001), true);
+      const bounds = osdViewer.viewport.getBounds();
+      // Pan so the top of the image aligns with the top of the viewport
+      // (center sits at y = half the viewport height).
+      osdViewer.viewport.panTo(new OpenSeadragon.Point(0.5, bounds.height / 2), true);
+    } else {
+      // Taller than the pane — fit the whole page so it isn't half-cut.
+      osdViewer.viewport.goHome(true);
+    }
   });
 
   // Handle image load error

@@ -6,6 +6,39 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.11.6] - 2026-06-27
+
+Default `fragmentSize` on `globalise_search_transcriptions` raised from **150 to 200** characters after live testing showed 150 too often clipped the matched phrase mid-context. One-line behavior change to the zod `.default()` in `src/tools/search.ts`; the valid range (20–500) and every other behavior are unchanged. No DB rebuild, no schema *shape* change. Doc surfaces synced to the new default: the `fragmentSize` `.describe()` (`search.ts`), the `globalise_search_transcriptions` tool description (`src/index.ts`), and the SKILL.md "Searching transcriptions" note (`.skill` repackaged). Patch bump.
+
+## [2.11.5] - 2026-06-26
+
+Surfaced the response-size shaping behaviors (introduced across v2.10.8–v2.11.1) in the **always-loaded tool-facing surfaces**, where they were previously documented nowhere except the runtime `note`/fields themselves and SKILL.md (v2.11.3 — which only skill-aware clients load). **Doc-only:** no `src/` logic change, no DB rebuild, no output-schema *shape* change (only field `.describe()` text + description prose), no `.skill` change. Guided by `mcp-description-checklist.md` (§9 cross-tool context → server instructions; §3 cover limitations, not just the happy path; §7 descriptions are billed → state once, steer the model when you truncate; §5 declare predictable structured fields).
+
+The gaps closed:
+
+- **The four list tools' descriptions never mentioned size-capping.** A client reading the tool picker had no notice that `globalise_search_transcriptions` / `globalise_find_archival_documents` / `globalise_lookup_commodity` / `globalise_lookup_measure` may return **fewer than the requested `size`** (v2.11.0). Adaptation worked from the self-explanatory runtime `note`, but anticipation didn't.
+- **`pagination.hasMore` had no `.describe()` in any of the four list tools** — and v2.11.0 shifted its semantics: `recordListTrim` forces it `true` on a size-capped page **even when `total ≤ from+size`**, so a client trusting the old "page to `from+size`" contract could page past the end.
+- **The four `note` `.describe()`s enumerated only pre-v2.11.0 examples** (matchAll scan cap / source-skipped / FTS auto-quote), omitting the now-common size-cap case — so a structured-output client introspecting the schema wouldn't learn `note` is the size-cap channel.
+- **`globalise_retrieve_document` / `globalise_navigate` descriptions still claimed "full"** ("the full transcription line-by-line" / "the target page's full details"), directly contradicted by the v2.11.1 line-trim. v2.11.3 fixed this wording in SKILL.md but **not** in the always-loaded `index.ts` descriptions — and SKILL.md only reaches skill-aware clients. (The `text.truncated` / `text.totalLines` field `.describe()`s added in v2.11.1 were already accurate and are unchanged.)
+
+The fixes (across the three channels an LLM reads — tool description, output-schema `.describe()`, and the runtime payload):
+
+1. **`SERVER_INSTRUCTIONS` gains one cross-cutting "Response size" caveat bullet** (`src/index.ts`) covering *both* the list-tool record cap and the retrieve/navigate line trim, plus how to adapt (page with a higher `from`, narrow filters, lower `size` — or `fragmentSize` for search; total count never affected). Stated **once** here per the existing R10 pattern / checklist §9 rather than duplicated across six tool descriptions (checklist §7 — descriptions are billed). The server `instructions` string is loaded into the model's context.
+2. **`pagination.hasMore` gains a `.describe()` in all four list tools** (`search.ts`, `archival-index.ts`, `commodities.ts`, `measures.ts`) spelling out the capped-page semantics and the recovery (page with a higher `from`).
+3. **The four `note` `.describe()`s extended** to name the size-cap case alongside each tool's existing example.
+4. **`retrieve` / `navigate` descriptions drop "full"** (`src/index.ts`), state that dense pages may have trailing lines trimmed (signaled by `text.truncated` + `text.totalLines`), and point dense-page users at `globalise_view_document_ui`, which is exempt from the trim. This also closes the `STRUCTURED_CONTENT=false` asymmetry: with structured output off the output-schema `.describe()`s vanish, so retrieve/navigate previously surfaced bare `truncated`/`totalLines` fields with no explanation and a prose promise of "full" — now the always-loaded description carries the signal in both modes.
+
+Patch bump mirroring the v2.10.1 tool-description-refinement precedent. No first-sentence leads were lengthened (the v2.10.1 ~117-char client-truncation budget is preserved — the new wording lands in later sentences). tsc + full `npm test` green.
+
+## [2.11.4] - 2026-06-26
+
+Document-viewer (MCP App) layout fixes for two rendering bugs reported against the claude.ai embed. **Viewer-only** (`apps/document-viewer`) — no server-tool behavior change, no DB rebuild, no schema change, no `.skill` change; the viewer bundle (`dist/apps/index.html`) was rebuilt. Two independent issues:
+
+- **Tall pages were only half displayed.** The OpenSeadragon `open` handler always did a *fit-to-width, top-aligned* frame (`fitBounds(Rect(0,0,1,0.001))` then pan to top). That reads well only when the whole page also fits vertically; for a portrait page — or **any** page in a short pane, which is exactly the narrow stacked/embed layout — it makes the image large and shows just the top strip. Now adaptive: compute the page's height in viewport units (`imageHeightPx/imageWidthPx`, since OSD normalises image width to 1) and compare to `containerHeight/containerWidth`; fit-to-width + top-align only when the page fits, otherwise `goHome(true)` to fit the **whole** page (same framing as the Reset button). `apps/document-viewer/src/viewer.ts`.
+- **Transcription text painted over the bottom frame/nav when scrolled.** The transcription is a scroll container adjacent to OpenSeadragon's WebGL `<canvas>` (its own GPU compositing layer); with `.main` using `border-radius` + `overflow:hidden` but no stacking isolation, the composited scroll layer escaped the clip and overpainted the navigation "frame". The narrow/stacked layout compounded it: in column mode the panels were sized `65% + 35%` **plus** a 4px splitter = **>100%**, spilling the text panel into the nav. Fixes (`viewer.css`): `isolation: isolate` on `.main` so the rounded clip contains composited descendants; `position:relative; overflow:hidden` on `.content` to clip the panels; `position:relative; z-index:1` on `.navigation` so its solid bar always paints above; and the mobile media query now sizes the panels with `flex: 2 1 0 / 1 1 0` (+ `min-height:0`) so they share the space **after** the splitter instead of overflowing.
+
+Patch bump mirroring the v2.7.7 document-viewer-fix precedent. Viewer typecheck (`test:viewer-typecheck`) + build (`test:viewer-build`) green; UI bundle rebuilt via `build:ui`.
+
 ## [2.11.3] - 2026-06-26
 
 `globalise-voc-research` SKILL.md brought up to date with the v2.10.8–v2.11.1 response-size work (plans 004–006), which the skill documented nowhere. Skill-only — **no code-logic change**, no DB rebuild, no schema change, no `src/` change; `.skill` repackaged. A grep of SKILL.md for `fragmentSize`/`hasMore`/`truncated`/`totalLines`/`size-cap` returned zero hits while the code implements all of them, so a skill-aware client had no guidance on the new observable behaviors. Three gaps closed:

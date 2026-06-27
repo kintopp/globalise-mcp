@@ -148,6 +148,7 @@ Corpus caveats that apply to every tool:
 - Language metadata: "unknown" means not yet classified, not unidentifiable. The code "art" ("Cipher") marks encrypted Dutch text, not an artificial language.
 - The HTR model was trained on Latin script only: transcriptions of non-Roman-script languages (Persian, Bengali, Tamil, Sinhala, Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) are unreliable gibberish — offer the user the National Archives page-scan link from the document metadata instead. Malay ("msa") is a macrolanguage with no script metadata, so offer scan links for it too.
 - The search tokenizer strips punctuation and treats hyphens as word separators ("oost-indie" matches like "oost indie").
+- Response size: to stay within the client's per-result limit, the four list tools (globalise_search_transcriptions, globalise_find_archival_documents, globalise_lookup_commodity, globalise_lookup_measure) may return fewer than the requested \`size\` — \`pagination.hasMore\` is then true and a \`note\` states how many of how many results were kept; recover the rest by paging with a higher \`from\`, narrowing filters, or lowering \`size\` (or \`fragmentSize\` for search). globalise_retrieve_document and globalise_navigate may likewise drop trailing transcription lines on dense pages, signaled by \`text.truncated\` + \`text.totalLines\`. The reported total count is never affected by either trim.
 - Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages. Two local glossaries resolve VOC vocabulary alongside search — globalise_lookup_commodity (trade good → the Dutch term the corpus uses, a sourced definition, and any period spelling variants) and globalise_lookup_measure (unit of weight/volume/length → its type, spelling variants, and period conversion ratios).`;
 
 /**
@@ -500,7 +501,7 @@ export function createServer(): McpServer {
       'For statistics only (e.g. the language breakdown of an inventory), use query="*" with size=1. ' +
       `Each result id can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}. ` +
       'For a known document ID use globalise_retrieve_document. ' +
-      'Use fragmentSize to trade snippet length for response size (lower = smaller, default 150).',
+      'Use fragmentSize to trade snippet length for response size (lower = smaller, default 200).',
     searchToolInputSchema,
     searchOutputSchema,
     searchTranscriptions,
@@ -513,8 +514,9 @@ export function createServer(): McpServer {
     server,
     'globalise_retrieve_document',
     'Retrieve one page by document ID ("NL-HaNA_{archive}_{inventory}_{scan}") or URN ("urn:globalise:..."). ' +
-      'Returns the full transcription line-by-line, metadata (languages, dates, license), previous/next page IDs, ' +
+      'Returns the transcription line-by-line, metadata (languages, dates, license), previous/next page IDs, ' +
       'and links to the web viewer and the National Archives page scan. ' +
+      'On very dense pages trailing lines may be trimmed to fit the response — text.truncated is then true and text.totalLines gives the full count (use globalise_view_document_ui for the complete page). ' +
       'To search by keywords use globalise_search_transcriptions; for sequential browsing use globalise_navigate.',
     retrieveToolInputSchema,
     getDocumentOutputSchema,
@@ -528,7 +530,7 @@ export function createServer(): McpServer {
     server,
     'globalise_navigate',
     'Fetch the previous or next page relative to a document ID, to read through archival materials sequentially. ' +
-      'Returns the target page\'s full details (text, metadata, links); errors if no page exists in that direction.',
+      'Returns the target page\'s details (text, metadata, links); on very dense pages trailing transcription lines may be trimmed to fit the response (flagged by text.truncated + text.totalLines). Errors if no page exists in that direction.',
     navigateToolInputSchema,
     navigateOutputSchema,
     navigate,

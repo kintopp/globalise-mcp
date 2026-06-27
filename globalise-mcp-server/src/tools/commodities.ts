@@ -65,13 +65,13 @@ export const lookupCommodityOutputSchema = z.object({
   pagination: z.object({
     from: z.number(),
     size: z.number(),
-    hasMore: z.boolean(),
+    hasMore: z.boolean().describe('True when more results exist beyond this page, or when this response was size-capped and trailing results were dropped to fit the budget — in either case page with a higher `from` (the note states how many were kept) to reach the rest.'),
   }),
   databaseInfo: z.object({
     commoditiesTotal: z.number(),
     available: z.boolean(),
   }),
-  note: z.string().optional().describe('Caveats about how this result was computed (e.g. an FTS query whose special-character terms were auto-quoted)'),
+  note: z.string().optional().describe('Caveats about how this result was computed — e.g. an FTS query whose special-character terms were auto-quoted, or a size-cap that dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest).'),
 });
 
 export type LookupCommodityInput = z.infer<typeof lookupCommodityInputSchema>;

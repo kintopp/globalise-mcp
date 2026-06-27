@@ -77,6 +77,10 @@ html, body {
   flex-direction: column;
   border-radius: var(--border-radius-lg);
   overflow: hidden;
+  /* Own backing store so the rounded clip actually contains GPU-composited
+     descendants — OpenSeadragon's WebGL canvas and the scroll-promoted
+     transcription. Without it those layers paint over the frame/nav. */
+  isolation: isolate;
   background: var(--color-background-primary);
 }
 
@@ -192,6 +196,9 @@ html, body {
   flex: 1;
   display: flex;
   min-height: 0; /* Allow shrinking to fit navigation bar */
+  position: relative;
+  overflow: hidden; /* Clip the panels (incl. the composited scroll layer) so
+                       nothing bleeds past into the navigation bar below. */
 }
 
 /* Image panel (left) - larger flex ratio for more vertical space */
@@ -344,6 +351,8 @@ html, body {
   gap: 1rem;
   flex-shrink: 0;
   border-top: 1px solid var(--color-border-primary);
+  position: relative;
+  z-index: 1; /* Paint above the content area so the bar never sits under text. */
 }
 
 .navigation button {
@@ -424,14 +433,17 @@ html, body {
 
   .image-panel {
     min-width: 100%;
-    flex: none;
-    height: 65%; /* Image gets more vertical space */
+    min-height: 0;
+    /* Share the column ~2:1 with the text panel AFTER the 4px splitter is
+       subtracted — fixed % heights + the splitter summed to >100% and spilled
+       the text panel into the nav bar. */
+    flex: 2 1 0;
   }
 
   .text-panel {
     min-width: 100%;
-    flex: none;
-    height: 35%; /* Transcription gets less space */
+    min-height: 0;
+    flex: 1 1 0; /* Transcription gets less space; scrolls internally */
   }
 
   .splitter {

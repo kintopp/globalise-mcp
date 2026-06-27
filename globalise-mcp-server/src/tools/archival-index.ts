@@ -123,14 +123,14 @@ export const findArchivalDocumentsOutputSchema = z.object({
   pagination: z.object({
     from: z.number(),
     size: z.number(),
-    hasMore: z.boolean(),
+    hasMore: z.boolean().describe('True when more results exist beyond this page, or when this response was size-capped and trailing results were dropped to fit the budget — in either case page with a higher `from` (the note states how many were kept) to reach the rest.'),
   }),
   databaseInfo: z.object({
     obpTotal: z.number(),
     gmTotal: z.number(),
     available: z.boolean(),
   }),
-  note: z.string().optional().describe('Caveats about how this result was computed (e.g. a source skipped because a filter does not apply to it)'),
+  note: z.string().optional().describe('Caveats about how this result was computed — e.g. a source skipped because a filter does not apply to it, or a size-cap that dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest).'),
 });
 
 export type FindArchivalDocumentsInput = z.infer<typeof findArchivalDocumentsInputSchema>;

@@ -124,8 +124,8 @@ export const searchTranscriptionsInputSchema = z.object({
     .min(20, 'fragmentSize must be at least 20')
     .max(500, 'fragmentSize cannot exceed 500')
     .optional()
-    .default(150)
-    .describe('Max length (characters) of each highlighted snippet in highlightedFragments. Lower = smaller responses; higher = more context per hit. 20-500, default 150 (the upstream API default is 100; this tool previously used a fixed 500).'),
+    .default(200)
+    .describe('Max length (characters) of each highlighted snippet in highlightedFragments. Lower = smaller responses; higher = more context per hit. 20-500, default 200 (the upstream API default is 100; this tool previously used a fixed 500).'),
 });
 
 export const searchOutputSchema = z.object({
@@ -155,9 +155,9 @@ export const searchOutputSchema = z.object({
   pagination: z.object({
     from: z.number(),
     size: z.number(),
-    hasMore: z.boolean(),
+    hasMore: z.boolean().describe('True when more results exist beyond this page, or when this response was size-capped and trailing results were dropped to fit the budget — in either case page with a higher `from` (the note states how many were kept) to reach the rest.'),
   }),
-  note: z.string().optional().describe('Caveats about how this result was computed (e.g. matchAll scan cap)'),
+  note: z.string().optional().describe('Caveats about how this result was computed — e.g. a matchAll scan cap, or a size-cap that shortened snippets and/or dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest).'),
 });
 
 export type SearchOutput = z.infer<typeof searchOutputSchema>;
