@@ -264,21 +264,16 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
 }
 
 /**
- * Render the document viewer UI
+ * Build the inner markup of <header class="header">. Shared by the full
+ * renderDocument() (first/host load) and swapDocument() (in-place navigation),
+ * so the header is defined ONCE — a new field is added here, not in two places.
  */
-function renderDocument(doc: DocumentData): void {
-  const appEl = document.getElementById('app');
-  if (!appEl) return;
-
-  // Build language badges
+function headerInnerHtml(doc: DocumentData): string {
   const languageBadges = doc.metadata.languages
     .map((l) => `<span class="language-badge" title="${l.code}">${l.label}</span>`)
     .join('');
-
-  // Build archival context section
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
-
-  // Build external links (sanitize URLs to prevent protocol injection)
+  // Sanitize URLs to prevent protocol injection.
   const externalLinks = [
     `<a href="${sanitizeUrl(doc.urls.viewer)}" data-external-url="${sanitizeUrl(doc.urls.viewer)}">GLOBALISE Viewer</a>`,
     doc.urls.archive
@@ -287,10 +282,7 @@ function renderDocument(doc: DocumentData): void {
   ]
     .filter(Boolean)
     .join('');
-
-  appEl.innerHTML = `
-    <div class="main${isFullscreen ? ' fullscreen' : ''}">
-      <header class="header">
+  return `
         <div class="header-title-row">
           <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
           <div class="header-right">
@@ -303,8 +295,19 @@ function renderDocument(doc: DocumentData): void {
           <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
           <span>Language: ${languageBadges}</span>
         </div>
-        ${archivalHtml}
-      </header>
+        ${archivalHtml}`;
+}
+
+/**
+ * Render the document viewer UI
+ */
+function renderDocument(doc: DocumentData): void {
+  const appEl = document.getElementById('app');
+  if (!appEl) return;
+
+  appEl.innerHTML = `
+    <div class="main${isFullscreen ? ' fullscreen' : ''}">
+      <header class="header">${headerInnerHtml(doc)}</header>
 
       <div class="content">
         <div class="image-panel">
@@ -352,6 +355,60 @@ function renderDocument(doc: DocumentData): void {
       const rect = mainEl.getBoundingClientRect();
       app.sendSizeChanged({ width: rect.width, height: rect.height });
       app.sendLog({ level: 'info', data: `Size reported: ${rect.width}x${rect.height}` });
+    }
+  });
+}
+
+/**
+ * In-place page swap for navigation: keep the image-panel DOM and the live OSD
+ * instance, update only the header/transcription/footer + button state, and load
+ * the new page's tiles via viewer.open() on the EXISTING viewer. Modeled on the
+ * rijksmuseum-mcp-plus swapArtwork() peer-navigation path. Falls back to a full
+ * renderDocument() if there is no live viewer or the containers are absent (e.g.
+ * the previous load hit open-failed and replaced the container).
+ *
+ * NB: switching the tile source mid-load makes OSD log "tile loaded before reset"
+ * warnings — harmless, inherent to swapping images, not an error.
+ */
+async function swapDocument(data: DocumentData): Promise<void> {
+  const headerEl = document.querySelector('.header');
+  const transcriptionEl = document.getElementById('transcription');
+  const pageInfoEl = document.querySelector('.page-info');
+  if (!viewer || !headerEl || !transcriptionEl || !pageInfoEl) {
+    renderDocument(data);   // fallback: full rebuild
+    return;
+  }
+
+  headerEl.innerHTML = headerInnerHtml(data);
+  attachExternalLinkListeners();   // re-attach: the old <a> listeners died with the replaced header
+
+  transcriptionEl.innerHTML = renderTranscription(data.transcription, data.highlight);
+
+  pageInfoEl.textContent = `Page ${data.metadata.scan} of inventory ${data.metadata.inventory}`;
+
+  const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
+  const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
+  if (prevBtn) {
+    prevBtn.disabled = !data.navigation.prev;
+    prevBtn.title = data.navigation.prev ? 'Previous page (j)' : 'No previous page';
+  }
+  if (nextBtn) {
+    nextBtn.disabled = !data.navigation.next;
+    nextBtn.title = data.navigation.next ? 'Next page (l)' : 'No next page';
+  }
+
+  // Swap the image in place on the existing viewer (no destroy/recreate).
+  viewer.viewport.setRotation(0);
+  const tileSources = await buildTileSources(data.iiifImageUrl);
+  viewer.open(tileSources as Parameters<typeof viewer.open>[0]);
+
+  // Report the post-swap size to the host (image-panel layout is unchanged, but
+  // the header/transcription heights may differ between pages).
+  requestAnimationFrame(() => {
+    const mainEl = document.querySelector('.main');
+    if (mainEl) {
+      const rect = mainEl.getBoundingClientRect();
+      app.sendSizeChanged({ width: rect.width, height: rect.height });
     }
   });
 }
@@ -545,7 +602,8 @@ let navigating = false;
 async function navigateToPage(targetId: string | null | undefined): Promise<void> {
   if (!targetId || navigating) return;
   navigating = true;
-  showLoading(`Loading page: ${targetId}`);
+  // No showLoading() here: the in-place swap is the loading affordance — nuking
+  // #app would destroy the OSD instance we are trying to keep alive.
   try {
     const result = await app.callServerTool({
       name: 'globalise_view_document_ui',
@@ -559,8 +617,10 @@ async function navigateToPage(targetId: string | null | undefined): Promise<void
     }
     const data = parseDocumentResult(result as ParseableToolResult);
     if (data) {
+      // Set currentDocument BEFORE the await so the now-currentDocument-reading
+      // button/keyboard handlers see the new page immediately.
       currentDocument = data;
-      renderDocument(data);
+      await swapDocument(data);
       updateModelContext(data);
     } else {
       showError('Error parsing page', 'Could not parse document data from tool result');
@@ -573,9 +633,11 @@ async function navigateToPage(targetId: string | null | undefined): Promise<void
 }
 
 /**
- * Attach event listeners for controls and text selection
+ * Attach click→app.openLink() listeners to the external-link anchors. Extracted
+ * so swapDocument() can re-attach them after replacing the header innerHTML (the
+ * old <a> listeners die with the replaced nodes).
  */
-function attachEventListeners(doc: DocumentData): void {
+function attachExternalLinkListeners(): void {
   // External link buttons - use app.openLink() for sandboxed iframe
   document.querySelectorAll('.external-links a').forEach((link) => {
     link.addEventListener('click', async (e) => {
@@ -590,6 +652,13 @@ function attachEventListeners(doc: DocumentData): void {
       }
     });
   });
+}
+
+/**
+ * Attach event listeners for controls and text selection
+ */
+function attachEventListeners(doc: DocumentData): void {
+  attachExternalLinkListeners();
 
   // Text selection tracking - update model context when user selects text
   const transcriptionEl = document.getElementById('transcription');
@@ -598,8 +667,11 @@ function attachEventListeners(doc: DocumentData): void {
       const selectedText = window.getSelection()?.toString().trim();
 
       if (selectedText) {
-        // Update model context with selected text (using content array format)
-        const contextText = `User selected text in document ${doc.id}: "${selectedText}"`;
+        // Update model context with selected text (using content array format).
+        // Read currentDocument (not the captured doc) so this listener — which
+        // survives an in-place swap on the persisted #transcription container —
+        // reports the page actually on screen, not the one it was bound under.
+        const contextText = `User selected text in document ${currentDocument?.id ?? doc.id}: "${selectedText}"`;
         app.updateModelContext({
           content: [{ type: 'text', text: contextText }],
         });
@@ -618,12 +690,14 @@ function attachEventListeners(doc: DocumentData): void {
   if (prevBtn) {
     prevBtn.disabled = !doc.navigation.prev;
     prevBtn.title = doc.navigation.prev ? 'Previous page (j)' : 'No previous page';
-    prevBtn.addEventListener('click', () => void navigateToPage(doc.navigation.prev));
+    // Read currentDocument (mirroring the keyboard handler): the buttons persist
+    // across an in-place swap, so the click must follow the live page's nav.
+    prevBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.prev));
   }
   if (nextBtn) {
     nextBtn.disabled = !doc.navigation.next;
     nextBtn.title = doc.navigation.next ? 'Next page (l)' : 'No next page';
-    nextBtn.addEventListener('click', () => void navigateToPage(doc.navigation.next));
+    nextBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.next));
   }
 
   // Splitter drag: bind mousedown on the freshly-rendered splitter and capture

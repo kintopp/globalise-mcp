@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.11.9] - 2026-06-27
+
+**Document viewer: page navigation now swaps the image in place instead of destroying and recreating the whole viewer.** Viewer-only (`apps/document-viewer`); no server/DB/schema/`.skill` change; UI bundle rebuilt via `build:ui`. Fixes the v2.11.8 navigation regression (confirmed in both Safari and Chrome): clicking `◀`/`▶` (or pressing `j`/`l`) flashed a spinner, blanked the image pane, and cold-restarted OpenSeadragon (re-fetch `info.json`, reload the tile pyramid, re-fit).
+
+- **Root cause:** navigation routed through `navigateToPage()` → `showLoading()` (replaced all of `#app` with a spinner) → `renderDocument()` (rebuilt the entire DOM including a fresh empty `#openseadragon-viewer`) → `initializeImageViewer()` (`viewer.destroy()` + a brand-new `OpenSeadragon(...)`). Destroying the container made an in-place `viewer.open()` impossible as long as navigation went through `renderDocument`.
+- **Fix:** a dedicated `swapDocument(data)` path used **only** by navigation. It keeps `.image-panel` (and therefore `#openseadragon-viewer`, the OSD canvas, navigator minimap, and the prev/next buttons) alive, and updates only what changes: `.header` innerHTML (+ re-attach external-link listeners), `#transcription` innerHTML, the `.page-info` footer text, the prev/next `disabled`/`title`, and the OSD image via `viewer.viewport.setRotation(0)` + `viewer.open(await buildTileSources(...))` on the **existing** viewer (the `open` handler re-frames automatically). Falls back to a full `renderDocument()` if there is no live viewer or the expected containers are missing.
+- **The destructive spinner is gone from navigation:** `navigateToPage()` no longer calls `showLoading()` (which nuked `#app`); the in-place swap is the loading affordance. `showError()` still surfaces real load/parse failures.
+- **Stale-closure fixes** so listeners that survive an in-place swap stay correct: the prev/next button **click** handlers and the `#transcription` text-selection handler now read module-scope `currentDocument` instead of the per-render `doc` (mirroring the keyboard handler). `currentDocument` is set **before** the swap await.
+- **Refactor (no markup change):** the `<header class="header">` inner markup is extracted to a shared `headerInnerHtml(doc)` and the external-link listener attach to `attachExternalLinkListeners()`, both reused by `renderDocument` and `swapDocument`. The rendered first-load HTML is byte-identical to v2.11.8.
+- Boundary kept: **first/host load (`app.ontoolresult`) → full `renderDocument`**; **navigation → `swapDocument`**. The `App(...)` construction/capabilities are unchanged (no `tools` capability). Patch bump; `test:viewer-typecheck` + `test:viewer-build` + `npx tsc --noEmit` + full `npm test` green. **Manual embed re-verification (Safari + Chrome) is the real acceptance test and is pending the maintainer.**
+
 ## [2.11.8] - 2026-06-27
 
 **Document viewer: in-viewer next/previous page navigation, OSD navigator minimap; rotate becomes keyboard-only.** Viewer-only (`apps/document-viewer`); no server/DB/schema/`.skill` change; UI bundle rebuilt via `build:ui`.
