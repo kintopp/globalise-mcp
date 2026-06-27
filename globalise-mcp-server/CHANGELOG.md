@@ -6,6 +6,17 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.11.8] - 2026-06-27
+
+**Document viewer: in-viewer next/previous page navigation, OSD navigator minimap; rotate becomes keyboard-only.** Viewer-only (`apps/document-viewer`); no server/DB/schema/`.skill` change; UI bundle rebuilt via `build:ui`.
+
+- **Prev/next page buttons** (`◀`/`▶`) replace the rotate buttons in the toolbar. Buttons are disabled when `navigation.prev`/`navigation.next` is null (start/end of inventory) and their title updates accordingly.
+- **Keyboard shortcuts** `j` (previous page) and `l` (next page) read from `currentDocument.navigation`; `k` returns to the initially-loaded (seed) page if the user has navigated away. Rotate keys `r` (rotate left, −90°) and `Shift+r` (rotate right, +90°) are **unchanged**.
+- **Rotate is now keyboard-only**: the `rotateImage()` function is preserved; only the toolbar buttons are removed.
+- **OSD navigator minimap** added (`showNavigator: true`, `navigatorPosition: 'BOTTOM_RIGHT'`, `navigatorSizeRatio: 0.12`) — renders an overview window from the IIIF tiles.
+- Navigation is implemented via `app.callServerTool({ name: 'globalise_view_document_ui', arguments: { documentId } })`, re-rendering through the same parse/render path the host-driven tool result uses. The `tools` capability is **not** added (see the Safari handshake caveat in `viewer.ts`).
+- Seed page (`k`) is captured from the first host-driven load (not moved by in-viewer navigation).
+
 ## [2.11.7] - 2026-06-27
 
 **Data correction (commodities glossary): three "ruinas" concepts reclassified from rhubarb to madder.** The `ruinas` family is a VOC name for madder (a red dye-root), not medicinal rhubarb (`rabarber`) — the earlier LLM/PoolParty definitions misread it. Corrected rows in `data/sources/commodities.tsv` (and the rebuilt `data/reference.sqlite.gz`):

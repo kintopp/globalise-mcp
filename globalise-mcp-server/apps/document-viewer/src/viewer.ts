@@ -39,6 +39,7 @@ type DocumentData = ViewDocumentUiOutput;
 
 // App state
 let currentDocument: DocumentData | null = null;
+let seedDocumentId: string | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
 
@@ -131,6 +132,7 @@ app.ontoolresult = (result) => {
   const data = parseDocumentResult(result as ParseableToolResult);
 
   if (data) {
+    if (!seedDocumentId) seedDocumentId = data.id;
     currentDocument = data;
     renderDocument(data);
     updateModelContext(data);
@@ -312,8 +314,8 @@ function renderDocument(doc: DocumentData): void {
             <button id="zoom-out" title="Zoom Out (−)">−</button>
             <button id="reset-view" title="Reset View (0)">Reset</button>
             <span class="control-separator"></span>
-            <button id="rotate-left" title="Rotate Left (R)">↺</button>
-            <button id="rotate-right" title="Rotate Right (Shift+R)">↻</button>
+            <button id="prev-page" title="Previous page (j)">&#9664;</button>
+            <button id="next-page" title="Next page (l)">&#9654;</button>
           </div>
         </div>
 
@@ -418,6 +420,9 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     showHomeControl: false,
     showFullPageControl: false,
     showRotationControl: false,
+    showNavigator: true,
+    navigatorPosition: 'BOTTOM_RIGHT',
+    navigatorSizeRatio: 0.12,
     animationTime: 0.3,
     blendTime: 0.1,
     constrainDuringPan: true,
@@ -528,6 +533,46 @@ function resetView(): void {
 }
 
 /**
+ * Load an adjacent (or the seed) scan into the viewer by calling the server's
+ * view tool directly and re-rendering through the same parse path the host-driven
+ * tool result uses. `targetId` comes from currentDocument.navigation.{prev,next}
+ * (document-ID strings) or seedDocumentId.
+ *
+ * NB: callServerTool calls a *server* tool; it does NOT require the app-side
+ * `tools` capability (see the caveat at the top of this file). Do not add it.
+ */
+let navigating = false;
+async function navigateToPage(targetId: string | null | undefined): Promise<void> {
+  if (!targetId || navigating) return;
+  navigating = true;
+  showLoading(`Loading page: ${targetId}`);
+  try {
+    const result = await app.callServerTool({
+      name: 'globalise_view_document_ui',
+      arguments: { documentId: targetId },
+    });
+    if (result.isError) {
+      const first = result.content?.[0];
+      const raw = (first?.type === 'text' ? first.text : undefined) || 'Unknown error';
+      showError('Error loading page', raw);
+      return;
+    }
+    const data = parseDocumentResult(result as ParseableToolResult);
+    if (data) {
+      currentDocument = data;
+      renderDocument(data);
+      updateModelContext(data);
+    } else {
+      showError('Error parsing page', 'Could not parse document data from tool result');
+    }
+  } catch (e) {
+    showError('Error loading page', String(e));
+  } finally {
+    navigating = false;
+  }
+}
+
+/**
  * Attach event listeners for controls and text selection
  */
 function attachEventListeners(doc: DocumentData): void {
@@ -567,8 +612,19 @@ function attachEventListeners(doc: DocumentData): void {
   document.getElementById('zoom-in')?.addEventListener('click', zoomIn);
   document.getElementById('zoom-out')?.addEventListener('click', zoomOut);
   document.getElementById('reset-view')?.addEventListener('click', resetView);
-  document.getElementById('rotate-left')?.addEventListener('click', () => rotateImage(-90));
-  document.getElementById('rotate-right')?.addEventListener('click', () => rotateImage(90));
+
+  const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
+  const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
+  if (prevBtn) {
+    prevBtn.disabled = !doc.navigation.prev;
+    prevBtn.title = doc.navigation.prev ? 'Previous page (j)' : 'No previous page';
+    prevBtn.addEventListener('click', () => void navigateToPage(doc.navigation.prev));
+  }
+  if (nextBtn) {
+    nextBtn.disabled = !doc.navigation.next;
+    nextBtn.title = doc.navigation.next ? 'Next page (l)' : 'No next page';
+    nextBtn.addEventListener('click', () => void navigateToPage(doc.navigation.next));
+  }
 
   // Splitter drag: bind mousedown on the freshly-rendered splitter and capture
   // the drag bounds once. The document-level mousemove/mouseup live at module
@@ -632,6 +688,17 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'R':
       rotateImage(90);
+      break;
+    case 'j':
+      void navigateToPage(currentDocument?.navigation.prev);
+      break;
+    case 'l':
+      void navigateToPage(currentDocument?.navigation.next);
+      break;
+    case 'k':
+      if (seedDocumentId && currentDocument && seedDocumentId !== currentDocument.id) {
+        void navigateToPage(seedDocumentId);
+      }
       break;
     default:
       return;
