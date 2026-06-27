@@ -6,6 +6,18 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.11.7] - 2026-06-27
+
+**Data correction (commodities glossary): three "ruinas" concepts reclassified from rhubarb to madder.** The `ruinas` family is a VOC name for madder (a red dye-root), not medicinal rhubarb (`rabarber`) — the earlier LLM/PoolParty definitions misread it. Corrected rows in `data/sources/commodities.tsv` (and the rebuilt `data/reference.sqlite.gz`):
+
+- **`ruinaszaad`** (`c1e18a82…`): `prefLabel_en` rhubarb seed → **madder seed**; definition rewritten to madder dye-seed sent for experimental cultivation at the Jaffna dye-works; `definitionSource` → `corrected`, confidence low → medium, with corpus citations (`NL-HaNA_1.04.02_9854_0313`, `_2308_0657`).
+- **`ruinaswortel`** (`752bb758…`): `prefLabel_en` rhubarb root → **madder root** (the Dutch definition already described a red dye-root for linen; the English label was wrong).
+- **`sayewortel`** (`e44db01c…`): its definition's cross-reference "rhubarb root (ruinas wortel)" → **"madder root (ruinas wortel)"**; `pref_en` (zedoary root) unchanged.
+
+Editorial Decisions rule: a scholarly content correction to source data, flagged and documented here. **Only these 3 of 3,508 commodity rows changed** (verified by row-level diff against the prior DB); measures (213 units / 731 conversions) byte-identical. Patch bump; `test:commodities` + `test:measures` green.
+
+> Note: an unrelated whole-file quote-stripping that an editor had introduced into `commodities.tsv` was reverted — the file's original RFC-4180 quoting convention (which the `quote: false` build treats as literal text) is preserved, so the diff is exactly the 3 corrected rows.
+
 ## [2.11.6] - 2026-06-27
 
 Default `fragmentSize` on `globalise_search_transcriptions` raised from **150 to 200** characters after live testing showed 150 too often clipped the matched phrase mid-context. One-line behavior change to the zod `.default()` in `src/tools/search.ts`; the valid range (20–500) and every other behavior are unchanged. No DB rebuild, no schema *shape* change. Doc surfaces synced to the new default: the `fragmentSize` `.describe()` (`search.ts`), the `globalise_search_transcriptions` tool description (`src/index.ts`), and the SKILL.md "Searching transcriptions" note (`.skill` repackaged). Patch bump.
