@@ -243,6 +243,9 @@ html, body {
   padding: 0.5rem;
   border-radius: var(--border-radius-md);
   z-index: 10;
+  flex-wrap: wrap;                 /* wrap instead of clipping on a narrow pane */
+  max-width: calc(100% - 1rem);    /* never exceed the image pane's width */
+  justify-content: center;         /* keep wrapped rows centered under the pill */
 }
 
 .image-controls button {

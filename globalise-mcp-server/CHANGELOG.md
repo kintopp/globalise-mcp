@@ -6,6 +6,14 @@ All notable changes to the GLOBALISE MCP Server will be documented in this file.
 >
 > **Deployment:** Production and beta both deploy from `main` (beta was repointed off the retired `worktree-p0-refactor` on 2026-06-13; see CLAUDE.md "Deployment"). The deployed version is verifiable live via `GET /health`.
 
+## [2.11.10] - 2026-06-27
+
+**Document viewer: wrap-proof the floating controls pill on narrow host iframes.** Viewer CSS only (`apps/document-viewer/src/viewer.css`, the `.image-controls` rule); no `viewer.ts`/logic/server/DB/schema/`.skill` change; UI bundle rebuilt via `build:ui`. Robustness hardening (no user-reported failure yet), cross-project handoff from `rijksmuseum-mcp-plus`.
+
+- The control pill (`.image-controls`) is a floating, absolutely-positioned, horizontally-centered bar over the bottom of the image. It now holds **six** items (zoom-in, zoom-out, Reset, separator, `◀` prev, `▶` next) but had **no `flex-wrap`** and **no `max-width`**, so on a narrow MCP-host iframe (e.g. the stacked claude.ai embed) the row could overflow past the image's width.
+- **Fix:** appended `flex-wrap: wrap`, `max-width: calc(100% - 1rem)`, and `justify-content: center` to the existing rule. On a wide pane all six fit one row and the layout is visually identical to before; on a too-narrow pane they wrap to a centered second row inside the translucent pill instead of clipping. A pure floor — no media/container query, so every host honors it regardless of container-query support; cannot regress the desktop layout.
+- The `@media (max-width: 768px)` block (tuned in v2.11.4 for two claude.ai embed bugs) is **left exactly as is** — migrating it to a container query is a separate, deferred spike. Patch bump; `test:viewer-typecheck` + `test:viewer-build` + `npx tsc --noEmit` + full `npm test` green.
+
 ## [2.11.9] - 2026-06-27
 
 **Document viewer: page navigation now swaps the image in place instead of destroying and recreating the whole viewer.** Viewer-only (`apps/document-viewer`); no server/DB/schema/`.skill` change; UI bundle rebuilt via `build:ui`. Fixes the v2.11.8 navigation regression (confirmed in both Safari and Chrome): clicking `◀`/`▶` (or pressing `j`/`l`) flashed a spinner, blanked the image pane, and cold-restarted OpenSeadragon (re-fetch `info.json`, reload the tile pyramid, re-fit).
