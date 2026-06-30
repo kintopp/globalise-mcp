@@ -91,9 +91,10 @@ async function parseCommoditiesTsv(): Promise<CommodityRow[]> {
       skip_empty_lines: true,
       bom: true,
       relax_column_count: true,
-      // Definitions contain stray quote characters; treat the TSV as plain
-      // tab-delimited text rather than RFC-4180 quoted fields.
-      quote: false,
+      // The TSV is RFC-4180: fields containing a comma are wrapped in "…" and
+      // internal quotes are doubled (""). Decode that structure rather than
+      // importing the quotes as literal text. (escape defaults to '"', so ""→".)
+      quote: '"',
     });
 
     createReadStream(COMMODITIES_TSV)
