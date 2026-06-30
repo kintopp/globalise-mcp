@@ -11,6 +11,8 @@ export const API_CONFIG = {
   TIMEOUT_MS: 30000, // 30 seconds default timeout
   RETRY_MAX_ATTEMPTS: 3,
   RETRY_BASE_DELAY_MS: 1000, // 1 second base delay (1s, 2s, 4s)
+  RETRY_MAX_DELAY_MS: 30000, // ceiling: clamps the exponential-backoff sleep, AND the
+                             // threshold above which a server Retry-After fails fast
   REQUEST_DELAY_MS: 100, // Minimum delay between API requests (throttling)
 };
 
@@ -81,7 +83,7 @@ export interface ApiError {
  * Parse Retry-After header value to milliseconds
  * Supports both seconds (integer) and HTTP-date formats
  */
-function parseRetryAfter(response: Response): number | undefined {
+export function parseRetryAfter(response: Response): number | undefined {
   const retryAfter = response.headers.get('Retry-After');
   if (!retryAfter) return undefined;
 
@@ -214,16 +216,30 @@ function isRetryableError(error: ApiError): boolean {
 }
 
 /**
- * Calculate delay for retry attempt using exponential backoff
- * Uses error's retryAfterMs if available (from Retry-After header)
+ * True when a server Retry-After exceeds our ceiling — we surface the rate-limit
+ * error instead of blocking the call then retrying earlier than the server permitted.
  */
-function calculateRetryDelay(attempt: number, error?: ApiError): number {
-  // Respect Retry-After header if present
+export function retryAfterExceedsCeiling(error?: ApiError): boolean {
+  return !!error?.retryAfterMs && error.retryAfterMs > API_CONFIG.RETRY_MAX_DELAY_MS;
+}
+
+/**
+ * Calculate delay for retry attempt using exponential backoff
+ * Uses error's retryAfterMs if available (from Retry-After header).
+ * A present Retry-After under the ceiling is honored verbatim (over-ceiling is
+ * failed fast in withRetry, so it never reaches this branch).
+ */
+export function calculateRetryDelay(attempt: number, error?: ApiError): number {
+  // A present Retry-After under the ceiling is honored verbatim (over-ceiling is
+  // failed fast in withRetry, so it never reaches this branch).
   if (error?.retryAfterMs) {
     return error.retryAfterMs;
   }
-  // Exponential backoff: 1s, 2s, 4s (baseDelay * 2^attempt)
-  return API_CONFIG.RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+  // Exponential backoff, clamped so a large attempt can't produce an unbounded sleep.
+  return Math.min(
+    API_CONFIG.RETRY_BASE_DELAY_MS * Math.pow(2, attempt),
+    API_CONFIG.RETRY_MAX_DELAY_MS,
+  );
 }
 
 /**
@@ -256,6 +272,12 @@ async function withRetry<T>(
         throw error;
       }
 
+      // A Retry-After longer than the ceiling: don't clamp-and-retry-early (that would
+      // override the server's backoff); surface the rate-limit error (it carries retryAfterMs).
+      if (retryAfterExceedsCeiling(apiError)) {
+        throw error;
+      }
+
       const delayMs = calculateRetryDelay(attempt, apiError);
       await sleep(delayMs);
     }
@@ -277,7 +299,6 @@ async function apiFetchOnce<T>(url: string, timeoutMs: number, init?: RequestIni
 
   try {
     const response = await fetch(url, { ...init, signal: controller.signal });
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw createHttpError(response, url);
@@ -285,8 +306,6 @@ async function apiFetchOnce<T>(url: string, timeoutMs: number, init?: RequestIni
 
     return await response.json() as T;
   } catch (error) {
-    clearTimeout(timeoutId);
-
     if ((error as Error).name === 'AbortError') {
       throw createTimeoutError(url);
     }
@@ -297,6 +316,8 @@ async function apiFetchOnce<T>(url: string, timeoutMs: number, init?: RequestIni
       throw error;
     }
     throw createUnknownError(error);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
