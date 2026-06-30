@@ -42,6 +42,11 @@ let currentDocument: DocumentData | null = null;
 let seedDocumentId: string | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
+let visibilityObserver: IntersectionObserver | null = null;
+let currentImageUrl = '';        // for the open-failed "Open image directly" link
+let viewerNeedsRebuild = false;  // read by swapDocument's guard; SET only by the latest open's failure
+let openSeq = 0;                 // bumped before every open; lets a late failure tell whether it is still current
+let pendingOpenFailed: (() => void) | null = null; // the current open's failure handler (held by reference so it can be removed before the next open is armed)
 
 // Splitter-drag state. The document-level mousemove/mouseup handlers are
 // registered ONCE (below); renderDocument only re-binds mousedown on the
@@ -263,6 +268,27 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
   return `<div class="archival-context">${rows.join('')}</div>`;
 }
 
+/** Footer page-info string. Single source for renderDocument + swapDocument. */
+function pageInfoText(doc: DocumentData): string {
+  return `Page ${doc.metadata.scan} of inventory ${doc.metadata.inventory}`;
+}
+
+/** Apply prev/next button disabled + title from a document's navigation. */
+function setNavButtonState(
+  prevBtn: HTMLButtonElement | null,
+  nextBtn: HTMLButtonElement | null,
+  doc: DocumentData,
+): void {
+  if (prevBtn) {
+    prevBtn.disabled = !doc.navigation.prev;
+    prevBtn.title = doc.navigation.prev ? 'Previous page (j)' : 'No previous page';
+  }
+  if (nextBtn) {
+    nextBtn.disabled = !doc.navigation.next;
+    nextBtn.title = doc.navigation.next ? 'Next page (l)' : 'No next page';
+  }
+}
+
 /**
  * Build the inner markup of <header class="header">. Shared by the full
  * renderDocument() (first/host load) and swapDocument() (in-place navigation),
@@ -333,7 +359,7 @@ function renderDocument(doc: DocumentData): void {
       </div>
 
       <nav class="navigation">
-        <span class="page-info">Page ${escapeHtml(doc.metadata.scan)} of inventory ${escapeHtml(doc.metadata.inventory)}</span>
+        <span class="page-info">${escapeHtml(pageInfoText(doc))}</span>
       </nav>
     </div>
   `;
@@ -374,8 +400,8 @@ async function swapDocument(data: DocumentData): Promise<void> {
   const headerEl = document.querySelector('.header');
   const transcriptionEl = document.getElementById('transcription');
   const pageInfoEl = document.querySelector('.page-info');
-  if (!viewer || !headerEl || !transcriptionEl || !pageInfoEl) {
-    renderDocument(data);   // fallback: full rebuild
+  if (!viewer || viewerNeedsRebuild || !headerEl || !transcriptionEl || !pageInfoEl) {
+    renderDocument(data);   // fallback: full rebuild (also recovers a dead viewer)
     return;
   }
 
@@ -384,22 +410,19 @@ async function swapDocument(data: DocumentData): Promise<void> {
 
   transcriptionEl.innerHTML = renderTranscription(data.transcription, data.highlight);
 
-  pageInfoEl.textContent = `Page ${data.metadata.scan} of inventory ${data.metadata.inventory}`;
+  pageInfoEl.textContent = pageInfoText(data);
 
   const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
   const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
-  if (prevBtn) {
-    prevBtn.disabled = !data.navigation.prev;
-    prevBtn.title = data.navigation.prev ? 'Previous page (j)' : 'No previous page';
-  }
-  if (nextBtn) {
-    nextBtn.disabled = !data.navigation.next;
-    nextBtn.title = data.navigation.next ? 'Next page (l)' : 'No next page';
-  }
+  setNavButtonState(prevBtn, nextBtn, data);
 
   // Swap the image in place on the existing viewer (no destroy/recreate).
   viewer.viewport.setRotation(0);
+  const seq = ++openSeq;
+  currentImageUrl = data.iiifImageUrl;
   const tileSources = await buildTileSources(data.iiifImageUrl);
+  if (seq !== openSeq) return;          // a newer swap superseded this one during the info.json await
+  armOpenFailed(seq, data.iiifImageUrl);
   viewer.open(tileSources as Parameters<typeof viewer.open>[0]);
 
   // Report the post-swap size to the host (image-panel layout is unchanged, but
@@ -450,6 +473,30 @@ async function buildTileSources(imageUrl: string): Promise<object | string> {
 // info.json fetch makes initialization asynchronous)
 let viewerInitSeq = 0;
 
+// Arm an open-failed handler bound to this specific open. A failure from a
+// superseded open (seq !== openSeq) is ignored, so it can't nuke a newer, healthy
+// viewer or flip viewerNeedsRebuild for the wrong page. Registered with addHandler
+// (not addOnceHandler) so the SAME reference we hold in pendingOpenFailed can be
+// removed before the next open — exactly one open-failed handler is ever live.
+function armOpenFailed(seq: number, imageUrl: string): void {
+  if (!viewer) return;
+  if (pendingOpenFailed) viewer.removeHandler('open-failed', pendingOpenFailed); // same reference → real removal
+  pendingOpenFailed = () => {
+    if (seq !== openSeq) return;            // a newer open started — this failure is stale, ignore it
+    viewerNeedsRebuild = true;
+    const viewerContainer = document.getElementById('openseadragon-viewer');
+    if (viewerContainer) {
+      viewerContainer.innerHTML = `
+        <div class="image-error">
+          <p>Image could not be loaded</p>
+          <p><a href="${sanitizeUrl(imageUrl)}" target="_blank">Open image directly</a></p>
+        </div>
+      `;
+    }
+  };
+  viewer.addHandler('open-failed', pendingOpenFailed);
+}
+
 /**
  * Initialize OpenSeadragon for IIIF image viewing
  */
@@ -488,6 +535,10 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     visibilityRatio: 0.5,
   });
   viewer = osdViewer;
+  const openSeqLocal = ++openSeq;
+  viewerNeedsRebuild = false;
+  currentImageUrl = imageUrl;
+  armOpenFailed(openSeqLocal, imageUrl);
 
   // Frame the page on load. Fit-to-width + top-align reads nicely for pages
   // that fit vertically, but a tall page (or any page in a short pane — e.g. the
@@ -521,18 +572,6 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     }
   });
 
-  // Handle image load error
-  osdViewer.addHandler('open-failed', () => {
-    const viewerContainer = document.getElementById('openseadragon-viewer');
-    if (viewerContainer) {
-      viewerContainer.innerHTML = `
-        <div class="image-error">
-          <p>Image could not be loaded</p>
-          <p><a href="${sanitizeUrl(imageUrl)}" target="_blank">Open image directly</a></p>
-        </div>
-      `;
-    }
-  });
 }
 
 /**
@@ -687,16 +726,13 @@ function attachEventListeners(doc: DocumentData): void {
 
   const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
   const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
+  setNavButtonState(prevBtn, nextBtn, doc);
   if (prevBtn) {
-    prevBtn.disabled = !doc.navigation.prev;
-    prevBtn.title = doc.navigation.prev ? 'Previous page (j)' : 'No previous page';
     // Read currentDocument (mirroring the keyboard handler): the buttons persist
     // across an in-place swap, so the click must follow the live page's nav.
     prevBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.prev));
   }
   if (nextBtn) {
-    nextBtn.disabled = !doc.navigation.next;
-    nextBtn.title = doc.navigation.next ? 'Next page (l)' : 'No next page';
     nextBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.next));
   }
 
@@ -788,7 +824,8 @@ function setupVisibilityObserver(): void {
   const mainEl = document.querySelector('.main');
   if (!mainEl) return;
 
-  const observer = new IntersectionObserver(
+  visibilityObserver?.disconnect();
+  visibilityObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         viewer?.setMouseNavEnabled(entry.isIntersecting);
@@ -797,7 +834,7 @@ function setupVisibilityObserver(): void {
     { threshold: 0.1 }
   );
 
-  observer.observe(mainEl);
+  visibilityObserver.observe(mainEl);
 }
 
 /**
