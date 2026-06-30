@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to the GLOBALISE MCP Server will be documented in this file.
+> **⚠ Deprecated (2026-06-30) — no longer maintained.** Change history now lives
+> in **git commits + release tags**. This file is a frozen historical record
+> through v2.11.10; new changes are not added here.
 
 > **Archive:** Versions 1.0.0–1.16.5 (Dec 2025 – Jan 2026) are in `offline/outdated/CHANGELOG-v1.0-v1.16.md`.
 >
