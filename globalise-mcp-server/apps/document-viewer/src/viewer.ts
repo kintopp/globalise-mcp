@@ -25,15 +25,22 @@ import {
 } from '@modelcontextprotocol/ext-apps/app-with-deps';
 import OpenSeadragon from 'openseadragon';
 
-// Server↔viewer wire contract. ViewDocumentUiOutput / ArchivalContext are the
-// server's own zod-inferred types, so the contract is defined ONCE: a
-// server-side field rename changes the type the viewer sees instead of
-// silently diverging from a hand-copied interface (CODE-REVIEW finding 10).
-// `import type` is erased by esbuild, so zod and the rest of the server graph
-// stay out of the viewer bundle. DocumentData stays a local alias to avoid
-// churning every use site.
-import type { ViewDocumentUiOutput, ArchivalContext } from '../../../src/tools/document-viewer.js';
+// Server↔viewer wire contract. ViewDocumentUiOutput is the server's own
+// zod-inferred type, so the contract is defined ONCE: a server-side field
+// rename changes the type the viewer sees instead of silently diverging from a
+// hand-copied interface (CODE-REVIEW finding 10). `import type` is erased by
+// esbuild, so zod and the rest of the server graph stay out of the viewer
+// bundle. DocumentData stays a local alias to avoid churning every use site.
+// ArchivalContext and the pure render helpers are imported via render.ts now.
+import type { ViewDocumentUiOutput } from '../../../src/tools/document-viewer.js';
 import { parseDocumentResult, type ParseableToolResult } from './parse-result.js';
+import {
+  escapeHtml,
+  sanitizeUrl,
+  renderTranscription,
+  headerInnerHtml,
+  pageInfoText,
+} from './render.js';
 
 type DocumentData = ViewDocumentUiOutput;
 
@@ -42,6 +49,10 @@ let currentDocument: DocumentData | null = null;
 let seedDocumentId: string | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
+let visibilityObserver: IntersectionObserver | null = null;
+let viewerNeedsRebuild = false;  // read by swapDocument's guard; SET only by the latest open's failure
+let openSeq = 0;                 // bumped before every open; lets a late failure tell whether it is still current
+let pendingOpenFailed: (() => void) | null = null; // the current open's failure handler (held by reference so it can be removed before the next open is armed)
 
 // Splitter-drag state. The document-level mousemove/mouseup handlers are
 // registered ONCE (below); renderDocument only re-binds mousedown on the
@@ -209,93 +220,20 @@ function showLoading(message: string): void {
   `;
 }
 
-/**
- * Build HTML for archival context section
- */
-function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
-  if (!ctx || ctx.source === 'none') {
-    return '';
+/** Apply prev/next button disabled + title from a document's navigation. */
+function setNavButtonState(
+  prevBtn: HTMLButtonElement | null,
+  nextBtn: HTMLButtonElement | null,
+  doc: DocumentData,
+): void {
+  if (prevBtn) {
+    prevBtn.disabled = !doc.navigation.prev;
+    prevBtn.title = doc.navigation.prev ? 'Previous page (j)' : 'No previous page';
   }
-
-  const rows: string[] = [];
-
-  // Row 1: Settlement, Year range, Location (+ chamber for GM, HTR for GM)
-  const row1Parts: string[] = [];
-  if (ctx.settlements && ctx.settlements.length > 0) {
-    const settlementText = ctx.settlements.join(', ');
-    row1Parts.push(`<span title="Settlement">📍 ${escapeHtml(settlementText)}</span>`);
+  if (nextBtn) {
+    nextBtn.disabled = !doc.navigation.next;
+    nextBtn.title = doc.navigation.next ? 'Next page (l)' : 'No next page';
   }
-  if (ctx.yearRange) {
-    const yearText = ctx.yearRange.from === ctx.yearRange.to
-      ? `${ctx.yearRange.from}`
-      : `${ctx.yearRange.from}–${ctx.yearRange.to}`;
-    row1Parts.push(`<span title="Date range">📅 ${yearText}</span>`);
-  }
-  // Location and geographic coverage on same row
-  if (ctx.locationTanap) {
-    row1Parts.push(`<span title="Location (TANAP)">📌 ${escapeHtml(ctx.locationTanap)}</span>`);
-  }
-  if (ctx.geographicalCoverage && ctx.geographicalCoverage !== ctx.settlements?.[0]) {
-    // Only show if different from settlement
-    row1Parts.push(`<span title="Geographic coverage">🌍 ${escapeHtml(ctx.geographicalCoverage)}</span>`);
-  }
-  if (ctx.chamber) {
-    row1Parts.push(`<span title="VOC Chamber">🏛️ ${escapeHtml(ctx.chamber)}</span>`);
-  }
-  if (ctx.htrAvailable !== undefined) {
-    const htrText = ctx.htrAvailable ? 'HTR available' : 'No HTR';
-    const htrIcon = ctx.htrAvailable ? '✓' : '✗';
-    row1Parts.push(`<span title="${htrText}" class="${ctx.htrAvailable ? 'htr-available' : 'htr-unavailable'}">${htrIcon} HTR</span>`);
-  }
-  if (row1Parts.length > 0) {
-    rows.push(`<div class="archival-row">${row1Parts.join('')}</div>`);
-  }
-
-  // Row 3: Description (full width, wrapping)
-  if (ctx.description) {
-    rows.push(`<div class="archival-description" title="${escapeHtml(ctx.description)}">${escapeHtml(ctx.description)}</div>`);
-  }
-
-  if (rows.length === 0) {
-    return '';
-  }
-
-  return `<div class="archival-context">${rows.join('')}</div>`;
-}
-
-/**
- * Build the inner markup of <header class="header">. Shared by the full
- * renderDocument() (first/host load) and swapDocument() (in-place navigation),
- * so the header is defined ONCE — a new field is added here, not in two places.
- */
-function headerInnerHtml(doc: DocumentData): string {
-  const languageBadges = doc.metadata.languages
-    .map((l) => `<span class="language-badge" title="${l.code}">${l.label}</span>`)
-    .join('');
-  const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
-  // Sanitize URLs to prevent protocol injection.
-  const externalLinks = [
-    `<a href="${sanitizeUrl(doc.urls.viewer)}" data-external-url="${sanitizeUrl(doc.urls.viewer)}">GLOBALISE Viewer</a>`,
-    doc.urls.archive
-      ? `<a href="${sanitizeUrl(doc.urls.archive)}" data-external-url="${sanitizeUrl(doc.urls.archive)}">National Archives</a>`
-      : '',
-  ]
-    .filter(Boolean)
-    .join('');
-  return `
-        <div class="header-title-row">
-          <h1>${escapeHtml(doc.id.replace('urn:globalise:', ''))}</h1>
-          <div class="header-right">
-            <div class="external-links">${externalLinks}</div>
-            ${doc.metadata.license ? `<span class="license">License: ${escapeHtml(doc.metadata.license)}</span>` : ''}
-          </div>
-        </div>
-        <div class="metadata">
-          <span>Inventory: ${escapeHtml(doc.metadata.inventory)}</span>
-          <span>Scan: ${escapeHtml(doc.metadata.scan)}</span>
-          <span>Language: ${languageBadges}</span>
-        </div>
-        ${archivalHtml}`;
 }
 
 /**
@@ -333,7 +271,7 @@ function renderDocument(doc: DocumentData): void {
       </div>
 
       <nav class="navigation">
-        <span class="page-info">Page ${escapeHtml(doc.metadata.scan)} of inventory ${escapeHtml(doc.metadata.inventory)}</span>
+        <span class="page-info">${escapeHtml(pageInfoText(doc))}</span>
       </nav>
     </div>
   `;
@@ -374,8 +312,8 @@ async function swapDocument(data: DocumentData): Promise<void> {
   const headerEl = document.querySelector('.header');
   const transcriptionEl = document.getElementById('transcription');
   const pageInfoEl = document.querySelector('.page-info');
-  if (!viewer || !headerEl || !transcriptionEl || !pageInfoEl) {
-    renderDocument(data);   // fallback: full rebuild
+  if (!viewer || viewerNeedsRebuild || !headerEl || !transcriptionEl || !pageInfoEl) {
+    renderDocument(data);   // fallback: full rebuild (also recovers a dead viewer)
     return;
   }
 
@@ -384,22 +322,18 @@ async function swapDocument(data: DocumentData): Promise<void> {
 
   transcriptionEl.innerHTML = renderTranscription(data.transcription, data.highlight);
 
-  pageInfoEl.textContent = `Page ${data.metadata.scan} of inventory ${data.metadata.inventory}`;
+  pageInfoEl.textContent = pageInfoText(data);
 
   const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
   const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
-  if (prevBtn) {
-    prevBtn.disabled = !data.navigation.prev;
-    prevBtn.title = data.navigation.prev ? 'Previous page (j)' : 'No previous page';
-  }
-  if (nextBtn) {
-    nextBtn.disabled = !data.navigation.next;
-    nextBtn.title = data.navigation.next ? 'Next page (l)' : 'No next page';
-  }
+  setNavButtonState(prevBtn, nextBtn, data);
 
   // Swap the image in place on the existing viewer (no destroy/recreate).
   viewer.viewport.setRotation(0);
+  const seq = ++openSeq;
   const tileSources = await buildTileSources(data.iiifImageUrl);
+  if (seq !== openSeq) return;          // a newer swap superseded this one during the info.json await
+  armOpenFailed(seq, data.iiifImageUrl);
   viewer.open(tileSources as Parameters<typeof viewer.open>[0]);
 
   // Report the post-swap size to the host (image-panel layout is unchanged, but
@@ -450,6 +384,30 @@ async function buildTileSources(imageUrl: string): Promise<object | string> {
 // info.json fetch makes initialization asynchronous)
 let viewerInitSeq = 0;
 
+// Arm an open-failed handler bound to this specific open. A failure from a
+// superseded open (seq !== openSeq) is ignored, so it can't nuke a newer, healthy
+// viewer or flip viewerNeedsRebuild for the wrong page. Registered with addHandler
+// (not addOnceHandler) so the SAME reference we hold in pendingOpenFailed can be
+// removed before the next open — exactly one open-failed handler is ever live.
+function armOpenFailed(seq: number, imageUrl: string): void {
+  if (!viewer) return;
+  if (pendingOpenFailed) viewer.removeHandler('open-failed', pendingOpenFailed); // same reference → real removal
+  pendingOpenFailed = () => {
+    if (seq !== openSeq) return;            // a newer open started — this failure is stale, ignore it
+    viewerNeedsRebuild = true;
+    const viewerContainer = document.getElementById('openseadragon-viewer');
+    if (viewerContainer) {
+      viewerContainer.innerHTML = `
+        <div class="image-error">
+          <p>Image could not be loaded</p>
+          <p><a href="${sanitizeUrl(imageUrl)}" target="_blank">Open image directly</a></p>
+        </div>
+      `;
+    }
+  };
+  viewer.addHandler('open-failed', pendingOpenFailed);
+}
+
 /**
  * Initialize OpenSeadragon for IIIF image viewing
  */
@@ -488,6 +446,9 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     visibilityRatio: 0.5,
   });
   viewer = osdViewer;
+  const openSeqLocal = ++openSeq;
+  viewerNeedsRebuild = false;
+  armOpenFailed(openSeqLocal, imageUrl);
 
   // Frame the page on load. Fit-to-width + top-align reads nicely for pages
   // that fit vertically, but a tall page (or any page in a short pane — e.g. the
@@ -521,39 +482,6 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     }
   });
 
-  // Handle image load error
-  osdViewer.addHandler('open-failed', () => {
-    const viewerContainer = document.getElementById('openseadragon-viewer');
-    if (viewerContainer) {
-      viewerContainer.innerHTML = `
-        <div class="image-error">
-          <p>Image could not be loaded</p>
-          <p><a href="${sanitizeUrl(imageUrl)}" target="_blank">Open image directly</a></p>
-        </div>
-      `;
-    }
-  });
-}
-
-/**
- * Render transcription lines with optional highlighting
- */
-function renderTranscription(lines: string[], highlightTerms: string[]): string {
-  // Compile one combined highlight regex up front instead of recompiling per
-  // term per line (CODE-REVIEW finding 20). Empty terms are dropped so the
-  // alternation can't match the empty string.
-  const terms = highlightTerms.filter(Boolean).map(escapeRegex);
-  const highlightRegex = terms.length > 0 ? new RegExp(`(${terms.join('|')})`, 'gi') : null;
-
-  return lines
-    .map((line, i) => {
-      let text = escapeHtml(line);
-      if (highlightRegex) {
-        text = text.replace(highlightRegex, '<mark>$1</mark>');
-      }
-      return `<div class="line"><span class="line-number">${i + 1}</span>${text || '&nbsp;'}</div>`;
-    })
-    .join('');
 }
 
 /**
@@ -687,16 +615,13 @@ function attachEventListeners(doc: DocumentData): void {
 
   const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
   const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
+  setNavButtonState(prevBtn, nextBtn, doc);
   if (prevBtn) {
-    prevBtn.disabled = !doc.navigation.prev;
-    prevBtn.title = doc.navigation.prev ? 'Previous page (j)' : 'No previous page';
     // Read currentDocument (mirroring the keyboard handler): the buttons persist
     // across an in-place swap, so the click must follow the live page's nav.
     prevBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.prev));
   }
   if (nextBtn) {
-    nextBtn.disabled = !doc.navigation.next;
-    nextBtn.title = doc.navigation.next ? 'Next page (l)' : 'No next page';
     nextBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.next));
   }
 
@@ -788,7 +713,8 @@ function setupVisibilityObserver(): void {
   const mainEl = document.querySelector('.main');
   if (!mainEl) return;
 
-  const observer = new IntersectionObserver(
+  visibilityObserver?.disconnect();
+  visibilityObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         viewer?.setMouseNavEnabled(entry.isIntersecting);
@@ -797,7 +723,7 @@ function setupVisibilityObserver(): void {
     { threshold: 0.1 }
   );
 
-  observer.observe(mainEl);
+  visibilityObserver.observe(mainEl);
 }
 
 /**
@@ -841,42 +767,6 @@ function showError(title: string, message: string, suggestion?: string): void {
       showLoading('Waiting for document data...');
     }
   });
-}
-
-const HTML_ESCAPES: Record<string, string> = {
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-};
-
-/**
- * Escape HTML special characters. A regex map, not a throwaway
- * `document.createElement('div')` per call (CODE-REVIEW finding 20) — and it
- * also escapes quotes, which the textContent approach left intact even though
- * this is used inside title="..." attributes.
- */
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
-}
-
-/**
- * Escape special regex characters
- */
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Validate URL protocol to prevent javascript: and data: injection
- */
-function sanitizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return url;
-    }
-  } catch {
-    // Invalid URL
-  }
-  return '#';
 }
 
 // IMPORTANT: Register ALL handlers BEFORE calling app.connect()
