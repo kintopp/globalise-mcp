@@ -7,8 +7,12 @@
 
 import { z } from 'zod';
 import { parseDocumentId } from '../utils/document-id.js';
-import { getDocument } from './document.js';
-import { languageSchema } from '../utils/languages.js';
+import {
+  getDocument,
+  documentTextSchema,
+  documentMetadataSchema,
+  documentUrlsSchema,
+} from './document.js';
 
 // Navigate Tool
 export const navigateInputSchema = z.object({
@@ -36,24 +40,9 @@ export const navigateOutputSchema = z.object({
     document: z.string(),
     inventoryNumber: z.string(),
     scanNumber: z.string(),
-    text: z.object({
-      lines: z.array(z.string()),
-      truncated: z.boolean().optional().describe('True when lines were dropped to fit the response size budget'),
-      totalLines: z.number().optional().describe('Original line count before any size-cap truncation'),
-    }).optional(),
-    metadata: z.object({
-      created: z.string(),
-      lastChange: z.string(),
-      layoutAnalysis: z.string(),
-      ocrSoftware: z.string().optional(),
-      annotationGenerated: z.string().optional(),
-      languages: z.array(languageSchema),
-      license: z.string().optional(),
-    }).optional(),
-    urls: z.object({
-      transcriptionsViewer: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer'),
-      nationalArchives: z.string().optional(),
-    }).optional(),
+    text: documentTextSchema.optional(),
+    metadata: documentMetadataSchema.optional(),
+    urls: documentUrlsSchema.optional(),
   }).optional(),
   message: z.string(),
 });

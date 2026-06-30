@@ -27,34 +27,40 @@ export const getDocumentInputSchema = z.object({
     .describe('Document ID or URN (e.g., "NL-HaNA_1.04.02_9966_0106" or "urn:globalise:NL-HaNA_1.04.02_9966_0106")'),
 });
 
+export const documentTextSchema = z.object({
+  lines: z.array(z.string()),
+  truncated: z.boolean().optional().describe('True when lines were dropped to fit the response size budget'),
+  totalLines: z.number().optional().describe('Original line count before any size-cap truncation'),
+});
+
+export const documentMetadataSchema = z.object({
+  created: z.string(),
+  lastChange: z.string(),
+  layoutAnalysis: z.string(),
+  ocrSoftware: z.string().optional(),
+  annotationGenerated: z.string().optional(),
+  languages: z.array(languageSchema),
+  license: z.string().optional(),
+});
+
+export const documentUrlsSchema = z.object({
+  transcriptionsViewer: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer (scan + transcription with highlighting)'),
+  nationalArchives: z.string().optional().describe('Direct link to view page scan at National Archives'),
+});
+
 export const getDocumentOutputSchema = z.object({
   id: z.string(),
   document: z.string(),
   inventoryNumber: z.string(),
   scanNumber: z.string(),
   archive: z.string().optional(),
-  text: z.object({
-    lines: z.array(z.string()),
-    truncated: z.boolean().optional().describe('True when lines were dropped to fit the response size budget'),
-    totalLines: z.number().optional().describe('Original line count before any size-cap truncation'),
-  }).optional(),
-  metadata: z.object({
-    created: z.string(),
-    lastChange: z.string(),
-    layoutAnalysis: z.string(),
-    ocrSoftware: z.string().optional(),
-    annotationGenerated: z.string().optional(),
-    languages: z.array(languageSchema),
-    license: z.string().optional(),
-  }).optional(),
+  text: documentTextSchema.optional(),
+  metadata: documentMetadataSchema.optional(),
   navigation: z.object({
     previousPageId: z.string().optional(),
     nextPageId: z.string().optional(),
   }).optional(),
-  urls: z.object({
-    transcriptionsViewer: z.string().describe('Link to view page in GLOBALISE Transcriptions Viewer (scan + transcription with highlighting)'),
-    nationalArchives: z.string().optional().describe('Direct link to view page scan at National Archives'),
-  }).optional(),
+  urls: documentUrlsSchema.optional(),
 });
 
 /**
