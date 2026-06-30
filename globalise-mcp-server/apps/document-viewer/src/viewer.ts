@@ -36,10 +36,8 @@ import type { ViewDocumentUiOutput } from '../../../src/tools/document-viewer.js
 import { parseDocumentResult, type ParseableToolResult } from './parse-result.js';
 import {
   escapeHtml,
-  escapeRegex,
   sanitizeUrl,
   renderTranscription,
-  buildArchivalContextHtml,
   headerInnerHtml,
   pageInfoText,
 } from './render.js';
@@ -52,7 +50,6 @@ let seedDocumentId: string | null = null;
 let viewer: OpenSeadragon.Viewer | null = null;
 let isFullscreen = false;
 let visibilityObserver: IntersectionObserver | null = null;
-let currentImageUrl = '';        // for the open-failed "Open image directly" link
 let viewerNeedsRebuild = false;  // read by swapDocument's guard; SET only by the latest open's failure
 let openSeq = 0;                 // bumped before every open; lets a late failure tell whether it is still current
 let pendingOpenFailed: (() => void) | null = null; // the current open's failure handler (held by reference so it can be removed before the next open is armed)
@@ -334,7 +331,6 @@ async function swapDocument(data: DocumentData): Promise<void> {
   // Swap the image in place on the existing viewer (no destroy/recreate).
   viewer.viewport.setRotation(0);
   const seq = ++openSeq;
-  currentImageUrl = data.iiifImageUrl;
   const tileSources = await buildTileSources(data.iiifImageUrl);
   if (seq !== openSeq) return;          // a newer swap superseded this one during the info.json await
   armOpenFailed(seq, data.iiifImageUrl);
@@ -452,7 +448,6 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
   viewer = osdViewer;
   const openSeqLocal = ++openSeq;
   viewerNeedsRebuild = false;
-  currentImageUrl = imageUrl;
   armOpenFailed(openSeqLocal, imageUrl);
 
   // Frame the page on load. Fit-to-width + top-align reads nicely for pages
