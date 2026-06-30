@@ -27,8 +27,13 @@ export function normalizeDocumentId(docId: string): string {
   return `urn:globalise:${docId}`;
 }
 
-/** Document ID shape: NL-HaNA_{archive}_{inventory}_{scan}. */
-const DOCUMENT_ID_PATTERN = /^NL-HaNA_([\d.]+)_([^_]+)_([^_]+)$/;
+/** Document ID shape: NL-HaNA_{archive}_{inventory}_{scan}.
+ * Inventory/scan are an ALLOWLIST of [A-Za-z0-9.-] (digits, letters, hyphen, dot)
+ * — every documented form (numeric, the letter-suffixed `1080A`) is admitted and
+ * ALL URL/parser-significant characters (`/ ? # % \ : ; & =` …) are rejected by
+ * construction, so a crafted ID can't rewrite the upstream request path/query
+ * after interpolation (it throws ToolError instead). */
+const DOCUMENT_ID_PATTERN = /^NL-HaNA_([\d.]+)_([A-Za-z0-9.-]+)_([A-Za-z0-9.-]+)$/;
 
 /**
  * Extract archive, inventory, and scan numbers from a document ID or URN.

@@ -43,7 +43,11 @@ export function createHttpServer(options: HttpServerOptions): Server {
   app.set('trust proxy', 1);
 
   // Middleware
-  app.use(cors({ origin: allowedOrigins }));
+  // cors() only emits `Access-Control-Allow-Origin: *` when origin is the STRING
+  // '*'; an array containing '*' is an exact-membership list that matches no real
+  // browser origin. Collapse a wildcard allowlist to the string form.
+  const corsOrigin = allowedOrigins.includes('*') ? '*' : allowedOrigins;
+  app.use(cors({ origin: corsOrigin }));
   app.use(express.json({ limit: '1mb' }));
 
   // Origin validation on MCP endpoints (spec MUST: 403 on invalid origins).
