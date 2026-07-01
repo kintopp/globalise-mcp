@@ -430,6 +430,12 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     // No prefixUrl: it only serves nav-button images, and every built-in
     // control is disabled below — the custom .image-controls buttons are used
     tileSources: tileSources as OpenSeadragon.Options['tileSources'],
+    // Request tiles with crossOrigin="anonymous" so the navigator's canvas/WebGL
+    // draw is not tainted — the IIIF host (service.archief.nl) serves CORS *, so
+    // this is safe and is what makes the bottom-right minimap actually paint.
+    // Without it, under OSD 6.x's default WebGL drawer the navigator tile upload
+    // fails with a SecurityError and the minimap renders as a black box (#422).
+    crossOriginPolicy: 'Anonymous',
     showNavigationControl: false,
     showZoomControl: false,
     showHomeControl: false,
@@ -438,6 +444,9 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     showNavigator: true,
     navigatorPosition: 'BOTTOM_RIGHT',
     navigatorSizeRatio: 0.12,
+    // Light navigator background so any un-painted area reads as an empty frame
+    // rather than the black box we are fixing (OSD defaults this to '#000').
+    navigatorBackground: '#fff',
     animationTime: 0.3,
     blendTime: 0.1,
     constrainDuringPan: true,

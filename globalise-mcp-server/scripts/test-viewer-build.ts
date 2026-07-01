@@ -27,6 +27,8 @@ if (htmlExists) {
   // R19: the viewer reads structuredContent first and deep-zooms via IIIF
   check(html.includes('structuredContent'), 'viewer reads structuredContent (R19)');
   check(html.includes('info.json'), 'viewer fetches IIIF info.json for deep-zoom (R19)');
+  // Navigator fix (issue #422): the crossOrigin policy must survive the build.
+  check(html.includes('crossOriginPolicy'), 'viewer sets crossOriginPolicy for CORS-clean navigator tiles (issue #422)');
 }
 
 finish('Viewer build check');
