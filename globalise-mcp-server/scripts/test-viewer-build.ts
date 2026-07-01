@@ -30,6 +30,8 @@ if (htmlExists) {
   // Help overlay (issue #422) must survive the bundle build.
   check(html.includes('shortcuts-overlay'), 'help overlay markup is present (issue #422)');
   check(html.includes('show-shortcuts'), 'help (?) button is present (issue #422)');
+  // Navigator fix (issue #422): the crossOrigin policy must survive the build.
+  check(html.includes('crossOriginPolicy'), 'viewer sets crossOriginPolicy for CORS-clean navigator tiles (issue #422)');
 }
 
 finish('Viewer build check');
