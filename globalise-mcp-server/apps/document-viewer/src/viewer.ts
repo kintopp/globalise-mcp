@@ -54,18 +54,6 @@ let viewerNeedsRebuild = false;  // read by swapDocument's guard; SET only by th
 let openSeq = 0;                 // bumped before every open; lets a late failure tell whether it is still current
 let pendingOpenFailed: (() => void) | null = null; // the current open's failure handler (held by reference so it can be removed before the next open is armed)
 
-// Splitter-drag state. The document-level mousemove/mouseup handlers are
-// registered ONCE (below); renderDocument only re-binds mousedown on the
-// freshly-rendered splitter. Previously those document handlers were added per
-// render and never removed, accumulating a stale pair each time, and read
-// getBoundingClientRect on every mousemove (forced reflow) — CODE-REVIEW
-// finding 20. Bounds are now captured once on mousedown.
-let splitterDragging = false;
-let dragImagePanel: HTMLElement | null = null;
-let dragContainerLeft = 0;
-let dragMinWidth = 0;
-let dragMaxWidth = 0;
-
 // Initialize the MCP App with capabilities.
 //
 // The view exposes no app-side tools (no app.registerTool calls), so it must
@@ -256,18 +244,13 @@ function renderDocument(doc: DocumentData): void {
               <div class="shortcuts-list">
                 <div class="shortcut-row"><kbd>+</kbd> / <kbd>&minus;</kbd><span>Zoom in / out</span></div>
                 <div class="shortcut-row"><kbd>0</kbd><span>Reset view</span></div>
+                <div class="shortcut-row"><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd><span>Pan</span></div>
                 <div class="shortcut-row"><kbd>j</kbd> / <kbd>l</kbd><span>Previous / next page</span></div>
                 <div class="shortcut-row"><kbd>r</kbd> / <kbd>&#8679;R</kbd><span>Rotate left / right</span></div>
                 <div class="shortcut-row"><kbd>k</kbd><span>Return to opened page</span></div>
+                <div class="shortcut-row"><kbd>f</kbd><span>Full-screen</span></div>
                 <div class="shortcut-row"><kbd>?</kbd><span>This help</span></div>
                 <div class="shortcut-row"><kbd>Esc</kbd><span>Close this help</span></div>
-              </div>
-              <div class="shortcuts-header shortcuts-subhead">Mouse &amp; touch</div>
-              <div class="shortcuts-list">
-                <div class="shortcut-row"><span class="gesture">Scroll / drag image</span><span>Zoom &amp; pan</span></div>
-                <div class="shortcut-row"><span class="gesture">Drag the divider</span><span>Resize panels</span></div>
-                <div class="shortcut-row"><span class="gesture">Select transcription text</span><span>Share with assistant</span></div>
-                <div class="shortcut-row"><span class="gesture">Bottom-right thumbnail</span><span>Minimap / navigator</span></div>
               </div>
             </div>
           </div>
@@ -276,13 +259,10 @@ function renderDocument(doc: DocumentData): void {
             <button id="zoom-in" title="Zoom In (+)">+</button>
             <button id="zoom-out" title="Zoom Out (−)">−</button>
             <button id="reset-view" title="Reset View (0)">Reset</button>
-            <span class="control-separator"></span>
             <button id="prev-page" title="Previous page (j)">&#9664;</button>
             <button id="next-page" title="Next page (l)">&#9654;</button>
           </div>
         </div>
-
-        <div class="splitter"></div>
 
         <div class="text-panel">
           <div class="text-panel-header">Transcription</div>
@@ -477,6 +457,17 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
     visibilityRatio: 0.5,
   });
   viewer = osdViewer;
+  // Suppress OSD's built-in 'f' = flip-horizontal so 'f' is free for the
+  // full-screen toggle (handled in the module keydown listener). OSD raises
+  // 'canvas-key' with a preventDefaultAction flag BEFORE running its own key
+  // action; setting it for 'f' cancels ONLY the flip — WASD panning and every
+  // other OSD key stay intact. Only fires when the image canvas has focus.
+  osdViewer.addHandler('canvas-key', (e) => {
+    const key = (e.originalEvent as KeyboardEvent).key;
+    if (key === 'f' || key === 'F') {
+      e.preventDefaultAction = true;
+    }
+  });
   const openSeqLocal = ++openSeq;
   viewerNeedsRebuild = false;
   armOpenFailed(openSeqLocal, imageUrl);
@@ -668,42 +659,27 @@ function attachEventListeners(doc: DocumentData): void {
     nextBtn.addEventListener('click', () => void navigateToPage(currentDocument?.navigation.next));
   }
 
-  // Splitter drag: bind mousedown on the freshly-rendered splitter and capture
-  // the drag bounds once. The document-level mousemove/mouseup live at module
-  // scope (registered once — finding 20).
-  document.querySelector('.splitter')?.addEventListener('mousedown', () => {
-    const containerRect = document.querySelector('.content')?.getBoundingClientRect();
-    const imagePanel = document.querySelector('.image-panel') as HTMLElement | null;
-    if (!containerRect || !imagePanel) return;
-
-    splitterDragging = true;
-    dragImagePanel = imagePanel;
-    dragContainerLeft = containerRect.left;
-    dragMinWidth = 300;
-    dragMaxWidth = containerRect.width - 300;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  });
 }
 
-// Document-level splitter-drag handlers, registered once (see splitter-drag
-// state). mousemove uses the bounds captured on mousedown — no per-move reflow.
-document.addEventListener('mousemove', (e) => {
-  if (!splitterDragging || !dragImagePanel) return;
-  const newWidth = e.clientX - dragContainerLeft;
-  if (newWidth >= dragMinWidth && newWidth <= dragMaxWidth) {
-    dragImagePanel.style.flex = 'none';
-    dragImagePanel.style.width = `${newWidth}px`;
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  if (!splitterDragging) return;
-  splitterDragging = false;
-  dragImagePanel = null;
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
-});
+/**
+ * Toggle the viewer between inline and full-screen display modes via the MCP
+ * Apps display-mode mechanism (app.requestDisplayMode) — NOT the browser
+ * Fullscreen API, which is blocked inside the host's sandboxed iframe. The host
+ * grants (or denies) the request; onhostcontextchanged echoes the granted mode
+ * back and keeps isFullscreen + the .main.fullscreen class in sync.
+ */
+function toggleFullscreen(): void {
+  const next = isFullscreen ? 'inline' : 'fullscreen';
+  void app
+    .requestDisplayMode({ mode: next })
+    .then((result) => {
+      isFullscreen = result.mode === 'fullscreen';
+      document.querySelector('.main')?.classList.toggle('fullscreen', isFullscreen);
+    })
+    .catch(() => {
+      /* host declined the display-mode change — leave the current mode as-is */
+    });
+}
 
 /**
  * Keyboard shortcuts matching the control-button title hints:
@@ -725,6 +701,16 @@ document.addEventListener('keydown', (e) => {
       else overlay.classList.add('hidden');
       e.preventDefault();
     }
+    return;
+  }
+
+  // Full-screen toggle on 'f'/'F'. Handled before the viewer guard so it works
+  // regardless of viewer state. OSD's built-in 'f' = flip-horizontal is
+  // suppressed via the 'canvas-key' handler in initializeImageViewer(), so 'f'
+  // maps to full-screen only.
+  if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    toggleFullscreen();
+    e.preventDefault();
     return;
   }
 
