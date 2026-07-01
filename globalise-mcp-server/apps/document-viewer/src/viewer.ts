@@ -244,7 +244,7 @@ function renderDocument(doc: DocumentData): void {
               <div class="shortcuts-list">
                 <div class="shortcut-row"><kbd>+</kbd> / <kbd>&minus;</kbd><span>Zoom in / out</span></div>
                 <div class="shortcut-row"><kbd>0</kbd><span>Reset view</span></div>
-                <div class="shortcut-row"><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd><span>Pan</span></div>
+                <div class="shortcut-row"><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / <kbd>&#8593;</kbd> <kbd>&#8592;</kbd> <kbd>&#8595;</kbd> <kbd>&#8594;</kbd><span>Pan</span></div>
                 <div class="shortcut-row"><kbd>j</kbd> / <kbd>l</kbd><span>Previous / next page</span></div>
                 <div class="shortcut-row"><kbd>r</kbd> / <kbd>&#8679;R</kbd><span>Rotate left / right</span></div>
                 <div class="shortcut-row"><kbd>k</kbd><span>Return to opened page</span></div>
