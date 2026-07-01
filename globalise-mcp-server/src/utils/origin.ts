@@ -64,6 +64,27 @@ export function createOriginGuard() {
     console.error(`[ORIGIN] Allowed origins: ${allowlist.join(', ')} (+ localhost, non-web schemes)`);
   }
 
+  /** Rate-limited deny: log at most once per origin per minute, then 403. */
+  const deny = (origin: string, res: Response): void => {
+    const now = Date.now();
+    const last = lastDenyLog.get(origin) ?? 0;
+    if (now - last > DENY_LOG_INTERVAL_MS) {
+      // Origins are attacker-controlled, so bound the map; the occasional
+      // duplicate log line after a reset is harmless
+      if (lastDenyLog.size >= 1000) lastDenyLog.clear();
+      lastDenyLog.set(origin, now);
+      console.error(`[ORIGIN] Denied request from disallowed origin: ${origin}`);
+    }
+    res.status(403).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Forbidden: origin not allowed',
+      },
+      id: null,
+    });
+  };
+
   return function originGuard(req: Request, res: Response, next: NextFunction): void {
     const origin = req.headers.origin;
 
@@ -77,8 +98,14 @@ export function createOriginGuard() {
     try {
       url = new URL(origin);
     } catch {
-      // Unparseable origins are treated as non-web schemes (desktop shells send
-      // values like app://- that URL() may reject)
+      // A value URL() rejects is normally a non-web scheme from a desktop shell
+      // (app://-, vscode-webview://…), which we allow. But an http(s)-looking
+      // origin that still won't parse is malformed — a real browser never emits
+      // one — so don't fail open on it: deny rather than wave it through.
+      if (/^https?:/i.test(origin)) {
+        deny(origin, res);
+        return;
+      }
       next();
       return;
     }
@@ -101,23 +128,6 @@ export function createOriginGuard() {
       return;
     }
 
-    const now = Date.now();
-    const last = lastDenyLog.get(origin) ?? 0;
-    if (now - last > DENY_LOG_INTERVAL_MS) {
-      // Origins are attacker-controlled, so bound the map; the occasional
-      // duplicate log line after a reset is harmless
-      if (lastDenyLog.size >= 1000) lastDenyLog.clear();
-      lastDenyLog.set(origin, now);
-      console.error(`[ORIGIN] Denied request from disallowed origin: ${origin}`);
-    }
-
-    res.status(403).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Forbidden: origin not allowed',
-      },
-      id: null,
-    });
+    deny(origin, res);
   };
 }

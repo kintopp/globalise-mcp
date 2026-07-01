@@ -32,7 +32,8 @@ Ask your AI assistant a question in natural language, and will automatically cho
 |----------|---------|---------|
 | `TRANSPORT` | `stdio` | `http` for Streamable HTTP mode |
 | `PORT` | `3000` | HTTP port |
-| `MCP_ALLOWED_ORIGINS` | claude.ai/claude.com/chatgpt.com | Origin allowlist for `/mcp` (exact origins or `*.domain` globs; `*` disables) |
+| `MCP_ALLOWED_ORIGINS` | claude.ai/claude.com/chatgpt.com | **Enforced** Origin guard: rejects non-allowlisted browser origins with HTTP 403 (spec MUST, DNS-rebinding mitigation). Exact origins or `*.domain` globs; `*` disables. |
+| `ALLOWED_ORIGINS` | `*` | **Advisory** CORS allowlist — sets `Access-Control-Allow-Origin` response headers only; rejects nothing. Comma-separated; `*` allows all. This is a *separate* var from `MCP_ALLOWED_ORIGINS`: tightening the 403 guard does **not** tighten CORS headers, and vice versa. |
 | `STRUCTURED_CONTENT` | `true` | Set `false` to strip `outputSchema`/`structuredContent` for clients that reject them (MSTY, Jan.ai) |
 
 ## Quick Start

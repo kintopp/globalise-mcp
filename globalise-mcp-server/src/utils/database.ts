@@ -12,6 +12,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { createGunzip } from 'zlib';
@@ -197,6 +198,16 @@ export function ensureDatabaseFile(): Promise<void> {
  * Download the index to a temp file (gunzipping when the URL ends in .gz) and
  * atomically rename into place, so an interrupted run never leaves a half file.
  * Mirrors scripts/ensure-archival-db.ts, the build-time equivalent.
+ *
+ * The temp name is per-process unique (pid + random). The in-process
+ * `provisionPromise` guard only serializes downloads *within* one process; two
+ * processes sharing one writable ARCHIVAL_DB_PATH (thin bundle + shared cache
+ * dir) both see the file absent and both download. With a fixed `${target}.tmp`
+ * they interleave writes into one file and the error-path unlinkSync can delete
+ * the peer's in-progress temp → a truncated/corrupt index. A private temp per
+ * process means each writes its own file, the rename-into-place (already atomic)
+ * is the sole cross-process interaction — last-writer-wins on a *complete* file
+ * is harmless — and the catch's unlinkSync only removes this process's own temp.
  */
 async function downloadArchivalDb(url: string, target: string): Promise<void> {
   console.error(`[archival-db] index not present; downloading from ${url} ...`);
@@ -212,7 +223,7 @@ async function downloadArchivalDb(url: string, target: string): Promise<void> {
   }
 
   mkdirSync(dirname(target), { recursive: true });
-  const tmp = `${target}.tmp`;
+  const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
   const gzipped = new URL(url).pathname.endsWith('.gz');
   const source = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 

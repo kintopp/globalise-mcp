@@ -117,6 +117,19 @@ async function main() {
   const gmEmptySettlement = await call({ source: 'gm', settlement: '', size: 1, includeAggregations: false });
   check(gmEmptySettlement.results.every((r) => r.type === 'gm'), 'empty settlement on source "gm" no longer errors');
 
+  console.log('2d. empty inventoryNumber array is treated as absent (audit finding #7)');
+  // An empty array is truthy, so it previously bypassed the "folio requires an
+  // inventoryNumber" guard and built `inventory_number IN ()` — a SQLite syntax
+  // error surfaced as a generic tool failure. It must now behave like no filter.
+  await expectStructuredError(
+    { inventoryNumber: [], folioFrom: 1 },
+    'empty inventoryNumber array + folio → folio guard fires (not a raw IN () error)',
+  );
+  const emptyInvArray = await call({ inventoryNumber: [], size: 1, includeAggregations: false });
+  check(emptyInvArray.total.value === fullTotal, 'empty inventoryNumber array returns the full unfiltered total');
+  const blankInvArray = await call({ inventoryNumber: ['   ', ''], size: 1, includeAggregations: false });
+  check(blankInvArray.total.value === fullTotal, 'all-blank inventoryNumber array is treated as no filter');
+
   console.log('3. FTS5 hostile inputs (R7)');
   // A lone hyphenated term is per-term quoted (not whole-phrase wrapped), and
   // the term still matches the index.

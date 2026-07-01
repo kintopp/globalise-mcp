@@ -16,8 +16,14 @@ import { DocumentResponse } from './types.js';
 export function extractIiifImageUrl(response: DocumentResponse): string | undefined {
   const target = response.anno?.[0]?.target?.[0];
 
-  if (target && typeof target === 'object' && 'source' in target) {
-    return target.source as string;
+  // Require `source` to actually be a string rather than blind-casting it: the
+  // API occasionally shapes a target's source as an object ({ id, type, … }).
+  // Casting that to string would hand the viewer "[object Object]" (and, when
+  // structured output is on, fail outputSchema validation downstream). A
+  // non-string source falls through to undefined → the caller raises a clear
+  // "No IIIF image URL found" instead.
+  if (target && typeof target === 'object' && 'source' in target && typeof target.source === 'string') {
+    return target.source;
   }
 
   return undefined;

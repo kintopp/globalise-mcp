@@ -73,6 +73,7 @@ import {
   searchResultTrim,
   documentLineTrim,
   navigateLineTrim,
+  viewerTranscriptionTrim,
   type TrimStrategy,
 } from './utils/response-size.js';
 import {
@@ -621,12 +622,32 @@ export function createServer(): McpServer {
       runTool(VIEW_DOCUMENT_UI_TOOL_NAME, async () => {
         const docResult = await viewDocumentUi(args);
 
+        // Guard the host's per-result byte ceiling: a single dense page's
+        // transcription can exceed it, and unlike the JSON tools this path never
+        // trimmed, so the host could reject the whole result. This result is
+        // emitted as ONE metered copy — structuredContent, or a lone JSON text
+        // block when STRUCTURED_CONTENT=false; the human-readable summary below
+        // carries only the line COUNT, not the lines — so it meters against the
+        // full SAFE_RESULT_BUDGET rather than the per-copy budget the JSON tools
+        // use. That ~2x headroom is deliberate: globalise_retrieve_document points
+        // users here "for the complete page" when it truncates, so the viewer must
+        // trim only in the rare case a page exceeds even the full budget.
+        const totalLines = docResult.transcription.length;
+        fitResultToBudget(
+          docResult as unknown as Record<string, unknown>,
+          viewerTranscriptionTrim,
+          SAFE_RESULT_BUDGET,
+        );
+        const linesTrimmed = docResult.transcription.length < totalLines;
+
         // Return human-readable summary + JSON data for MCP Apps UI
         const humanReadable = [
           `Document: ${docResult.id}`,
           `Inventory: ${docResult.metadata.inventory}, Scan: ${docResult.metadata.scan}`,
           `Languages: ${docResult.metadata.languages.map((l) => l.label).join(', ')}`,
-          `Lines: ${docResult.transcription.length}`,
+          linesTrimmed
+            ? `Lines: ${docResult.transcription.length} of ${totalLines} (trailing lines trimmed to fit the response; open ${docResult.urls.viewer} for the complete page)`
+            : `Lines: ${docResult.transcription.length}`,
           docResult.navigation.prev ? `Previous: ${docResult.navigation.prev}` : 'No previous page',
           docResult.navigation.next ? `Next: ${docResult.navigation.next}` : 'No next page',
           '',

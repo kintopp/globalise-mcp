@@ -13,6 +13,7 @@ import {
   searchResultTrim,
   documentLineTrim,
   navigateLineTrim,
+  viewerTranscriptionTrim,
 } from '../src/utils/response-size.js';
 import { check, finish } from './test-utils.js';
 
@@ -319,6 +320,65 @@ console.log('9. navigate with no text → null strategy → irreducible');
   const reportOver = fitResultToBudget(resultOver, navigateLineTrim, 1_000);
   check(reportOver.overBudgetIrreducible === true, 'over budget with no text: overBudgetIrreducible:true');
   check(!reportOver.trimmed, 'over budget with no text: trimmed:false');
+}
+
+// ---------------------------------------------------------------------------
+// Case 10: view_document_ui over budget → transcription tail trimmed
+// (the app-tool handler now guards its budget too; audit finding #4)
+// ---------------------------------------------------------------------------
+console.log('10. viewer: viewerTranscriptionTrim drops tail lines of result.transcription');
+{
+  const lineCount = 2000;
+  const result: Record<string, unknown> = {
+    id: 'urn:globalise:NL-HaNA_1.04.02_9966_0106',
+    iiifImageUrl: 'https://service.archief.nl/iip/x.jp2/full/max/0/default.jpg',
+    transcription: Array.from({ length: lineCount }, (_, i) => `Line ${i}: ${'word '.repeat(20)}`),
+    metadata: { inventory: '9966', scan: '0106', languages: [{ code: 'nld', label: 'Dutch' }] },
+    navigation: { prev: null, next: null },
+    urls: { viewer: 'https://transcriptions.globalise.huygens.knaw.nl/detail/x', archive: null },
+    highlight: [],
+  };
+  const budget = 25_000;
+  const originalLines = (result.transcription as unknown[]).slice();
+
+  const report = fitResultToBudget(result, viewerTranscriptionTrim, budget);
+  check(report.trimmed === true, `trimmed:true (got ${report.trimmed})`);
+
+  const transcription = result.transcription as string[];
+  check(transcription.length < lineCount, `transcription trimmed (${transcription.length} < ${lineCount})`);
+  check(report.bytes <= budget, `bytes (${report.bytes}) <= budget (${budget})`);
+  check(
+    transcription.every((line, i) => line === (originalLines[i] as string)),
+    'kept lines are a prefix of the original order',
+  );
+
+  let ok = false;
+  try { JSON.parse(JSON.stringify(result)); ok = true; } catch { ok = false; }
+  check(ok, 'viewer result is still valid JSON after transcription trim');
+}
+
+// ---------------------------------------------------------------------------
+// Case 11: viewer under budget / no transcription → untouched / irreducible
+// ---------------------------------------------------------------------------
+console.log('11. viewer: under budget untouched; missing transcription → irreducible');
+{
+  const under: Record<string, unknown> = {
+    id: 'x',
+    iiifImageUrl: 'https://service.archief.nl/iip/x.jp2/full/max/0/default.jpg',
+    transcription: ['a', 'b', 'c'],
+    metadata: { inventory: '1', scan: '1', languages: [] },
+    navigation: { prev: null, next: null },
+    urls: { viewer: 'https://example/x', archive: null },
+    highlight: [],
+  };
+  const reportUnder = fitResultToBudget(under, viewerTranscriptionTrim, 1_000_000);
+  check(!reportUnder.trimmed, 'under budget → trimmed:false');
+  check((under.transcription as unknown[]).length === 3, 'transcription untouched under budget');
+
+  // No transcription array → strategy returns null → irreducible when over budget
+  const noLines: Record<string, unknown> = { id: 'x', note: 'y'.repeat(100_000) };
+  const reportNull = fitResultToBudget(noLines, viewerTranscriptionTrim, 1_000);
+  check(reportNull.overBudgetIrreducible === true, 'no transcription array over budget → overBudgetIrreducible');
 }
 
 finish('Response-size guard');

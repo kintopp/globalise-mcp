@@ -139,14 +139,26 @@ export function escapeFtsTerms(query: string): string {
  * ERR_INVALID_STATE; SQLITE_BUSY is errcode 5 and I/O errors 10 — none match,
  * so they rethrow instead of degrading to a confusing "Invalid full-text query"
  * (CODE-REVIEW finding 12).
+ *
+ * One SQLITE_ERROR (errcode 1) is NOT a query-grammar fault: "no such table:
+ * <fts>". A missing or renamed FTS virtual table (a stale/broken DB — see
+ * CLAUDE.md "Common Errors") fails the probe identically on every rewrite
+ * attempt, so masking it as "Invalid full-text query" hides the real cause.
+ * Excluding it lets the underlying error propagate and name the broken DB. ("no
+ * such column" stays a query error: it means the *query* referenced a column
+ * that the FTS table doesn't define — a user-side grammar problem, not a fault.)
  */
 function isFtsQueryError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { code?: unknown }).code === 'ERR_SQLITE_ERROR' &&
-    (error as { errcode?: unknown }).errcode === 1
-  );
+  if (
+    typeof error !== 'object' ||
+    error === null ||
+    (error as { code?: unknown }).code !== 'ERR_SQLITE_ERROR' ||
+    (error as { errcode?: unknown }).errcode !== 1
+  ) {
+    return false;
+  }
+  const message = String((error as { message?: unknown }).message ?? '');
+  return !/no such table/i.test(message);
 }
 
 /** Returns the query to use against MATCH, plus a note when it was rewritten. */

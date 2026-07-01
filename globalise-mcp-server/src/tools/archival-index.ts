@@ -435,6 +435,25 @@ function computeGmAggregations(state: ConnectionState, { where, params }: WhereC
 }
 
 /**
+ * Normalize an inventoryNumber filter to an absent/non-empty form. An empty
+ * array is truthy, so `{inventoryNumber: []}` slipped past the `if (input.
+ * inventoryNumber)` guards: it bypassed the "folio requires an inventoryNumber"
+ * check and built `inventory_number IN ()`, which SQLite rejects as a syntax
+ * error. Collapse `[]` (and blank strings / all-blank arrays) to undefined and
+ * trim surviving entries, so an effectively-empty filter behaves like no filter.
+ */
+function normalizeInventoryNumber(
+  value: string | string[] | undefined,
+): string | string[] | undefined {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    const cleaned = value.map((v) => v.trim()).filter(Boolean);
+    return cleaned.length > 0 ? cleaned : undefined;
+  }
+  return value.trim() || undefined;
+}
+
+/**
  * Query the archival index database.
  */
 export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput): Promise<FindArchivalDocumentsOutput> {
@@ -443,11 +462,14 @@ export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput
   // falsiness, so a literal '' diverged: `{settlement:''}` skipped GM and
   // returned every OBP doc as if filtered, and `{source:'gm', settlement:''}`
   // errored despite no effective filter (CODE-REVIEW finding 11). Normalizing
-  // once here makes both views agree.
+  // once here makes both views agree. inventoryNumber gets the same treatment —
+  // an empty array is truthy and would otherwise build `IN ()` (see
+  // normalizeInventoryNumber).
   const input: FindArchivalDocumentsInput = {
     ...rawInput,
     settlement: rawInput.settlement?.trim() || undefined,
     chamber: rawInput.chamber?.trim() || undefined,
+    inventoryNumber: normalizeInventoryNumber(rawInput.inventoryNumber),
   };
 
   // Thin-bundle first-run provisioning: download the index now if it isn't on

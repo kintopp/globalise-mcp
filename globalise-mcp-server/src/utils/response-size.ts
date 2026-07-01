@@ -163,6 +163,22 @@ export const navigateLineTrim: TrimStrategy = (result) => {
 };
 
 /**
+ * Trim strategy for the document-viewer app tool: drop tail lines of
+ * result.transcription. The viewer output schema carries no truncated/totalLines
+ * fields (unlike retrieve/navigate), so onTrim is a no-op here — the app-tool
+ * handler flags any drop in its human-readable summary instead. Returns null
+ * when there is no transcription array (nothing droppable).
+ */
+export const viewerTranscriptionTrim: TrimStrategy = (result) => {
+  const lines = result.transcription;
+  if (!Array.isArray(lines)) return null;
+  return {
+    items: lines,
+    onTrim: () => {},
+  };
+};
+
+/**
  * Search trim: first shrink each hit's highlightedFragments (keep 1, ≤200 chars)
  * to fit more results, then fall back to dropping whole results.
  */
