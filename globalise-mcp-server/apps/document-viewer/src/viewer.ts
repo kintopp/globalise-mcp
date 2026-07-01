@@ -250,7 +250,29 @@ function renderDocument(doc: DocumentData): void {
       <div class="content">
         <div class="image-panel">
           <div id="openseadragon-viewer"></div>
+          <div id="shortcuts-overlay" class="shortcuts-overlay hidden">
+            <div class="shortcuts-content">
+              <div class="shortcuts-header">Keyboard shortcuts</div>
+              <div class="shortcuts-list">
+                <div class="shortcut-row"><kbd>+</kbd> / <kbd>&minus;</kbd><span>Zoom in / out</span></div>
+                <div class="shortcut-row"><kbd>0</kbd><span>Reset view</span></div>
+                <div class="shortcut-row"><kbd>j</kbd> / <kbd>l</kbd><span>Previous / next page</span></div>
+                <div class="shortcut-row"><kbd>r</kbd> / <kbd>&#8679;R</kbd><span>Rotate left / right</span></div>
+                <div class="shortcut-row"><kbd>k</kbd><span>Return to opened page</span></div>
+                <div class="shortcut-row"><kbd>?</kbd><span>This help</span></div>
+                <div class="shortcut-row"><kbd>Esc</kbd><span>Close this help</span></div>
+              </div>
+              <div class="shortcuts-header shortcuts-subhead">Mouse &amp; touch</div>
+              <div class="shortcuts-list">
+                <div class="shortcut-row"><span class="gesture">Scroll / drag image</span><span>Zoom &amp; pan</span></div>
+                <div class="shortcut-row"><span class="gesture">Drag the divider</span><span>Resize panels</span></div>
+                <div class="shortcut-row"><span class="gesture">Select transcription text</span><span>Share with assistant</span></div>
+                <div class="shortcut-row"><span class="gesture">Bottom-right thumbnail</span><span>Minimap / navigator</span></div>
+              </div>
+            </div>
+          </div>
           <div class="image-controls">
+            <button id="show-shortcuts" title="Keyboard &amp; mouse controls (?)">?</button>
             <button id="zoom-in" title="Zoom In (+)">+</button>
             <button id="zoom-out" title="Zoom Out (−)">−</button>
             <button id="reset-view" title="Reset View (0)">Reset</button>
@@ -613,6 +635,18 @@ function attachEventListeners(doc: DocumentData): void {
   document.getElementById('zoom-out')?.addEventListener('click', zoomOut);
   document.getElementById('reset-view')?.addEventListener('click', resetView);
 
+  // Help overlay toggle. The overlay lives inside .image-panel, which
+  // swapDocument() keeps alive, so this per-render binding survives page
+  // navigation and only needs (re)attaching on a full renderDocument().
+  const shortcutsOverlay = document.getElementById('shortcuts-overlay');
+  document.getElementById('show-shortcuts')?.addEventListener('click', () => {
+    shortcutsOverlay?.classList.toggle('hidden');
+  });
+  shortcutsOverlay?.addEventListener('click', (e) => {
+    // Click on the dark scrim (not the card) closes it.
+    if (e.target === shortcutsOverlay) shortcutsOverlay.classList.add('hidden');
+  });
+
   const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
   const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
   setNavButtonState(prevBtn, nextBtn, doc);
@@ -669,6 +703,22 @@ document.addEventListener('mouseup', () => {
  * buttons, but this listener lives on document).
  */
 document.addEventListener('keydown', (e) => {
+  // Help overlay: '?' toggles, Escape closes. Handled BEFORE the viewer guard
+  // below so it is never swallowed by the meta/ctrl/alt early-return, and works
+  // regardless of viewer state. Query the overlay live — renderDocument()
+  // rebuilds the .image-panel DOM, so a captured reference would go stale.
+  // ('?' is Shift+'/', which the modifier guard would not block anyway, but
+  // keeping this ahead of the guard also lets Escape close the overlay.)
+  if (e.key === '?' || e.key === 'Escape') {
+    const overlay = document.getElementById('shortcuts-overlay');
+    if (overlay) {
+      if (e.key === '?') overlay.classList.toggle('hidden');
+      else overlay.classList.add('hidden');
+      e.preventDefault();
+    }
+    return;
+  }
+
   if (!viewer || e.metaKey || e.ctrlKey || e.altKey) return;
 
   switch (e.key) {

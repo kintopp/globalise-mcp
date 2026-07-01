@@ -531,3 +531,80 @@ html, body {
 .transcription ::selection {
   background: var(--color-highlight-bg);
 }
+
+/* Keyboard/mouse help overlay (issue #422). Fixed-dark surface to match the
+   .image-controls pill that triggers it — intentionally NOT theme-aware, so it
+   reads consistently over the image in both light and dark host themes. The
+   scrim is scoped to .image-panel (position: relative) via inset: 0. */
+.shortcuts-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+
+.shortcuts-overlay.hidden {
+  display: none;
+}
+
+.shortcuts-content {
+  background: rgba(0, 0, 0, 0.85);
+  color: #e5e5e5;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--border-radius-md);
+  min-width: 240px;
+  /* Two groups (keyboard + mouse) can be tall — cap to the pane and scroll so a
+     short stacked embed never clips the card. */
+  max-width: calc(100% - 2rem);
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
+.shortcuts-header {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+.shortcuts-subhead {
+  margin-top: 1rem;
+}
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.shortcut-row kbd {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 1.5em;
+  text-align: center;
+}
+
+.shortcut-row span {
+  color: #b0b0b0;
+}
+
+/* The left cell of a mouse row is the gesture (not a key chip) — keep it as
+   bright as the header text so it reads as the "action" side of the row. */
+.shortcut-row .gesture {
+  color: #e5e5e5;
+}

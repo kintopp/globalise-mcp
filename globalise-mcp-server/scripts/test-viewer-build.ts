@@ -27,6 +27,9 @@ if (htmlExists) {
   // R19: the viewer reads structuredContent first and deep-zooms via IIIF
   check(html.includes('structuredContent'), 'viewer reads structuredContent (R19)');
   check(html.includes('info.json'), 'viewer fetches IIIF info.json for deep-zoom (R19)');
+  // Help overlay (issue #422) must survive the bundle build.
+  check(html.includes('shortcuts-overlay'), 'help overlay markup is present (issue #422)');
+  check(html.includes('show-shortcuts'), 'help (?) button is present (issue #422)');
 }
 
 finish('Viewer build check');
