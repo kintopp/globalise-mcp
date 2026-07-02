@@ -32,6 +32,7 @@ const EXPECTED_TOOLS = [
   'globalise_find_archival_documents',
   'globalise_lookup_commodity',
   'globalise_lookup_measure',
+  'globalise_inspect_page_image',
   'globalise_view_document_ui',
 ];
 
@@ -47,6 +48,7 @@ const OPEN_WORLD_BY_TOOL: Record<string, boolean> = {
   globalise_retrieve_document: true,
   globalise_navigate: true,
   globalise_view_document_ui: true,
+  globalise_inspect_page_image: true,
   globalise_find_archival_documents: false,
   globalise_lookup_commodity: false,
   globalise_lookup_measure: false,

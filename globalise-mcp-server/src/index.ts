@@ -81,6 +81,11 @@ import {
   viewDocumentUiInputSchema,
   viewDocumentUiOutputSchema,
 } from './tools/document-viewer.js';
+import {
+  inspectPageImage,
+  inspectPageImageInputSchema,
+  inspectPageImageOutputSchema,
+} from './tools/page-image.js';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -150,7 +155,7 @@ Corpus caveats that apply to every tool:
 - The HTR model was trained on Latin script only: transcriptions of non-Roman-script languages (Persian, Bengali, Tamil, Sinhala, Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) are unreliable gibberish — offer the user the National Archives page-scan link from the document metadata instead. Malay ("msa") is a macrolanguage with no script metadata, so offer scan links for it too.
 - The search tokenizer strips punctuation and treats hyphens as word separators ("oost-indie" matches like "oost indie").
 - Response size: to stay within the client's per-result limit, the four list tools (globalise_search_transcriptions, globalise_find_archival_documents, globalise_lookup_commodity, globalise_lookup_measure) may return fewer than the requested \`size\` — \`pagination.hasMore\` is then true and a \`note\` states how many of how many results were kept; recover the rest by paging with a higher \`from\`, narrowing filters, or lowering \`size\` (or \`fragmentSize\` for search). globalise_retrieve_document and globalise_navigate may likewise drop trailing transcription lines on dense pages, signaled by \`text.truncated\` + \`text.totalLines\`. The reported total count is never affected by either trim.
-- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages. Two local glossaries resolve VOC vocabulary alongside search — globalise_lookup_commodity (trade good → the Dutch term the corpus uses, a sourced definition, and any period spelling variants) and globalise_lookup_measure (unit of weight/volume/length → its type, spelling variants, and period conversion ratios).`;
+- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages. Two local glossaries resolve VOC vocabulary alongside search — globalise_lookup_commodity (trade good → the Dutch term the corpus uses, a sourced definition, and any period spelling variants) and globalise_lookup_measure (unit of weight/volume/length → its type, spelling variants, and period conversion ratios). globalise_inspect_page_image fetches a page scan (or a region of it) as an image for the assistant's own visual reading — call it when the user highlights a region in the document viewer, or to re-transcribe a specific passage as a second opinion on the HTR.`;
 
 /**
  * Per-tool builders that turn a result into clickable viewer markdown links,
@@ -391,6 +396,7 @@ const findArchivalToolInputSchema = findArchivalDocumentsInputSchema.strict();
 const lookupCommodityToolInputSchema = lookupCommodityInputSchema.strict();
 const lookupMeasureToolInputSchema = lookupMeasureInputSchema.strict();
 const viewDocumentUiToolInputSchema = viewDocumentUiInputSchema.strict();
+const inspectPageImageToolInputSchema = inspectPageImageInputSchema.strict();
 
 // UI Resource URI and tool name for the Document Viewer MCP App
 const DOCUMENT_VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
@@ -584,6 +590,70 @@ export function createServer(): McpServer {
     lookupMeasure,
     LOCAL_READ_ONLY,
     recordListTrim,
+  );
+
+  // ==========================================================================
+  // Page-image inspection: returns an MCP `image` content block for the
+  // calling LLM's own visual reading. Registered directly (not via
+  // registerJsonTool): the result must NOT be JSON-serialized into the text
+  // channel and must NOT pass through fitResultToBudget — base64 is not
+  // trimmable JSON, and hosts meter images separately from text results.
+  // ==========================================================================
+
+  server.registerTool(
+    'globalise_inspect_page_image',
+    {
+      description:
+        "Returns image bytes (base64) of a VOC page scan — or a region of it — for the assistant's own visual analysis. Not for the user to view: use globalise_view_document_ui for the interactive viewer. Not for finding pages: use globalise_search_transcriptions. " +
+        "Use region 'full' (default) to see the whole page, or a region to zoom into details: read a specific passage, a name, a numeral, marginalia, seals, or stamps. " +
+        "Call it when the user highlights a region in the document viewer — a chat message or context note like \"[Highlight: region pct:31.2,18.4,22.0,6.1 on document NL-HaNA_1.04.02_9966_0106]\" — passing that documentId and region verbatim. " +
+        "Region coordinates: 'pct:x,y,w,h' (percentage of the full image, recommended), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). Quick reference: top-left quarter pct:0,0,50,50; bottom-right quarter pct:50,50,50,50; center strip pct:25,25,50,50; whole page 'full'. " +
+        "The response includes nativeWidth/nativeHeight (the scan's true pixel size) and cropPixelWidth/cropPixelHeight (the returned crop's size). The size is clamped so crops are never upscaled; request up to 2016px for small handwriting, and quality 'gray' can help with faint ink. " +
+        'The corpus transcriptions are machine HTR: use this tool to re-transcribe a specific passage as a second opinion where the HTR looks garbled (strongest on short passages, proper names, numerals, and marginalia; on long dense text the HTR is often the better reading — say so). Transcribe what you actually see and flag uncertain readings. Especially valuable on non-Latin-script pages (Persian, Tamil, Chinese, ...), where the Latin-script HTR is known-unreliable.',
+      inputSchema: inspectPageImageToolInputSchema as z.ZodObject<z.ZodRawShape>,
+      ...outputSchemaField(inspectPageImageOutputSchema),
+      annotations: EXTERNAL_READ_ONLY,
+    },
+    async (args): Promise<CallToolResult> =>
+      runTool('globalise_inspect_page_image', async () => {
+        const input = args as z.output<typeof inspectPageImageInputSchema>;
+        const result = await inspectPageImage(input);
+        if (!result.ok) {
+          // Parity with rijksmuseum's cropError: structured error carrying the
+          // recovery payload in BOTH channels, so a structuredContent reader
+          // can self-correct without parsing prose. (The SDK validates
+          // structuredContent only on non-error results, so this is safe.)
+          const errorMeta = {
+            documentId: input.documentId,
+            region: input.region,
+            rotation: input.rotation,
+            quality: input.quality,
+            error: result.error,
+            ...(result.recovery && {
+              regionRecovery: {
+                requested: result.recovery.requested,
+                clampedTo: result.recovery.clampedTo,
+                validRange: result.recovery.validRange,
+              },
+            }),
+          };
+          const hint = result.recovery
+            ? ` Nearest valid region: ${result.recovery.clampedTo} (${result.recovery.validRange}).`
+            : '';
+          return {
+            content: [{ type: 'text', text: `${result.error}.${hint}` }],
+            ...structuredPayload(errorMeta),
+            isError: true,
+          };
+        }
+        return {
+          content: [
+            { type: 'image', data: result.image.base64, mimeType: result.image.mimeType },
+            { type: 'text', text: result.caption },
+          ],
+          ...structuredPayload(result.meta),
+        };
+      }),
   );
 
   // ==========================================================================

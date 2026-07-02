@@ -1,0 +1,205 @@
+/**
+ * `globalise_inspect_page_image` — fetches a VOC page scan (or a region of
+ * it) as an MCP `image` content block for the calling LLM's own visual
+ * reading. Rijksmuseum parity port (see plan 020); the reverse channel
+ * (viewUUID sessions, navigate_viewer, model-drawn overlays) is plan 021.
+ */
+
+import { z } from 'zod';
+import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache, apiGetBinary } from '../utils/api-client.js';
+import { LRUCache } from '../utils/cache.js';
+import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
+import {
+  extractIiifImageUrl, IIIF_REGION_RE, checkRegionBounds, cropPixelsToIiifPixels,
+  infoJsonUrlFromImageUrl, computeEffectiveSize, buildIiifRegionUrl,
+  type RegionBoundsIssue,
+} from '../utils/iiif.js';
+import { readImageDimensions } from '../utils/overlay-compositor.js';
+import { DocumentResponse } from '../utils/types.js';
+
+export const inspectPageImageInputSchema = z.object({
+  documentId: z.string().min(1, 'Document ID cannot be empty')
+    .describe('Document ID or URN (e.g., "NL-HaNA_1.04.02_9966_0106" or "urn:globalise:NL-HaNA_1.04.02_9966_0106")'),
+  region: z.string().default('full')
+    .refine((v) => IIIF_REGION_RE.test(v), {
+      message: "Invalid IIIF region. Use 'full', 'square', 'x,y,w,h' (pixels), 'pct:x,y,w,h' (percentages), or 'crop_pixels:x,y,w,h' (explicit full-image pixels).",
+    })
+    .describe("IIIF region: 'full' (default), 'square', 'pct:x,y,w,h' (percentage of the full image), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). E.g. 'pct:0,60,40,40' for the bottom-left 40%."),
+  size: z.number().int().min(200).max(2016).default(1568)
+    .describe('Width of the returned image in pixels (200-2016, default 1568). Clamped so the crop is never upscaled. Defaults align to multiples of 28 for clean LLM coordinate handling.'),
+  rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0)
+    .describe('Clockwise rotation in degrees'),
+  quality: z.enum(['default', 'gray']).default('default')
+    .describe("Image quality — 'gray' can help read faint ink or inscriptions"),
+});
+
+export const inspectPageImageOutputSchema = z.object({
+  documentId: z.string(),
+  inventory: z.string().optional(),
+  scan: z.string().optional(),
+  region: z.string(),
+  cropRegion: z.string().optional().describe('The region as sent to the IIIF server (crop_pixels: prefix stripped)'),
+  requestedSize: z.number().optional().describe('Effective size after the never-upscale clamp'),
+  nativeWidth: z.number().optional(),
+  nativeHeight: z.number().optional(),
+  cropPixelWidth: z.number().optional().describe('Actual pixel width of the returned crop (read from the bytes)'),
+  cropPixelHeight: z.number().optional(),
+  rotation: z.number().optional(),
+  quality: z.string().optional(),
+  fetchTimeMs: z.number().optional(),
+  viewerUrl: z.string().optional().describe('Web viewer deep link for the whole page'),
+  error: z.string().optional(),
+  regionRecovery: z.object({
+    requested: z.string(),
+    clampedTo: z.string(),
+    validRange: z.string(),
+  }).optional().describe('Out-of-bounds recovery hint — retry with clampedTo or a corrected box within validRange.'),
+});
+
+export type InspectPageImageResult =
+  | { ok: true; image: { base64: string; mimeType: string }; meta: z.infer<typeof inspectPageImageOutputSchema>; caption: string }
+  | { ok: false; error: string; recovery?: RegionBoundsIssue };
+
+/** info.json responses are tiny and immutable per scan — cache aggressively. */
+const iiifInfoCache = new LRUCache<unknown>(200, 3600000);   // 200 pages, 1 h
+/** Full-image fetches repeat in exploration sessions (rijksmuseum caches these too). */
+const fullImageCache = new LRUCache<unknown>(20, 300000);    // 20 crops, 5 min
+
+interface IiifImageInfo {
+  width?: number;
+  height?: number;
+}
+
+// NB: annotate the parameter — `strict: true` (noImplicitAny) is on, so a bare
+// `(input)` fails this step's own `tsc --noEmit` gate.
+export async function inspectPageImage(
+  input: z.output<typeof inspectPageImageInputSchema>,
+): Promise<InspectPageImageResult> {
+  // 1. Normalize + parse the document id (parseDocumentId throws ToolError
+  //    on a malformed id — the caller's runTool wrapper handles it).
+  const documentUrn = normalizeDocumentId(input.documentId);
+  const { inventoryNumber, scanNumber } = parseDocumentId(documentUrn);
+
+  // 2. Fetch the document JSON — SAME url + cacheKey as viewDocumentUi, so
+  //    inspect-after-view is a documentCache hit.
+  const url = buildUrl(
+    `${API_CONFIG.BROCCOLI_BASE_URL}/projects/globalise/${documentUrn}`,
+    { overlapTypes: 'px:Page', includeResults: 'anno,text', views: 'self', relativeTo: 'Origin' },
+  );
+  const cacheKey = `${documentUrn}:anno,text`;
+  const response = await getCachedApiGet<DocumentResponse>(url, cacheKey, documentCache);
+
+  // 3. extractIiifImageUrl; if missing, structured failure.
+  const imageUrl = extractIiifImageUrl(response);
+  if (!imageUrl) {
+    return { ok: false, error: `No IIIF image URL found for ${documentUrn}` };
+  }
+
+  // 4. Fetch native dims via info.json (degrade gracefully on failure — the
+  //    bounds check + clamp both handle undefined dims, like rijksmuseum
+  //    without imageInfo).
+  let width: number | undefined;
+  let height: number | undefined;
+  const infoUrl = infoJsonUrlFromImageUrl(imageUrl);
+  if (infoUrl) {
+    try {
+      const info = await getCachedApiGet<IiifImageInfo>(infoUrl, `iiif-info:${documentUrn}`, iiifInfoCache);
+      width = info.width;
+      height = info.height;
+    } catch {
+      // Non-fatal: proceed with dims undefined.
+    }
+  }
+
+  // 5. Bounds check — checked before prefix-stripping so `requested` in the
+  //    recovery payload echoes the caller's exact input.
+  const oob = checkRegionBounds(input.region, width, height);
+  if (oob) {
+    return { ok: false, error: `Region out of bounds: ${oob.issue}`, recovery: oob };
+  }
+
+  // 6. crop_pixels: → plain IIIF pixel region.
+  const iiifRegion = input.region.startsWith('crop_pixels:')
+    ? (cropPixelsToIiifPixels(input.region) ?? input.region)
+    : input.region;
+
+  // 7. Never-upscale clamp.
+  const effectiveSize = computeEffectiveSize(iiifRegion, input.size, width, height);
+
+  // 8. Build the IIIF region URL.
+  const fetchUrl = buildIiifRegionUrl(imageUrl, iiifRegion, effectiveSize, input.rotation, input.quality);
+  if (!fetchUrl) {
+    return { ok: false, error: `Unexpected IIIF URL shape for ${documentUrn} — cannot build a region crop URL` };
+  }
+
+  // 9. Fetch the crop bytes (timed). Full-page fetches are cached — they
+  //    repeat often in exploration sessions. `getCachedApiGet` is JSON-only
+  //    (it calls `response.json()` internally), so binary crops are cached
+  //    manually against the same LRUCache type instead of routing through it.
+  const fetchStart = performance.now();
+  let image: { base64: string; mimeType: string };
+  try {
+    if (iiifRegion === 'full') {
+      const imgCacheKey = `img:${documentUrn}:${effectiveSize}:${input.rotation}:${input.quality}`;
+      const cached = fullImageCache.get(imgCacheKey) as { base64: string; mimeType: string } | undefined;
+      if (cached !== undefined) {
+        image = cached;
+      } else {
+        image = await apiGetBinary(fetchUrl);
+        fullImageCache.set(imgCacheKey, image);
+      }
+    } else {
+      image = await apiGetBinary(fetchUrl);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: `Failed to fetch image: ${message}` };
+  }
+  const fetchTimeMs = Math.round(performance.now() - fetchStart);
+
+  // 10. Actual crop pixel dimensions, read from the bytes (non-fatal on
+  //     failure — dims stay undefined, rijksmuseum parity).
+  let cropPixelWidth: number | undefined;
+  let cropPixelHeight: number | undefined;
+  try {
+    ({ width: cropPixelWidth, height: cropPixelHeight } = await readImageDimensions(Buffer.from(image.base64, 'base64')));
+  } catch {
+    // keep dims undefined
+  }
+
+  // 11. Caption (rijksmuseum format, GLOBALISE fields).
+  const regionLabel = input.region === 'full' ? 'full page' : `region ${input.region}`;
+  const clampNote = effectiveSize < input.size ? ` (clamped from ${input.size}px — upscaling not supported)` : '';
+  const captionParts = [
+    `${documentUrn} (inventory ${inventoryNumber}, scan ${scanNumber})`,
+    `— (${regionLabel}, ${effectiveSize}px${clampNote}, ${fetchTimeMs}ms)`,
+  ];
+  if (width && height) {
+    captionParts.push(`| native ${width}×${height}px`);
+  }
+  if (cropPixelWidth && cropPixelHeight) {
+    captionParts.push(`| crop ${cropPixelWidth}×${cropPixelHeight}px`);
+  }
+  captionParts.push(`| full page: ${VIEWER_URL_PREFIX}${documentUrn}`);
+  const caption = captionParts.join(' ');
+
+  // 12. Structured meta.
+  const meta: z.infer<typeof inspectPageImageOutputSchema> = {
+    documentId: documentUrn,
+    inventory: inventoryNumber,
+    scan: scanNumber,
+    region: input.region,
+    cropRegion: iiifRegion,
+    requestedSize: effectiveSize,
+    nativeWidth: width,
+    nativeHeight: height,
+    cropPixelWidth,
+    cropPixelHeight,
+    rotation: input.rotation,
+    quality: input.quality,
+    fetchTimeMs,
+    viewerUrl: `${VIEWER_URL_PREFIX}${documentUrn}`,
+  };
+
+  return { ok: true, image, meta, caption };
+}

@@ -342,6 +342,54 @@ export async function apiPost<T>(url: string, body: unknown, timeoutMs = API_CON
 }
 
 /**
+ * Fetch a binary resource (IIIF image crop) with the same throttle, timeout,
+ * retry, and error classification as apiFetchOnce. The body read happens
+ * inside the try while the abort signal is armed (plan-014 invariant).
+ */
+async function apiFetchBinaryOnce(url: string, timeoutMs: number): Promise<{ base64: string; mimeType: string }> {
+  await throttle();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'image/jpeg, image/*' },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw createHttpError(response, url);
+    }
+
+    const buf = await response.arrayBuffer();
+    const mimeType = response.headers.get('content-type')?.split(';')[0].trim() || 'image/jpeg';
+    return { base64: Buffer.from(buf).toString('base64'), mimeType };
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      throw createTimeoutError(url);
+    }
+    if (error instanceof TypeError) {
+      throw createNetworkError(url, error);
+    }
+    if ((error as ApiError).type) {
+      throw error;
+    }
+    throw createUnknownError(error);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Make a binary GET request (IIIF image crop) with timeout and automatic
+ * retry, returning base64-encoded bytes + the response's content-type.
+ */
+export async function apiGetBinary(url: string, timeoutMs = API_CONFIG.TIMEOUT_MS): Promise<{ base64: string; mimeType: string }> {
+  return withRetry(() => apiFetchBinaryOnce(url, timeoutMs));
+}
+
+/**
  * Build a URL with query parameters
  */
 export function buildUrl(baseUrl: string, params: Record<string, string | number | boolean | undefined>): string {

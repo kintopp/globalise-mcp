@@ -59,8 +59,9 @@ const VERBS = {
 };
 const TOOL_TO_VERB = Object.fromEntries(Object.entries(VERBS).map(([v, c]) => [c.tool, v]));
 const IN_SCOPE_TOOLS = new Set(Object.values(VERBS).map((c) => c.tool));
-// Viewer/stateful tool depends on the MCP-App iframe — not usable headless over the CLI.
-const VIEWER_TOOLS = new Set(["globalise_view_document_ui"]);
+// Viewer/image tools depend on the MCP-App iframe (or return base64 bytes for
+// the model) — not usable headless over the CLI.
+const VIEWER_TOOLS = new Set(["globalise_view_document_ui", "globalise_inspect_page_image"]);
 
 // Curated help copy (authored one-liner + a worked example per verb), kept CLI-tailored: each
 // summary echoes the tool's front-loaded description lead but adds terminal-specific flag and
@@ -538,7 +539,7 @@ async function main() {
   const cfg = VERBS[verb];
   // Unknown command (and not the built-in `tools`) is a static usage error — no server needed.
   if (!cfg && verb !== "tools") {
-    const hint = VIEWER_TOOLS.has(verb) ? " (viewer/stateful tool — not available over the CLI)" : "";
+    const hint = VIEWER_TOOLS.has(verb) ? " (viewer/image tool — not available over the CLI)" : "";
     process.stderr.write(`Unknown command: ${verb ?? "(none)"}${hint}\n\n${topUsage()}\n`);
     process.exitCode = 2;
     return;

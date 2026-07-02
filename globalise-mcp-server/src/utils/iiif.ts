@@ -28,3 +28,166 @@ export function extractIiifImageUrl(response: DocumentResponse): string | undefi
 
   return undefined;
 }
+
+/**
+ * IIIF region grammar accepted by `globalise_inspect_page_image` (parity
+ * with rijksmuseum-mcp-plus `src/registration/state.ts:3`).
+ *
+ * - `full` — the whole page (default)
+ * - `square` — the largest centered square
+ * - `x,y,w,h` — legacy IIIF pixel region
+ * - `pct:x,y,w,h` — percentage of the full image (recommended)
+ * - `crop_pixels:x,y,w,h` — explicit full-image pixels (same numbers as
+ *   `x,y,w,h`, but distinguishable from a bare pixel region for callers that
+ *   want to be unambiguous)
+ */
+export const IIIF_REGION_RE = /^(full|square|\d+,\d+,\d+,\d+|pct:[0-9.]+,[0-9.]+,[0-9.]+,[0-9.]+|crop_pixels:\d+,\d+,\d+,\d+)$/;
+
+/** Parse a `pct:x,y,w,h` region into its four numbers, or null if not that shape. */
+export function parsePctRegion(region: string): [number, number, number, number] | null {
+  const m = region.match(/^pct:([0-9.]+),([0-9.]+),([0-9.]+),([0-9.]+)$/);
+  if (!m) return null;
+  return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])];
+}
+
+/** Parse a `crop_pixels:x,y,w,h` region into its four integers, or null if not that shape. */
+export function parseCropPixelsRegion(region: string): [number, number, number, number] | null {
+  const m = region.match(/^crop_pixels:(\d+),(\d+),(\d+),(\d+)$/);
+  if (!m) return null;
+  return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), parseInt(m[4], 10)];
+}
+
+/** Strip the `crop_pixels:` prefix, returning a plain IIIF pixel region (`x,y,w,h`). */
+export function cropPixelsToIiifPixels(region: string): string | null {
+  const p = parseCropPixelsRegion(region);
+  if (!p) return null;
+  return `${p[0]},${p[1]},${p[2]},${p[3]}`;
+}
+
+export interface RegionBoundsIssue {
+  requested: string;
+  clampedTo: string;
+  issue: string;
+  validRange: string;
+}
+
+/**
+ * Validate region bounds (port of rijksmuseum-mcp-plus
+ * `src/registration/geometry.ts` `checkRegionBounds`). `pct:` regions are
+ * always checkable (against 0-100, with a 100.01 epsilon on the x+w/y+h
+ * sums); `x,y,w,h` / `crop_pixels:x,y,w,h` regions are checked against the
+ * native image dimensions when provided (skipped, beyond w>0/h>0, when
+ * dimensions are unknown). `full` and `square` are always in-bounds.
+ *
+ * Returns null when in-bounds (or when the bounds check doesn't apply);
+ * otherwise a flat `RegionBoundsIssue` carrying a clamped suggestion.
+ */
+export function checkRegionBounds(
+  region: string,
+  imgW?: number,
+  imgH?: number,
+): RegionBoundsIssue | null {
+  if (region === 'full' || region === 'square') return null;
+
+  const pct = parsePctRegion(region);
+  if (pct) {
+    const [x, y, w, h] = pct;
+    const issues: string[] = [];
+    if (x < 0 || x > 100) issues.push(`x=${x} outside 0–100`);
+    if (y < 0 || y > 100) issues.push(`y=${y} outside 0–100`);
+    if (w <= 0) issues.push(`w=${w} must be > 0`);
+    if (h <= 0) issues.push(`h=${h} must be > 0`);
+    if (x + w > 100.01) issues.push(`x+w=${(x + w).toFixed(2)} exceeds 100`);
+    if (y + h > 100.01) issues.push(`y+h=${(y + h).toFixed(2)} exceeds 100`);
+    if (issues.length === 0) return null;
+    const cx = Math.max(0, Math.min(100, x));
+    const cy = Math.max(0, Math.min(100, y));
+    const cw = Math.max(0, Math.min(100 - cx, w));
+    const ch = Math.max(0, Math.min(100 - cy, h));
+    return {
+      requested: region,
+      clampedTo: `pct:${cx},${cy},${cw},${ch}`,
+      issue: issues.join('; '),
+      validRange: 'each value must be between 0 and 100, and x+w, y+h must not exceed 100',
+    };
+  }
+
+  // crop_pixels: or plain IIIF pixels
+  const cp = parseCropPixelsRegion(region);
+  const plainPixels = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
+  const pixelMatch: [number, number, number, number] | null =
+    cp ?? (plainPixels
+      ? [parseInt(plainPixels[1], 10), parseInt(plainPixels[2], 10), parseInt(plainPixels[3], 10), parseInt(plainPixels[4], 10)]
+      : null);
+  if (!pixelMatch) return null;
+  const [x, y, w, h] = pixelMatch;
+  const issues: string[] = [];
+  if (w <= 0) issues.push(`w=${w} must be > 0`);
+  if (h <= 0) issues.push(`h=${h} must be > 0`);
+  if (imgW != null && imgH != null) {
+    if (x < 0 || x >= imgW) issues.push(`x=${x} outside 0–${imgW - 1}`);
+    if (y < 0 || y >= imgH) issues.push(`y=${y} outside 0–${imgH - 1}`);
+    if (x + w > imgW) issues.push(`x+w=${x + w} exceeds imageWidth=${imgW}`);
+    if (y + h > imgH) issues.push(`y+h=${y + h} exceeds imageHeight=${imgH}`);
+  }
+  if (issues.length === 0) return null;
+  const prefix = cp ? 'crop_pixels:' : '';
+  const cx = imgW != null ? Math.max(0, Math.min(imgW - 1, x)) : x;
+  const cy = imgH != null ? Math.max(0, Math.min(imgH - 1, y)) : y;
+  const cw = imgW != null ? Math.max(0, Math.min(imgW - cx, w)) : Math.max(0, w);
+  const ch = imgH != null ? Math.max(0, Math.min(imgH - cy, h)) : Math.max(0, h);
+  return {
+    requested: region,
+    clampedTo: `${prefix}${cx},${cy},${cw},${ch}`,
+    issue: issues.join('; '),
+    validRange: imgW != null
+      ? `x in [0, ${imgW}), y in [0, ${imgH}), x+w ≤ ${imgW}, y+h ≤ ${imgH}, w>0, h>0`
+      : 'w>0, h>0 (image dimensions unknown)',
+  };
+}
+
+/**
+ * `…/{id}.jp2/full/max/0/default.jpg` → `…/{id}.jp2/info.json` — server-side
+ * twin of the viewer's `infoJsonUrl()` (`apps/document-viewer/src/viewer.ts`).
+ */
+export function infoJsonUrlFromImageUrl(imageUrl: string): string | null {
+  const m = imageUrl.match(/^(.+)\/full\/[^/]+\/\d+\/default\.\w+$/);
+  return m ? `${m[1]}/info.json` : null;
+}
+
+/**
+ * Never-upscale clamp (rijksmuseum policy, `src/registration/tools/viewer.ts`
+ * there): `effectiveSize = min(size, regionWidthPx)`, where a `pct:` region's
+ * pixel width subtracts 3px to absorb IIIF server-side rounding. `full` (and
+ * unknown dimensions) keep `size` clamped to the full image width; `square`
+ * clamps to the smaller of width/height.
+ */
+export function computeEffectiveSize(region: string, size: number, imgW?: number, imgH?: number): number {
+  let effectiveSize = size;
+  if (imgW) {
+    let regionWidth = imgW;
+    const pctMatch = region.match(/^pct:([0-9.]+),([0-9.]+),([0-9.]+),([0-9.]+)$/);
+    const pxMatch = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
+    if (pctMatch) {
+      regionWidth = Math.max(1, Math.floor(imgW * parseFloat(pctMatch[3]) / 100) - 3);
+    } else if (pxMatch) {
+      regionWidth = parseInt(pxMatch[3], 10);
+    } else if (region === 'square') {
+      regionWidth = Math.min(imgW, imgH ?? imgW);
+    }
+    // region === 'full' keeps regionWidth = imgW
+    if (effectiveSize > regionWidth) effectiveSize = regionWidth;
+  }
+  return effectiveSize;
+}
+
+/**
+ * `…/full/max/0/default.jpg` tail → `/{region}/{size},/{rotation}/{quality}.jpg`
+ * (rijksmuseum URL form). Returns null if `imageUrl` doesn't end in the
+ * expected `/full/{size}/{rotation}/default.{ext}` shape.
+ */
+export function buildIiifRegionUrl(imageUrl: string, region: string, size: number, rotation: number, quality: string): string | null {
+  const m = imageUrl.match(/^(.+)\/full\/[^/]+\/\d+\/default\.\w+$/);
+  if (!m) return null;
+  return `${m[1]}/${region}/${size},/${rotation}/${quality}.jpg`;
+}
