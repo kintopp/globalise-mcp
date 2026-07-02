@@ -19,6 +19,12 @@ import {
   computeEffectiveSize,
   buildIiifRegionUrl,
 } from '../src/utils/iiif.js';
+import {
+  projectToFullImage,
+  regionToPixels,
+  computeVerificationRegion,
+  computeDeliveryState,
+} from '../src/utils/iiif.js';
 import { readImageDimensions } from '../src/utils/overlay-compositor.js';
 import { check, finish } from './test-utils.js';
 
@@ -208,6 +214,78 @@ console.log('7. infoJsonUrlFromImageUrl');
 {
   check(infoJsonUrlFromImageUrl('https://service.archief.nl/iip/aa/bb/x.jp2/info.json') === null, 'already-info.json URL returns null');
   check(infoJsonUrlFromImageUrl('not-a-url') === null, 'unrelated string returns null');
+}
+
+// ---------------------------------------------------------------------------
+// 8. projectToFullImage (reverse-channel geometry, plan 021)
+// ---------------------------------------------------------------------------
+
+console.log('8. projectToFullImage');
+
+{
+  // A crop-local pct box within a full-image pct crop → full-image pct.
+  // relativeTo = pct:20,20,40,40; local = pct:50,50,10,10 →
+  //   fx = 20 + 0.5*40 = 40; fy = 20 + 0.5*40 = 40; fw = 0.1*40 = 4; fh = 4
+  const p = projectToFullImage('pct:50,50,10,10', 'pct:20,20,40,40');
+  check(p === 'pct:40,40,4,4', `crop-local pct projects to pct:40,40,4,4 (got: ${p})`);
+}
+{
+  // crop_pixels with localSize: 100px within a 200px-wide crop = 50% →
+  //   relativeTo pct:0,0,50,50 → fx = 0 + 0.5*50 = 25; fw = 0.5*50 = 25
+  const p = projectToFullImage('crop_pixels:100,0,100,80', 'pct:0,0,50,50', { width: 200, height: 160 });
+  check(p === 'pct:25,0,25,25', `crop_pixels with localSize projects (got: ${p})`);
+}
+{
+  check(projectToFullImage('crop_pixels:1,2,3,4', 'pct:0,0,50,50') === null, 'crop_pixels without localSize is null');
+  check(projectToFullImage('pct:1,2,3,4', 'full') === null, 'non-pct relativeTo is null');
+}
+
+// ---------------------------------------------------------------------------
+// 9. regionToPixels
+// ---------------------------------------------------------------------------
+
+console.log('9. regionToPixels');
+
+{
+  const px = regionToPixels('pct:25,25,10,10', 1000, 800);
+  check(px === '250,200,100,80', `pct:25,25,10,10 on 1000x800 → 250,200,100,80 (got: ${px})`);
+  check(regionToPixels('full', 1000, 800) === undefined, 'regionToPixels(full) is undefined');
+  check(regionToPixels('100,100,50,50', 1000, 800) === undefined, 'regionToPixels(plain px) is undefined');
+}
+
+// ---------------------------------------------------------------------------
+// 10. computeVerificationRegion
+// ---------------------------------------------------------------------------
+
+console.log('10. computeVerificationRegion');
+
+{
+  // Small overlay (2%) → expands to the 12% floor, centred.
+  const v = computeVerificationRegion('pct:40,40,2,2', 5892, 4167);
+  check(v === 'pct:35,35,12,12', `small overlay expands to a 12% box centred (got: ${v})`);
+}
+{
+  // Overlay near the edge → shift-clamped to stay inside 0-100.
+  const v = computeVerificationRegion('pct:96,96,2,2', 5892, 4167);
+  check(v === 'pct:88,88,12,12', `edge overlay shift-clamped into 0-100 (got: ${v})`);
+}
+{
+  check(computeVerificationRegion('full', 5892, 4167) === undefined, 'full → undefined');
+  check(computeVerificationRegion('square', 5892, 4167) === undefined, 'square → undefined');
+  check(computeVerificationRegion('pct:40,40,2,2') === undefined, 'missing dims → undefined');
+}
+
+// ---------------------------------------------------------------------------
+// 11. computeDeliveryState
+// ---------------------------------------------------------------------------
+
+console.log('11. computeDeliveryState');
+
+{
+  const now = 1_000_000;
+  check(computeDeliveryState(undefined, now) === 'no_live_viewer_seen', 'never polled → no_live_viewer_seen');
+  check(computeDeliveryState(now - 3000, now) === 'delivered_recently', '3s ago → delivered_recently');
+  check(computeDeliveryState(now - 10000, now) === 'queued_waiting_for_viewer', '10s ago → queued_waiting_for_viewer');
 }
 
 finish('IIIF region tests');

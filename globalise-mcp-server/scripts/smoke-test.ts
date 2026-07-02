@@ -33,6 +33,8 @@ const EXPECTED_TOOLS = [
   'globalise_lookup_commodity',
   'globalise_lookup_measure',
   'globalise_inspect_page_image',
+  'globalise_navigate_viewer',
+  'globalise_poll_viewer_commands',
   'globalise_view_document_ui',
 ];
 
@@ -40,9 +42,10 @@ const EXPECTED_TOOLS = [
 const REMOVED_TOOLS = ['globalise_search_by_inventory', 'globalise_search_by_language'];
 
 // openWorldHint by tool: true for tools that call the live GLOBALISE / IIIF
-// services, false for the local-SQLite glossary + finding-aid lookups. (Per the
+// services, false for the local-SQLite glossary + finding-aid lookups AND the
+// viewer-session tools (their world is the in-memory command queue). (Per the
 // MCP spec openWorldHint defaults to true, so the load-bearing assertions are
-// the three `false` local tools.)
+// the `false` ones.)
 const OPEN_WORLD_BY_TOOL: Record<string, boolean> = {
   globalise_search_transcriptions: true,
   globalise_retrieve_document: true,
@@ -52,6 +55,25 @@ const OPEN_WORLD_BY_TOOL: Record<string, boolean> = {
   globalise_find_archival_documents: false,
   globalise_lookup_commodity: false,
   globalise_lookup_measure: false,
+  globalise_navigate_viewer: false,
+  globalise_poll_viewer_commands: false,
+};
+
+// readOnlyHint by tool: true for every tool EXCEPT the two viewer-session tools
+// (plan 021), which mutate the in-memory command queue (add/clear overlays,
+// drain the queue) and so are deliberately NOT read-only (rijksmuseum ANN_VIEWER
+// parity). This per-tool map replaces the old blanket readOnly assertion.
+const READ_ONLY_BY_TOOL: Record<string, boolean> = {
+  globalise_search_transcriptions: true,
+  globalise_retrieve_document: true,
+  globalise_navigate: true,
+  globalise_view_document_ui: true,
+  globalise_inspect_page_image: true,
+  globalise_find_archival_documents: true,
+  globalise_lookup_commodity: true,
+  globalise_lookup_measure: true,
+  globalise_navigate_viewer: false,
+  globalise_poll_viewer_commands: false,
 };
 
 /** Recursively assert a JSON schema contains no $ref keys (claude.ai rejects them). */
@@ -89,7 +111,10 @@ async function main() {
   }
   for (const tool of tools) {
     check(!hasRef(tool.inputSchema), `$ref-free inputSchema: ${tool.name}`);
-    check(tool.annotations?.readOnlyHint === true, `readOnlyHint: ${tool.name}`);
+    check(
+      tool.annotations?.readOnlyHint === READ_ONLY_BY_TOOL[tool.name],
+      `readOnlyHint=${READ_ONLY_BY_TOOL[tool.name]}: ${tool.name}`,
+    );
     check(
       tool.annotations?.openWorldHint === OPEN_WORLD_BY_TOOL[tool.name],
       `openWorldHint=${OPEN_WORLD_BY_TOOL[tool.name]}: ${tool.name}`,
@@ -112,6 +137,19 @@ async function main() {
   check(
     viewerMeta?.ui?.resourceUri === 'ui://globalise/document-viewer.html',
     'viewer tool has _meta.ui.resourceUri',
+  );
+
+  // The poll tool is app-only (visibility: ['app']) and, being hidden, carries
+  // NO resourceUri (a template bound to a hidden tool is contradictory).
+  const pollTool = tools.find((t) => t.name === 'globalise_poll_viewer_commands');
+  const pollMeta = pollTool?._meta as { ui?: { visibility?: string[]; resourceUri?: string } } | undefined;
+  check(
+    JSON.stringify(pollMeta?.ui?.visibility) === JSON.stringify(['app']),
+    `poll tool _meta.ui.visibility === ['app'] (got: ${JSON.stringify(pollMeta?.ui?.visibility)})`,
+  );
+  check(
+    pollMeta?.ui?.resourceUri === undefined,
+    'poll tool has NO _meta.ui.resourceUri (app-only)',
   );
 
   console.log('3. resources/list');

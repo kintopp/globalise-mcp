@@ -191,3 +191,127 @@ export function buildIiifRegionUrl(imageUrl: string, region: string, size: numbe
   if (!m) return null;
   return `${m[1]}/${region}/${size},/${rotation}/${quality}.jpg`;
 }
+
+// ── Reverse-channel geometry (plan 021, rijksmuseum geometry.ts parity) ──
+// All pure; reuse parsePctRegion / parseCropPixelsRegion above.
+
+/** Actual pixel dimensions of an inspected crop (for crop-local coordinates). */
+export interface CropLocalSize {
+  width: number;
+  height: number;
+}
+
+/**
+ * Convert a `pct:x,y,w,h` region into a plain IIIF pixel region against
+ * `w`×`h` (rijksmuseum geometry.ts `regionToPixels`). Returns undefined for
+ * non-pct inputs (full/square/px).
+ */
+export function regionToPixels(region: string, w: number, h: number): string | undefined {
+  const p = parsePctRegion(region);
+  if (!p) return undefined;
+  return `${Math.round(p[0] * w / 100)},${Math.round(p[1] * h / 100)},${Math.round(p[2] * w / 100)},${Math.round(p[3] * h / 100)}`;
+}
+
+/**
+ * Compute a ready-to-paste `pct:` crop for verifying a placed overlay via
+ * inspect(show_overlays:true). The result is centred on the overlay and
+ * expanded to ≥1.4× the overlay's footprint, ≥12% per axis, shift-clamped to
+ * stay inside 0–100. The 12% floor keeps the overlay visible after the 448px
+ * clamp that show_overlays applies. (rijksmuseum geometry.ts
+ * `computeVerificationRegion`.)
+ *
+ * Returns undefined for full/square/unparseable inputs or missing dims.
+ */
+export function computeVerificationRegion(
+  region: string,
+  imageWidth?: number,
+  imageHeight?: number,
+): string | undefined {
+  if (!imageWidth || !imageHeight) return undefined;
+  if (region === 'full' || region === 'square') return undefined;
+
+  let x: number, y: number, w: number, h: number;
+  const pct = parsePctRegion(region);
+  if (pct) {
+    [x, y, w, h] = pct;
+  } else {
+    const cp = parseCropPixelsRegion(region);
+    const plainMatch = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
+    const px: [number, number, number, number] | null = cp
+      ?? (plainMatch
+        ? [parseInt(plainMatch[1], 10), parseInt(plainMatch[2], 10), parseInt(plainMatch[3], 10), parseInt(plainMatch[4], 10)]
+        : null);
+    if (!px) return undefined;
+    x = (px[0] / imageWidth) * 100;
+    y = (px[1] / imageHeight) * 100;
+    w = (px[2] / imageWidth) * 100;
+    h = (px[3] / imageHeight) * 100;
+  }
+  if (w <= 0 || h <= 0) return undefined;
+
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const vw = Math.min(100, Math.max(w * 1.4, 12));
+  const vh = Math.min(100, Math.max(h * 1.4, 12));
+  const vx = Math.max(0, Math.min(100 - vw, cx - vw / 2));
+  const vy = Math.max(0, Math.min(100 - vh, cy - vh / 2));
+
+  const fmt = (n: number) => {
+    const s = n.toFixed(1);
+    return s.endsWith('.0') ? s.slice(0, -2) : s;
+  };
+  return `pct:${fmt(vx)},${fmt(vy)},${fmt(vw)},${fmt(vh)}`;
+}
+
+/**
+ * Classify how a navigate_viewer call's commands will reach the iframe, given
+ * the queue's last-poll timestamp (rijksmuseum geometry.ts
+ * `computeDeliveryState`). Pure for unit testing.
+ *
+ *   delivered_recently         — iframe polled within `recentMs` and will drain on its next tick
+ *   queued_waiting_for_viewer  — iframe has polled before but not recently (typical when scrolled offscreen)
+ *   no_live_viewer_seen        — no poll has been recorded for this UUID yet
+ */
+export type DeliveryState =
+  | 'delivered_recently'
+  | 'queued_waiting_for_viewer'
+  | 'no_live_viewer_seen';
+
+export function computeDeliveryState(
+  lastPolledAtMs: number | undefined,
+  nowMs: number,
+  recentMs = 5000,
+): DeliveryState {
+  if (lastPolledAtMs == null) return 'no_live_viewer_seen';
+  if (nowMs - lastPolledAtMs < recentMs) return 'delivered_recently';
+  return 'queued_waiting_for_viewer';
+}
+
+/**
+ * Project crop-local pct or crop-local pixel coordinates to full-image pct
+ * space (rijksmuseum geometry.ts `projectToFullImage`). `relativeTo` is the
+ * inspected crop's full-image pct region; `local` is the box within that crop
+ * (pct: directly, or crop_pixels: with `localSize`). Returns null on invalid
+ * shapes.
+ */
+export function projectToFullImage(local: string, relativeTo: string, localSize?: CropLocalSize): string | null {
+  const o = parsePctRegion(relativeTo);
+  if (!o) return null;
+  const pct = parsePctRegion(local);
+  const px = parseCropPixelsRegion(local);
+  if (!pct && !px) return null;
+  if (px && !localSize) return null;
+
+  const l = pct ?? [
+    (px![0] / localSize!.width) * 100,
+    (px![1] / localSize!.height) * 100,
+    (px![2] / localSize!.width) * 100,
+    (px![3] / localSize!.height) * 100,
+  ];
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const fx = round2(o[0] + (l[0] / 100) * o[2]);
+  const fy = round2(o[1] + (l[1] / 100) * o[3]);
+  const fw = round2((l[2] / 100) * o[2]);
+  const fh = round2((l[3] / 100) * o[3]);
+  return `pct:${fx},${fy},${fw},${fh}`;
+}

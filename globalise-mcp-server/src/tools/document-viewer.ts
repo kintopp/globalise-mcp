@@ -5,10 +5,13 @@
  * including IIIF image URL extracted from the API response.
  */
 
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache } from '../utils/api-client.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
+import { fetchIiifDims } from '../utils/iiif-info.js';
+import { viewerQueues } from '../utils/viewer-session.js';
 import { DocumentResponse } from '../utils/types.js';
 import { languageSchema, mapPageLanguages } from '../utils/languages.js';
 import { normalizeLicense } from './document.js';
@@ -23,6 +26,8 @@ export const viewDocumentUiInputSchema = z.object({
     .describe('Document ID or URN (e.g., "NL-HaNA_1.04.02_9966_0106" or "urn:globalise:NL-HaNA_1.04.02_9966_0106")'),
   highlightTerms: z.array(z.string()).optional().default([])
     .describe('Search terms to highlight in the transcription'),
+  viewUUID: z.string().optional()
+    .describe('Existing viewer session to preserve (in-viewer page navigation). When live, the same UUID is kept: overlays cleared, page swapped. Omit on first open.'),
 });
 
 export type ViewDocumentUiInput = z.infer<typeof viewDocumentUiInputSchema>;
@@ -72,6 +77,11 @@ export const viewDocumentUiOutputSchema = z.object({
   highlight: z.array(z.string()),
   /** Archival context from OBP/GM databases (if available) */
   archivalContext: archivalContextSchema.optional(),
+  /** Viewer session for the LLM→viewer reverse channel (plan 021) */
+  viewUUID: z.string().optional()
+    .describe('Viewer session UUID — pass to globalise_navigate_viewer to steer this open viewer.'),
+  imageWidth: z.number().optional().describe("The scan's native pixel width (for overlay coordinate projection)"),
+  imageHeight: z.number().optional().describe("The scan's native pixel height"),
 });
 
 export type ViewDocumentUiOutput = z.infer<typeof viewDocumentUiOutputSchema>;
@@ -175,6 +185,37 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
     throw new Error(`No IIIF image URL found for document ${documentUrn}`);
   }
 
+  // Resolve native dims (for the viewer session's overlay coordinate space)
+  // and mint-or-remount the viewer command queue (plan 021). Dims degrade to
+  // undefined on failure — the reverse channel still works, overlays just
+  // can't be projected server-side until a dims-bearing page is opened.
+  const dims = await fetchIiifDims(documentUrn, iiifImageUrl);
+
+  // Mint a fresh session, or — when a live UUID is supplied (in-viewer page
+  // navigation) — reuse it with remount semantics: identity preserved, content
+  // swapped, overlays cleared. Do NOT touch lastPolledAt: the iframe is already
+  // polling this UUID. A stale supplied UUID (TTL-evicted) silently mints a
+  // fresh one; the viewer adopts whatever comes back.
+  const viewUUID = input.viewUUID && viewerQueues.has(input.viewUUID) ? input.viewUUID : randomUUID();
+  const existing = viewerQueues.get(viewUUID);
+  if (existing) {
+    existing.documentId = documentUrn;
+    existing.imageWidth = dims?.width;
+    existing.imageHeight = dims?.height;
+    existing.activeOverlays = [];
+    existing.lastAccess = Date.now();
+  } else {
+    viewerQueues.set(viewUUID, {
+      commands: [],
+      createdAt: Date.now(),
+      lastAccess: Date.now(),
+      documentId: documentUrn,
+      imageWidth: dims?.width,
+      imageHeight: dims?.height,
+      activeOverlays: [],
+    });
+  }
+
   return {
     id: documentUrn,
     iiifImageUrl,
@@ -195,5 +236,8 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
     },
     highlight: input.highlightTerms || [],
     archivalContext: await fetchArchivalContext(inventoryNumber),
+    viewUUID,
+    imageWidth: dims?.width,
+    imageHeight: dims?.height,
   };
 }

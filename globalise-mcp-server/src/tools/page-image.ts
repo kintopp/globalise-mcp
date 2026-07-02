@@ -11,10 +11,12 @@ import { LRUCache } from '../utils/cache.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import {
   extractIiifImageUrl, IIIF_REGION_RE, checkRegionBounds, cropPixelsToIiifPixels,
-  infoJsonUrlFromImageUrl, computeEffectiveSize, buildIiifRegionUrl,
+  computeEffectiveSize, buildIiifRegionUrl,
   type RegionBoundsIssue,
 } from '../utils/iiif.js';
-import { readImageDimensions } from '../utils/overlay-compositor.js';
+import { readImageDimensions, compositeOverlays, computeCropRect } from '../utils/overlay-compositor.js';
+import { fetchIiifDims } from '../utils/iiif-info.js';
+import { viewerQueues } from '../utils/viewer-session.js';
 import { DocumentResponse } from '../utils/types.js';
 
 export const inspectPageImageInputSchema = z.object({
@@ -31,6 +33,12 @@ export const inspectPageImageInputSchema = z.object({
     .describe('Clockwise rotation in degrees'),
   quality: z.enum(['default', 'gray']).default('default')
     .describe("Image quality — 'gray' can help read faint ink or inscriptions"),
+  viewUUID: z.string().optional()
+    .describe('Target a specific viewer session (from globalise_view_document_ui). When omitted, auto-discovers an open viewer for this page.'),
+  navigateViewer: z.boolean().default(true)
+    .describe("Auto-navigate the open viewer to the inspected region (no effect when region is 'full' or no viewer is open)."),
+  show_overlays: z.boolean().default(false)
+    .describe('Composite active-viewer overlays onto the returned crop — opt-in verification for globalise_navigate_viewer add_overlay. Requires a non-full region tightly around the overlay (use the verificationRegion from the navigate response). Size is clamped to 448px when enabled.'),
 });
 
 export const inspectPageImageOutputSchema = z.object({
@@ -48,6 +56,11 @@ export const inspectPageImageOutputSchema = z.object({
   quality: z.string().optional(),
   fetchTimeMs: z.number().optional(),
   viewerUrl: z.string().optional().describe('Web viewer deep link for the whole page'),
+  viewUUID: z.string().optional().describe('The active viewer session this inspect targeted (for follow-up globalise_navigate_viewer calls)'),
+  viewerNavigated: z.boolean().optional().describe('True if the open viewer was auto-zoomed to the inspected region'),
+  overlaysRendered: z.number().optional().describe('Overlays composited onto the crop when show_overlays was enabled'),
+  overlaysSkipped: z.number().optional().describe('Active overlays that fell outside the crop and were not drawn'),
+  overlaysError: z.string().optional().describe("'no_active_viewer' or 'compositor_failed' when show_overlays could not composite"),
   error: z.string().optional(),
   regionRecovery: z.object({
     requested: z.string(),
@@ -58,17 +71,10 @@ export const inspectPageImageOutputSchema = z.object({
 
 export type InspectPageImageResult =
   | { ok: true; image: { base64: string; mimeType: string }; meta: z.infer<typeof inspectPageImageOutputSchema>; caption: string }
-  | { ok: false; error: string; recovery?: RegionBoundsIssue };
+  | { ok: false; error: string; recovery?: RegionBoundsIssue; text?: string };
 
-/** info.json responses are tiny and immutable per scan — cache aggressively. */
-const iiifInfoCache = new LRUCache<unknown>(200, 3600000);   // 200 pages, 1 h
 /** Full-image fetches repeat in exploration sessions (rijksmuseum caches these too). */
 const fullImageCache = new LRUCache<unknown>(20, 300000);    // 20 crops, 5 min
-
-interface IiifImageInfo {
-  width?: number;
-  height?: number;
-}
 
 // NB: annotate the parameter — `strict: true` (noImplicitAny) is on, so a bare
 // `(input)` fails this step's own `tsc --noEmit` gate.
@@ -79,6 +85,33 @@ export async function inspectPageImage(
   //    on a malformed id — the caller's runTool wrapper handles it).
   const documentUrn = normalizeDocumentId(input.documentId);
   const { inventoryNumber, scanNumber } = parseDocumentId(documentUrn);
+
+  // 1b. Resolve the active viewer for this page (plan 021) — prefer an
+  //     explicit viewUUID (must match this document), else the most recently
+  //     accessed queue for it. Recency tie-break `>=` so a later insertion in
+  //     the same millisecond wins (Map iterates in insertion order); safe for a
+  //     read like inspect, and if the caller just placed overlays via
+  //     navigate_viewer that queue is the most recent by construction.
+  let activeViewUUID: string | undefined;
+  if (input.viewUUID) {
+    const q = viewerQueues.get(input.viewUUID);
+    if (q && q.documentId === documentUrn) {
+      activeViewUUID = input.viewUUID;
+      q.lastAccess = Date.now();
+    }
+    // else: don't navigate the wrong viewer
+  } else {
+    let bestLastAccess = -Infinity;
+    for (const [uuid, q] of viewerQueues) {
+      if (q.documentId === documentUrn && q.lastAccess >= bestLastAccess) {
+        activeViewUUID = uuid;
+        bestLastAccess = q.lastAccess;
+      }
+    }
+    if (activeViewUUID) {
+      viewerQueues.get(activeViewUUID)!.lastAccess = Date.now();
+    }
+  }
 
   // 2. Fetch the document JSON — SAME url + cacheKey as viewDocumentUi, so
   //    inspect-after-view is a documentCache hit.
@@ -95,21 +128,23 @@ export async function inspectPageImage(
     return { ok: false, error: `No IIIF image URL found for ${documentUrn}` };
   }
 
-  // 4. Fetch native dims via info.json (degrade gracefully on failure — the
-  //    bounds check + clamp both handle undefined dims, like rijksmuseum
-  //    without imageInfo).
-  let width: number | undefined;
-  let height: number | undefined;
-  const infoUrl = infoJsonUrlFromImageUrl(imageUrl);
-  if (infoUrl) {
-    try {
-      const info = await getCachedApiGet<IiifImageInfo>(infoUrl, `iiif-info:${documentUrn}`, iiifInfoCache);
-      width = info.width;
-      height = info.height;
-    } catch {
-      // Non-fatal: proceed with dims undefined.
-    }
+  // 3b. show_overlays on region 'full' is a degenerate case: at the 448px
+  //     clamp, a feature-scale overlay shrinks below visual threshold. Reject
+  //     with a structured error steering the caller to a tight region.
+  if (input.show_overlays && input.region === 'full') {
+    return {
+      ok: false,
+      error: 'show_overlays_on_full_not_supported',
+      text: 'show_overlays_on_full_not_supported: show_overlays is a feature-scale verification aid — at the 448px clamp, small overlays on a full-image view shrink below visual threshold. Inspect a region that encloses the overlay(s) you want to check (e.g. a pct: region around the target area).',
+    };
   }
+
+  // 4. Fetch native dims via info.json (shared with the view tool; degrades
+  //    gracefully to undefined on failure — the bounds check + clamp both
+  //    handle undefined dims, like rijksmuseum without imageInfo).
+  const dims = await fetchIiifDims(documentUrn, imageUrl);
+  const width = dims?.width;
+  const height = dims?.height;
 
   // 5. Bounds check — checked before prefix-stripping so `requested` in the
   //    recovery payload echoes the caller's exact input.
@@ -123,8 +158,11 @@ export async function inspectPageImage(
     ? (cropPixelsToIiifPixels(input.region) ?? input.region)
     : input.region;
 
-  // 7. Never-upscale clamp.
-  const effectiveSize = computeEffectiveSize(iiifRegion, input.size, width, height);
+  // 7. Never-upscale clamp. When show_overlays is on, the size is first clamped
+  //    to 448px (an LLM context-cost guard — the composite is a verification
+  //    aid, not a reading crop), then the never-upscale clamp applies on top.
+  const baseSize = input.show_overlays ? Math.min(input.size, 448) : input.size;
+  const effectiveSize = computeEffectiveSize(iiifRegion, baseSize, width, height);
 
   // 8. Build the IIIF region URL.
   const fetchUrl = buildIiifRegionUrl(imageUrl, iiifRegion, effectiveSize, input.rotation, input.quality);
@@ -157,17 +195,72 @@ export async function inspectPageImage(
   }
   const fetchTimeMs = Math.round(performance.now() - fetchStart);
 
-  // 10. Actual crop pixel dimensions, read from the bytes (non-fatal on
-  //     failure — dims stay undefined, rijksmuseum parity).
+  // 10. show_overlays composite (plan 021): draw the active viewer's overlays
+  //     onto the crop for visual verification. Non-fatal on any failure — the
+  //     plain crop is still returned, with overlaysError flagging why.
+  let imageBuffer: Buffer<ArrayBufferLike> = Buffer.from(image.base64, 'base64');
   let cropPixelWidth: number | undefined;
   let cropPixelHeight: number | undefined;
-  try {
-    ({ width: cropPixelWidth, height: cropPixelHeight } = await readImageDimensions(Buffer.from(image.base64, 'base64')));
-  } catch {
-    // keep dims undefined
+  let overlaysRendered: number | undefined;
+  let overlaysSkipped: number | undefined;
+  let overlaysError: string | undefined;
+  if (input.show_overlays && width && height) {
+    const queueForOverlays = activeViewUUID ? viewerQueues.get(activeViewUUID) : undefined;
+    if (!queueForOverlays) {
+      overlaysError = 'no_active_viewer';
+      overlaysRendered = 0;
+      overlaysSkipped = 0;
+    } else {
+      const overlays = queueForOverlays.activeOverlays;
+      const cropRect = computeCropRect(iiifRegion, width, height);
+      if (overlays.length > 0 && cropRect) {
+        try {
+          const composite = await compositeOverlays(imageBuffer, overlays, { rect: cropRect, imageWidth: width, imageHeight: height });
+          imageBuffer = composite.buffer;
+          image = { base64: imageBuffer.toString('base64'), mimeType: composite.mimeType };
+          overlaysRendered = composite.rendered;
+          overlaysSkipped = composite.skipped;
+          cropPixelWidth = composite.width;
+          cropPixelHeight = composite.height;
+        } catch (err) {
+          // Non-fatal: return the plain crop and flag so the failure isn't
+          // indistinguishable from "all overlays fell outside".
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn(`[globalise_inspect_page_image] overlay composite failed: ${message}`);
+          overlaysError = 'compositor_failed';
+          overlaysRendered = 0;
+          overlaysSkipped = overlays.length;
+        }
+      } else {
+        overlaysRendered = 0;
+        overlaysSkipped = 0;
+      }
+    }
   }
 
-  // 11. Caption (rijksmuseum format, GLOBALISE fields).
+  // 10b. Actual crop pixel dimensions (fallback when the composite path didn't
+  //      run or didn't expose dims). Non-fatal — dims stay undefined.
+  if (cropPixelWidth == null || cropPixelHeight == null) {
+    try {
+      ({ width: cropPixelWidth, height: cropPixelHeight } = await readImageDimensions(imageBuffer));
+    } catch {
+      // keep dims undefined
+    }
+  }
+
+  // 11. Auto-navigate the open viewer to the inspected region (plan 021):
+  //     a non-full region + a live viewer + navigateViewer (default true).
+  let viewerNavigated = false;
+  if (input.navigateViewer && activeViewUUID && iiifRegion !== 'full') {
+    const queue = viewerQueues.get(activeViewUUID);
+    if (queue) {
+      queue.commands.push({ action: 'navigate', region: iiifRegion });
+      queue.lastAccess = Date.now();
+      viewerNavigated = true;
+    }
+  }
+
+  // 12. Caption (rijksmuseum format, GLOBALISE fields).
   const regionLabel = input.region === 'full' ? 'full page' : `region ${input.region}`;
   const clampNote = effectiveSize < input.size ? ` (clamped from ${input.size}px — upscaling not supported)` : '';
   const captionParts = [
@@ -180,10 +273,16 @@ export async function inspectPageImage(
   if (cropPixelWidth && cropPixelHeight) {
     captionParts.push(`| crop ${cropPixelWidth}×${cropPixelHeight}px`);
   }
+  if (viewerNavigated) captionParts.push('| viewer navigated');
+  else if (activeViewUUID) captionParts.push(`| viewer open (${activeViewUUID.slice(0, 8)})`);
+  if (overlaysRendered != null) {
+    const errNote = overlaysError ? ` (${overlaysError})` : '';
+    captionParts.push(`| overlays: ${overlaysRendered} rendered, ${overlaysSkipped} skipped${errNote}`);
+  }
   captionParts.push(`| full page: ${VIEWER_URL_PREFIX}${documentUrn}`);
   const caption = captionParts.join(' ');
 
-  // 12. Structured meta.
+  // 13. Structured meta.
   const meta: z.infer<typeof inspectPageImageOutputSchema> = {
     documentId: documentUrn,
     inventory: inventoryNumber,
@@ -199,6 +298,11 @@ export async function inspectPageImage(
     quality: input.quality,
     fetchTimeMs,
     viewerUrl: `${VIEWER_URL_PREFIX}${documentUrn}`,
+    viewUUID: activeViewUUID,
+    viewerNavigated: viewerNavigated || undefined,
+    overlaysRendered,
+    overlaysSkipped,
+    overlaysError,
   };
 
   return { ok: true, image, meta, caption };
