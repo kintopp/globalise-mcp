@@ -20,7 +20,10 @@ import { viewerQueues, ACTIVE_OVERLAYS_CAP, type ViewerCommand } from '../utils/
 export const navigateViewerInputSchema = z.object({
   viewUUID: z.string().describe('Viewer UUID from a prior globalise_view_document_ui call'),
   commands: z.array(z.object({
-    action: z.enum(['navigate', 'add_overlay', 'clear_overlays']),
+    action: z.enum(['navigate', 'add_overlay', 'clear_overlays']).describe(
+      "Command type and its minimal valid shape: 'navigate' → needs region; " +
+      "'add_overlay' → needs region, plus optional label + color; " +
+      "'clear_overlays' → no other fields."),
     region: z.string().optional().describe("IIIF region (required for navigate/add_overlay): 'full', 'square', 'pct:x,y,w,h', 'crop_pixels:x,y,w,h', or 'x,y,w,h'"),
     relativeTo: z.string().optional().describe(
       "Crop region from a prior globalise_inspect_page_image call. When provided, " +
