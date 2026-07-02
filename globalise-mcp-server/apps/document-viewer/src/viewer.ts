@@ -54,6 +54,16 @@ let viewerNeedsRebuild = false;  // read by swapDocument's guard; SET only by th
 let openSeq = 0;                 // bumped before every open; lets a late failure tell whether it is still current
 let pendingOpenFailed: (() => void) | null = null; // the current open's failure handler (held by reference so it can be removed before the next open is armed)
 
+// Selection mode state (user-highlight → chat region token; plan 020)
+let selectMode = false;
+let selectionTracker: OpenSeadragon.MouseTracker | null = null;
+let dragStart: OpenSeadragon.Point | null = null;
+let selectionOverlay: HTMLDivElement | null = null;
+let userHighlightEl: HTMLDivElement | null = null;
+
+const HIGHLIGHT_STROKE = 'rgba(59,130,246,0.8)';
+const HIGHLIGHT_FILL = 'rgba(59,130,246,0.12)';
+
 // Initialize the MCP App with capabilities.
 //
 // The view exposes no app-side tools (no app.registerTool calls), so it must
@@ -176,6 +186,8 @@ app.onhostcontextchanged = applyHostContext;
  * Handle app teardown - return viewer state
  */
 app.onteardown = async () => {
+  teardownSelectionTracker();
+
   // Return current viewer state for potential restoration
   const state: Record<string, unknown> = {};
 
@@ -249,6 +261,7 @@ function renderDocument(doc: DocumentData): void {
                 <div class="shortcut-row"><kbd>r</kbd> / <kbd>&#8679;R</kbd><span>Rotate left / right</span></div>
                 <div class="shortcut-row"><kbd>k</kbd><span>Return to opened page</span></div>
                 <div class="shortcut-row"><kbd>f</kbd><span>Full-screen</span></div>
+                <div class="shortcut-row"><kbd>i</kbd><span>Select region (drag a box for the assistant to inspect)</span></div>
                 <div class="shortcut-row"><kbd>?</kbd><span>This help</span></div>
                 <div class="shortcut-row"><kbd>Esc</kbd><span>Close this help</span></div>
               </div>
@@ -261,6 +274,7 @@ function renderDocument(doc: DocumentData): void {
             <button id="reset-view" title="Reset View (0)">Reset</button>
             <button id="prev-page" title="Previous page (j)">&#9664;</button>
             <button id="next-page" title="Next page (l)">&#9654;</button>
+            <button id="select-mode" title="Select region (i)">&#9744;</button>
           </div>
         </div>
 
@@ -325,6 +339,13 @@ async function swapDocument(data: DocumentData): Promise<void> {
   transcriptionEl.innerHTML = renderTranscription(data.transcription, data.highlight);
 
   pageInfoEl.textContent = pageInfoText(data);
+
+  // The drawn highlight belongs to the previous page — clear it. Select mode
+  // itself survives the in-place swap (rijksmuseum parity: the MouseTracker
+  // rides the persistent OSD canvas).
+  clearUserHighlight();
+  removeSelectionPreview();
+  dragStart = null;
 
   const prevBtn = document.getElementById('prev-page') as HTMLButtonElement | null;
   const nextBtn = document.getElementById('next-page') as HTMLButtonElement | null;
@@ -416,6 +437,8 @@ function armOpenFailed(seq: number, imageUrl: string): void {
 async function initializeImageViewer(imageUrl: string): Promise<void> {
   // Destroy previous viewer if exists
   if (viewer) {
+    teardownSelectionTracker();   // tracker holds the old canvas
+    selectMode = false;           // fresh viewer starts in nav mode (button re-renders inactive)
     viewer.destroy();
     viewer = null;
   }
@@ -531,12 +554,208 @@ function rotateImage(degrees: number): void {
 }
 
 /**
- * Reset view to default (fit to width, no rotation)
+ * Reset view to default (fit to width, no rotation). Also the explicit way
+ * out of select mode, and clears any drawn highlight (rijksmuseum parity).
  */
 function resetView(): void {
   if (!viewer) return;
   viewer.viewport.setRotation(0);
   viewer.viewport.goHome();
+  clearUserHighlight();
+  if (selectMode) toggleSelectMode();
+}
+
+// ── Selection mode ──
+//
+// A select-mode toggle (☐ button + 'i' key) lets the user drag a box over the
+// scan; on release the region is converted to an IIIF `pct:x,y,w,h` string
+// and dropped into the chat as a `[Highlight: region …]` user message (via
+// app.sendMessage, falling back to app.updateModelContext). No image moves on
+// this path — only coordinates. The assistant then calls
+// globalise_inspect_page_image with that documentId + region to fetch the
+// actual crop. Ported from rijksmuseum-mcp-plus/apps/artwork-viewer/src/viewer.ts
+// (plan 020) — see that file for the reference implementation this mirrors.
+
+function toggleSelectMode(): void {
+  if (!viewer) return;
+  selectMode = !selectMode;
+  viewer.setMouseNavEnabled(!selectMode);
+  updateSelectButton();
+  if (selectMode) {
+    setupSelectionTracker();
+  } else {
+    teardownSelectionTracker();
+  }
+}
+
+function updateSelectButton(): void {
+  const btn = document.getElementById('select-mode');
+  if (btn) {
+    btn.textContent = '☐';
+    btn.title = selectMode ? 'Exit select mode (i)' : 'Select region (i)';
+    btn.classList.toggle('active', selectMode);
+  }
+  const canvas = document.getElementById('openseadragon-viewer');
+  if (canvas) canvas.style.cursor = selectMode ? 'crosshair' : '';
+}
+
+function setupSelectionTracker(): void {
+  if (!viewer || selectionTracker) return;
+  selectionTracker = new OpenSeadragon.MouseTracker({
+    element: viewer.canvas,
+    pressHandler: onSelectionPress,
+    dragHandler: onSelectionDrag,
+    releaseHandler: onSelectionRelease,
+  });
+}
+
+function teardownSelectionTracker(): void {
+  if (selectionTracker) {
+    selectionTracker.destroy();
+    selectionTracker = null;
+  }
+  dragStart = null;
+  removeSelectionPreview();
+}
+
+/** Pure geometry: image-pixel space → clamped rect + pct (ported verbatim). */
+interface SelectionRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  pctX: number;
+  pctY: number;
+  pctW: number;
+  pctH: number;
+}
+
+function computeSelectionRegion(
+  a: OpenSeadragon.Point,
+  b: OpenSeadragon.Point,
+  imgWidth: number,
+  imgHeight: number,
+): SelectionRegion {
+  const x1 = Math.max(0, Math.min(a.x, b.x));
+  const y1 = Math.max(0, Math.min(a.y, b.y));
+  const x2 = Math.min(imgWidth, Math.max(a.x, b.x));
+  const y2 = Math.min(imgHeight, Math.max(a.y, b.y));
+  return {
+    x: x1,
+    y: y1,
+    w: x2 - x1,
+    h: y2 - y1,
+    pctX: (x1 / imgWidth) * 100,
+    pctY: (y1 / imgHeight) * 100,
+    pctW: ((x2 - x1) / imgWidth) * 100,
+    pctH: ((y2 - y1) / imgHeight) * 100,
+  };
+}
+
+function onSelectionPress(event: OpenSeadragon.PointerMouseTrackerEvent): void {
+  if (!viewer || !event.position) return;
+  dragStart = viewer.viewport.viewerElementToImageCoordinates(event.position);
+  removeSelectionPreview();
+}
+
+function onSelectionDrag(event: OpenSeadragon.DragMouseTrackerEvent): void {
+  if (!viewer || !dragStart || !event.position) return;
+  const contentSize = viewer.world.getItemAt(0)?.getContentSize();
+  if (!contentSize || contentSize.x <= 0 || contentSize.y <= 0) return;
+  const dragEnd = viewer.viewport.viewerElementToImageCoordinates(event.position);
+  const r = computeSelectionRegion(dragStart, dragEnd, contentSize.x, contentSize.y);
+  if (r.pctW < 0.5 || r.pctH < 0.5) return; // too small to show
+  const rect = viewer.viewport.imageToViewportRectangle(
+    new OpenSeadragon.Rect(r.x, r.y, r.w, r.h),
+  );
+  showSelectionPreview(rect);
+}
+
+function onSelectionRelease(event: OpenSeadragon.ReleaseMouseTrackerEvent): void {
+  if (!viewer || !dragStart || !event.position) {
+    dragStart = null;
+    return;
+  }
+  const contentSize = viewer.world.getItemAt(0)?.getContentSize();
+  if (!contentSize || contentSize.x <= 0 || contentSize.y <= 0) {
+    dragStart = null;
+    removeSelectionPreview();
+    return;
+  }
+  const dragEnd = viewer.viewport.viewerElementToImageCoordinates(event.position);
+  const r = computeSelectionRegion(dragStart, dragEnd, contentSize.x, contentSize.y);
+  dragStart = null;
+  removeSelectionPreview();
+  if (r.pctW < 1 || r.pctH < 1) return; // too small — accidental click
+
+  clearUserHighlight();
+  const rect = viewer.viewport.imageToViewportRectangle(
+    new OpenSeadragon.Rect(r.x, r.y, r.w, r.h),
+  );
+  userHighlightEl = document.createElement('div');
+  userHighlightEl.className = 'user-highlight';
+  userHighlightEl.style.border = `2px solid ${HIGHLIGHT_STROKE}`;
+  userHighlightEl.style.background = HIGHLIGHT_FILL;
+  userHighlightEl.style.pointerEvents = 'none';
+  const labelEl = document.createElement('span');
+  labelEl.className = 'region-label';
+  labelEl.textContent = 'Highlight';
+  userHighlightEl.appendChild(labelEl);
+  viewer.addOverlay({ element: userHighlightEl, location: rect });
+
+  const region = `pct:${r.pctX.toFixed(1)},${r.pctY.toFixed(1)},${r.pctW.toFixed(1)},${r.pctH.toFixed(1)}`;
+  // Stay in select mode after drawing — user exits explicitly (button, 'i', or Reset).
+  void sendSelectionToChat(region);
+}
+
+/** Dashed live preview via an OSD overlay, updated in place during the drag. */
+function showSelectionPreview(rect: OpenSeadragon.Rect): void {
+  if (!viewer) return;
+  if (!selectionOverlay) {
+    selectionOverlay = document.createElement('div');
+    selectionOverlay.className = 'selection-preview';
+    selectionOverlay.style.border = `2px dashed ${HIGHLIGHT_STROKE}`;
+    selectionOverlay.style.background = HIGHLIGHT_FILL;
+    selectionOverlay.style.pointerEvents = 'none';
+    viewer.addOverlay({ element: selectionOverlay, location: rect });
+  } else {
+    viewer.updateOverlay(selectionOverlay, rect);
+  }
+}
+
+function removeSelectionPreview(): void {
+  if (selectionOverlay && viewer) {
+    viewer.removeOverlay(selectionOverlay);
+    selectionOverlay = null;
+  }
+}
+
+/** Remove the persistent labelled highlight box (if any) and null the reference. */
+function clearUserHighlight(): void {
+  if (userHighlightEl && viewer) {
+    viewer.removeOverlay(userHighlightEl);
+  }
+  userHighlightEl = null;
+}
+
+/**
+ * Drop a `[Highlight: region …]` token into the chat via app.sendMessage,
+ * falling back to app.updateModelContext if the host doesn't support
+ * sendMessage. The bracketed format is load-bearing: the server tool's
+ * description quotes it verbatim (index.ts).
+ */
+async function sendSelectionToChat(region: string): Promise<void> {
+  if (!currentDocument) return;
+  const message = `[Highlight: region ${region} on document ${currentDocument.id}]`;
+  try {
+    await app.sendMessage({ role: 'user', content: [{ type: 'text', text: message }] });
+    app.sendLog({ level: 'info', data: `Highlight sent: ${region}` });
+  } catch {
+    app.updateModelContext({
+      content: [{ type: 'text', text: `Highlight: region ${region} on document ${currentDocument.id}` }],
+    });
+    app.sendLog({ level: 'info', data: `Highlight added to context: ${region}` });
+  }
 }
 
 /**
@@ -634,6 +853,7 @@ function attachEventListeners(doc: DocumentData): void {
   document.getElementById('zoom-in')?.addEventListener('click', zoomIn);
   document.getElementById('zoom-out')?.addEventListener('click', zoomOut);
   document.getElementById('reset-view')?.addEventListener('click', resetView);
+  document.getElementById('select-mode')?.addEventListener('click', toggleSelectMode);
 
   // Help overlay toggle. The overlay lives inside .image-panel, which
   // swapDocument() keeps alive, so this per-render binding survives page
@@ -744,6 +964,9 @@ document.addEventListener('keydown', (e) => {
         void navigateToPage(seedDocumentId);
       }
       break;
+    case 'i':
+      toggleSelectMode();
+      break;
     default:
       return;
   }
@@ -762,7 +985,8 @@ function setupVisibilityObserver(): void {
   visibilityObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
-        viewer?.setMouseNavEnabled(entry.isIntersecting);
+        // select mode keeps OSD mouse nav off while active
+        viewer?.setMouseNavEnabled(entry.isIntersecting && !selectMode);
       }
     },
     { threshold: 0.1 }

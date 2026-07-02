@@ -34,6 +34,11 @@ if (htmlExists) {
   check(html.includes('crossOriginPolicy'), 'viewer sets crossOriginPolicy for CORS-clean navigator tiles (issue #422)');
   // Full-screen 'f' shortcut wires the MCP Apps display-mode toggle.
   check(html.includes('requestDisplayMode'), 'viewer wires the f full-screen toggle (requestDisplayMode)');
+  // Select-region mode (plan 020): the ☐ toolbar button, the chat highlight
+  // token, and the labelled-highlight CSS class must all survive the bundle.
+  check(html.includes('select-mode'), 'select-mode button markup is present (plan 020)');
+  check(html.includes('[Highlight: region '), 'highlight chat-token format is present (plan 020)');
+  check(html.includes('region-label'), 'highlight label-chip class is present (plan 020)');
 }
 
 finish('Viewer build check');

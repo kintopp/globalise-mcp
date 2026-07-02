@@ -5,7 +5,7 @@
   "display_name": "GLOBALISE VOC Transcriptions (thin)",
   "version": "2.6.1",
   "description": "Thin variant: downloads the ~26 MB finding-aid index on first use instead of bundling it. Small install, one-time fetch.",
-  "long_description": "Same seven tools as the full GLOBALISE bundle, but **without** the ~112 MB finding-aid index baked in — so the download is a few MB instead of ~31 MB. (The small commodities and weights & measures glossaries are still bundled.)\n\nThe first time you use **globalise_find_archival_documents**, the server downloads the compressed index (~26 MB `.gz`) from the configured URL, decompresses it into your data directory, and opens it read-only. Every later call reuses the cached copy; the download happens once. Startup and the other six tools (search, retrieve, navigate, view, lookup_commodity, lookup_measure) never wait on it — they call the public GLOBALISE / Nationaal Archief services, or the bundled glossaries, directly.\n\nConfigure the **index download URL** and **data directory** at install time. The default URL points at a local HTTP server (`127.0.0.1:8000`) for testing; for real use, point it at any HTTPS URL that serves `archival-index.sqlite.gz`. No account or credentials are required.",
+  "long_description": "Same eight tools as the full GLOBALISE bundle, but **without** the ~112 MB finding-aid index baked in — so the download is a few MB instead of ~31 MB. (The small commodities and weights & measures glossaries are still bundled.)\n\nThe first time you use **globalise_find_archival_documents**, the server downloads the compressed index (~26 MB `.gz`) from the configured URL, decompresses it into your data directory, and opens it read-only. Every later call reuses the cached copy; the download happens once. Startup and the other six tools (search, retrieve, navigate, view, lookup_commodity, lookup_measure) never wait on it — they call the public GLOBALISE / Nationaal Archief services, or the bundled glossaries, directly.\n\nConfigure the **index download URL** and **data directory** at install time. The default URL points at a local HTTP server (`127.0.0.1:8000`) for testing; for real use, point it at any HTTPS URL that serves `archival-index.sqlite.gz`. No account or credentials are required.",
   "author": {
     "name": "Arno Bosse",
     "url": "https://github.com/kintopp"
@@ -66,6 +66,10 @@
     {
       "name": "globalise_view_document_ui",
       "description": "Open an interactive viewer (IIIF scan image plus transcription, side-by-side) as an MCP App."
+    },
+    {
+      "name": "globalise_inspect_page_image",
+      "description": "Fetch a page scan or a region of it as an image the assistant can read directly (base64 crop via IIIF)."
     },
     {
       "name": "globalise_lookup_commodity",

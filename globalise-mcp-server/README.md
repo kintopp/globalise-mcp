@@ -4,7 +4,7 @@ An MCP server for searching and retrieving ~4.8M transcribed pages from the Dutc
 
 ## Tools
 
-Ask your AI assistant a question in natural language, and will automatically choose and combine the seven tools below to answer (often chaining several together in sequence).
+Ask your AI assistant a question in natural language, and will automatically choose and combine the eight tools below to answer (often chaining several together in sequence).
 
 **`globalise_search_transcriptions`** — Searches the full text of all ~4.8 million transcribed pages for a word or phrase, much like a regular keyword search of a digitised archive, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number or language and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching (the latter helps to catch HTR errors and the inconsistent orthography typical of early-modern Dutch). This also helps address historical variants (the two glossary tools below assist with exactly this).
 
@@ -19,6 +19,8 @@ Ask your AI assistant a question in natural language, and will automatically cho
 **`globalise_lookup_measure`** — Looks up a historical VOC unit of weight, volume, length, or area — some 213 units drawn from a 1764–1771 reference work — and returns its category, its period spelling variants, and the conversion ratios recorded for it. It is deliberately not a conversion calculator: early-modern measures were unstable, so a *bahar* of pepper was not a *bahar* of cloves, and each ratio is tied to the particular place and commodity it was recorded for (given in a context note). Its value lies in recovering the spellings to search for and understanding what a unit meant in a given trade, rather than in converting to modern metric values.
 
 **`globalise_view_document_ui`** — Opens a page in an interactive viewer that sets the zoomable, high-resolution scan of the original manuscript beside its line-numbered transcription, letting you check the machine reading against the original text. Search terms can be highlighted, and selecting a passage in the transcription is a natural way to ask the assistant for a modern rendering of the early-modern Dutch.
+
+**`globalise_inspect_page_image`** — Fetches a page scan, or a region of it, as an image for the assistant itself to look at. In the viewer, press `i` (or the ☐ button) and drag a box over the scan: the assistant receives the coordinates, retrieves that crop of the original image, and can re-transcribe or describe exactly what you marked — a second opinion on the machine transcription for garbled names, numerals, marginalia, or non-Latin scripts. The assistant can also zoom into a page by itself when you ask about a specific detail.
 
 ## Resources
 
@@ -85,8 +87,9 @@ npm run test:live   # Opt-in: live integration tests for search/retrieve/navigat
 `scripts/cli.mjs` (`glob-mcp`) is a headless MCP **client** over this server's stateless tools. A CLI
 query and an LLM query call the *same* `callTool()` on the *same* server, so results are identical — it
 doubles as a `jq`-friendly pipe, an offline debug harness, and an agent bootstrap. JSON-first output:
-list tools → JSONL, single-object tools → one compact JSON; counts/notes go to stderr. The viewer tool
-(`globalise_view_document_ui`) is excluded — it needs the MCP-App iframe and isn't meaningful headless.
+list tools → JSONL, single-object tools → one compact JSON; counts/notes go to stderr. Two tools
+(`globalise_view_document_ui`, `globalise_inspect_page_image`) are excluded — the viewer needs the
+MCP-App iframe, and the image tool returns base64 bytes for the model, which isn't meaningful headless.
 Exit codes: `0` ok · `1` tool/connection error · `2` usage error.
 
 ### Install (CLI-only, via `just`)
