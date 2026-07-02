@@ -21,8 +21,10 @@ export interface HttpServerOptions {
   allowedOrigins?: string[];
   /** Server name reported by /health. */
   name?: string;
-  /** Server version reported by /health and the startup log. */
+  /** Server version reported by /health and the startup log (git-tag derived). */
   version?: string;
+  /** Deployed commit (short SHA) reported by /health. */
+  commit?: string;
   /** Factory producing a fully configured MCP server, called per connection. */
   createServer: () => McpServer;
 }
@@ -34,7 +36,7 @@ export interface HttpServerOptions {
  * every redeploy (CODE-REVIEW finding 5).
  */
 export function createHttpServer(options: HttpServerOptions): Server {
-  const { port = 3000, allowedOrigins = ['*'], name = 'mcp-server', version = 'unknown', createServer } = options;
+  const { port = 3000, allowedOrigins = ['*'], name = 'mcp-server', version = 'unknown', commit = 'unknown', createServer } = options;
 
   const app = express();
 
@@ -60,9 +62,14 @@ export function createHttpServer(options: HttpServerOptions): Server {
 
   app.get('/health', originGuard, (_req: Request, res: Response) => {
     res.json({
-      status: 'healthy',
-      name,
+      status: 'ok',
+      // `server`/`commit` mirror the sibling rijksmuseum-mcp+ health shape so a
+      // single probe reads uniformly across deployments. `version` is the git
+      // tag of the running release; `commit` is the exact deployed SHA (so drift
+      // between a tag and prod's auto-deployed HEAD is visible by comparison).
+      server: name,
       version,
+      commit,
       // Surfaces the runtime the platform actually selected, so the deployed
       // Node version is verifiable via curl (the build pins Node 24 through
       // package.json "engines" + .nvmrc, but Railway's builder ultimately
@@ -133,7 +140,7 @@ export function createHttpServer(options: HttpServerOptions): Server {
   const server = app.listen(port, () => {
     console.error('='.repeat(65));
     console.error('[HTTP] GLOBALISE MCP Server started');
-    console.error(`[HTTP] Version: ${version}`);
+    console.error(`[HTTP] Version: ${version} (commit ${commit})`);
     console.error(`[HTTP] Listening on: http://localhost:${port}`);
     console.error('[HTTP] Endpoints:');
     console.error(`[HTTP]   POST http://localhost:${port}/mcp     (Streamable HTTP, stateless)`);

@@ -8,7 +8,8 @@
     "glob-mcp": "scripts/cli.mjs"
   },
   "scripts": {
-    "build": "npm run build:ui && tsc && npm run ensure:db",
+    "build": "npm run build:ui && tsc && npm run stamp && npm run ensure:db",
+    "stamp": "npx tsx scripts/stamp-build-info.ts",
     "build:ui": "vite build -c apps/document-viewer/vite.config.ts",
     "build:db": "npx tsx scripts/build-archival-db.ts",
     "build:db:commodities": "npx tsx scripts/build-commodities-db.ts",

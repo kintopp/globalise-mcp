@@ -48,9 +48,10 @@ async function main() {
   });
 
   const health = await waitForHealth(10_000);
-  const body = (await health.json()) as { status?: string; version?: string };
-  check(body.status === 'healthy', 'health endpoint responds healthy');
+  const body = (await health.json()) as { status?: string; version?: string; commit?: string };
+  check(body.status === 'ok', 'health endpoint responds ok');
   check(typeof body.version === 'string' && body.version.length > 0, 'health reports a version');
+  check(typeof body.commit === 'string' && body.commit.length > 0, 'health reports a commit');
 
   // Race the clean-exit promise against a hard backstop (the server's internal
   // drain backstop is 10s); on timeout, SIGKILL and fail rather than hang.

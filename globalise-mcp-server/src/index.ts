@@ -64,6 +64,7 @@ import {
   lookupMeasureOutputSchema,
 } from './tools/measures.js';
 import { closeDatabase } from './utils/database.js';
+import { resolveVersion, resolveCommit } from './utils/build-info.js';
 import { ToolError } from './utils/errors.js';
 import { VIEWER_URL_PREFIX } from './utils/api-client.js';
 import { FTS_OPERATORS, FTS_AUTOQUOTE } from './utils/fts.js';
@@ -101,13 +102,14 @@ const __dirname = path.dirname(__filename);
 export const SERVER_NAME = 'globalise-mcp-server';
 
 /**
- * Single source of truth for the version (R15): package.json. Works from
- * both dist/index.js and src/index.ts (tsx) — the package root is one level
- * up either way.
+ * Version + commit reported at /health and as the MCP `version`. The version is
+ * derived from the git tag of a published GitHub release (tag `v1.2.0` → `1.2.0`),
+ * not a hand-bumped package.json — see src/utils/build-info.ts for the full
+ * precedence chain (baked dist stamp → live git → package.json). Both resolvers
+ * take __dirname so they read the right dist/ stamp whether built or run via tsx.
  */
-export const SERVER_VERSION = (
-  JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')) as { version: string }
-).version;
+export const SERVER_VERSION = resolveVersion(__dirname);
+export const SERVER_COMMIT = resolveCommit(__dirname);
 
 /**
  * Structured output gate (R8): outputSchema + structuredContent are on by
@@ -851,7 +853,7 @@ async function main() {
     const port = parseInt(process.env.PORT || '3000', 10);
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 
-    httpServer = createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, createServer });
+    httpServer = createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, commit: SERVER_COMMIT, createServer });
   } else {
     // Stdio transport (default) for Claude Desktop integration
     const server = createServer();
