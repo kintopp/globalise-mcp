@@ -59,10 +59,24 @@ let selectMode = false;
 let selectionTracker: OpenSeadragon.MouseTracker | null = null;
 let dragStart: OpenSeadragon.Point | null = null;
 let selectionOverlay: HTMLDivElement | null = null;
-let userHighlightEl: HTMLDivElement | null = null;
+let userHighlightEl: HTMLElement | null = null;
 
 const HIGHLIGHT_STROKE = 'rgba(59,130,246,0.8)';
 const HIGHLIGHT_FILL = 'rgba(59,130,246,0.12)';
+
+// Reverse-channel state (LLM→viewer commands; plan 021). The view tool mints a
+// viewUUID + server-side command queue; this iframe polls
+// globalise_poll_viewer_commands and executes drained commands (navigate to a
+// region, add/clear labelled overlays). Only coordinates cross the wire.
+let viewUUID: string | null = null;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let pollGen = 0;
+const overlayElements: HTMLElement[] = [];
+
+// Model-drawn overlays default to orange; the user's own highlight keeps its
+// blue HIGHLIGHT_STROKE/FILL (passed explicitly).
+const OVERLAY_STROKE = 'rgba(255,165,0,0.9)';
+const OVERLAY_FILL = 'rgba(255,165,0,0.12)';
 
 // Initialize the MCP App with capabilities.
 //
@@ -143,12 +157,26 @@ app.ontoolresult = (result) => {
   if (data) {
     if (!seedDocumentId) seedDocumentId = data.id;
     currentDocument = data;
+    adoptViewSession(data);
     renderDocument(data);
     updateModelContext(data);
   } else {
     showError('Error parsing document', 'Could not parse document data from tool result');
   }
 };
+
+/**
+ * Adopt the viewer session (plan 021): when the server returns a viewUUID that
+ * differs from the one we're tracking, store it and (re)start the command poll.
+ * A fresh mint or a first open both trigger polling; an in-place page swap that
+ * preserved the UUID leaves the existing poll untouched.
+ */
+function adoptViewSession(data: DocumentData): void {
+  if (data.viewUUID && data.viewUUID !== viewUUID) {
+    viewUUID = data.viewUUID;
+    startPolling();
+  }
+}
 
 /**
  * Apply host context settings (theme, styles, safe areas, display mode)
@@ -186,6 +214,7 @@ app.onhostcontextchanged = applyHostContext;
  * Handle app teardown - return viewer state
  */
 app.onteardown = async () => {
+  stopPolling();
   teardownSelectionTracker();
 
   // Return current viewer state for potential restoration
@@ -340,10 +369,11 @@ async function swapDocument(data: DocumentData): Promise<void> {
 
   pageInfoEl.textContent = pageInfoText(data);
 
-  // The drawn highlight belongs to the previous page — clear it. Select mode
-  // itself survives the in-place swap (rijksmuseum parity: the MouseTracker
-  // rides the persistent OSD canvas).
-  clearUserHighlight();
+  // All overlays (the user highlight AND any model-drawn boxes) belong to the
+  // previous page — clear them. The server also cleared its shadow overlay list
+  // on remount (viewUUID preserved). Select mode itself survives the in-place
+  // swap (rijksmuseum parity: the MouseTracker rides the persistent OSD canvas).
+  clearAllOverlays();
   removeSelectionPreview();
   dragStart = null;
 
@@ -439,6 +469,7 @@ async function initializeImageViewer(imageUrl: string): Promise<void> {
   if (viewer) {
     teardownSelectionTracker();   // tracker holds the old canvas
     selectMode = false;           // fresh viewer starts in nav mode (button re-renders inactive)
+    overlayElements.length = 0;   // overlays died with the destroyed canvas
     viewer.destroy();
     viewer = null;
   }
@@ -561,6 +592,7 @@ function resetView(): void {
   if (!viewer) return;
   viewer.viewport.setRotation(0);
   viewer.viewport.goHome();
+  clearAllOverlays();
   clearUserHighlight();
   if (selectMode) toggleSelectMode();
 }
@@ -689,21 +721,11 @@ function onSelectionRelease(event: OpenSeadragon.ReleaseMouseTrackerEvent): void
   if (r.pctW < 1 || r.pctH < 1) return; // too small — accidental click
 
   clearUserHighlight();
-  const rect = viewer.viewport.imageToViewportRectangle(
-    new OpenSeadragon.Rect(r.x, r.y, r.w, r.h),
-  );
-  userHighlightEl = document.createElement('div');
-  userHighlightEl.className = 'user-highlight';
-  userHighlightEl.style.border = `2px solid ${HIGHLIGHT_STROKE}`;
-  userHighlightEl.style.background = HIGHLIGHT_FILL;
-  userHighlightEl.style.pointerEvents = 'none';
-  const labelEl = document.createElement('span');
-  labelEl.className = 'region-label';
-  labelEl.textContent = 'Highlight';
-  userHighlightEl.appendChild(labelEl);
-  viewer.addOverlay({ element: userHighlightEl, location: rect });
-
   const region = `pct:${r.pctX.toFixed(1)},${r.pctY.toFixed(1)},${r.pctW.toFixed(1)},${r.pctH.toFixed(1)}`;
+  // Draw the persistent labelled highlight via the shared overlay system
+  // (plan 021 absorbed 020's inline build). It uses the blue HIGHLIGHT colors
+  // to distinguish the user's own mark from model-drawn orange overlays.
+  userHighlightEl = addRegionOverlay(region, 'Highlight', HIGHLIGHT_STROKE, HIGHLIGHT_FILL);
   // Stay in select mode after drawing — user exits explicitly (button, 'i', or Reset).
   void sendSelectionToChat(region);
 }
@@ -730,10 +752,13 @@ function removeSelectionPreview(): void {
   }
 }
 
-/** Remove the persistent labelled highlight box (if any) and null the reference. */
+/** Remove the persistent labelled highlight box (if any) from the viewer AND
+ *  the shared overlay list, then null the reference (rijksmuseum parity). */
 function clearUserHighlight(): void {
   if (userHighlightEl && viewer) {
     viewer.removeOverlay(userHighlightEl);
+    const idx = overlayElements.indexOf(userHighlightEl);
+    if (idx !== -1) overlayElements.splice(idx, 1);
   }
   userHighlightEl = null;
 }
@@ -758,6 +783,172 @@ async function sendSelectionToChat(region: string): Promise<void> {
   }
 }
 
+// ── Reverse channel: command polling + model-drawn overlays (plan 021) ──
+//
+// The view tool mints a viewUUID and a server-side command queue; this iframe
+// polls globalise_poll_viewer_commands and executes drained commands. Ported
+// from rijksmuseum-mcp-plus/apps/artwork-viewer/src/viewer.ts.
+
+interface ViewerCommand {
+  action: 'navigate' | 'add_overlay' | 'clear_overlays';
+  region?: string;
+  label?: string;
+  color?: string;
+}
+
+// Adaptive polling. Each poll is a call_mcp round-trip the host records as a
+// (hidden, app-only) transcript message — at a fixed 2 Hz that meant hundreds
+// per session, which ChatGPT's renderer re-walks on every re-render. So poll
+// fast right after a (re)mount, then back off to POLL_SLOW_MS once a run of
+// polls comes back empty; any command received, or a fresh mount (startPolling
+// re-runs), snaps it back to fast. Do NOT "simplify" this to a fixed interval.
+const POLL_FAST_MS = 1000;
+const POLL_SLOW_MS = 4000;
+const POLL_EMPTY_RUNS_BEFORE_SLOW = 8;
+
+function startPolling(): void {
+  stopPolling();
+  const caps = app.getHostCapabilities();
+  if (!caps?.serverTools) {
+    app.sendLog({ level: 'info', data: 'Polling skipped: serverTools not supported' });
+    return;
+  }
+  const gen = ++pollGen;
+  pollTimer = setTimeout(() => { void pollForCommands(gen, 0); }, POLL_FAST_MS);
+  app.sendLog({ level: 'info', data: `Polling started for ${viewUUID}` });
+}
+
+function stopPolling(): void {
+  pollGen++; // invalidate any in-flight poll so it won't reschedule itself
+  if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+}
+
+async function pollForCommands(gen: number, emptyRuns: number): Promise<void> {
+  if (gen !== pollGen || !viewUUID) return;
+  let gotCommands = false;
+  try {
+    const result = await app.callServerTool({
+      name: 'globalise_poll_viewer_commands',
+      arguments: { viewUUID },
+    });
+    if (!result.isError) {
+      const data = result.structuredContent as { commands?: ViewerCommand[] } | undefined;
+      let commands: ViewerCommand[] = [];
+      if (data?.commands) {
+        commands = data.commands;
+      } else {
+        const textContent = result.content?.find((b: { type: string }) => b.type === 'text') as { text: string } | undefined;
+        if (textContent) {
+          try { commands = JSON.parse(textContent.text)?.commands ?? []; } catch { /* not JSON */ }
+        }
+      }
+      if (commands.length) { processCommands(commands); gotCommands = true; }
+    }
+  } catch { /* retry on next tick */ }
+  if (gen !== pollGen || !viewUUID) return; // superseded or torn down mid-poll
+  const nextEmptyRuns = gotCommands ? 0 : emptyRuns + 1;
+  const delay = nextEmptyRuns >= POLL_EMPTY_RUNS_BEFORE_SLOW ? POLL_SLOW_MS : POLL_FAST_MS;
+  pollTimer = setTimeout(() => { void pollForCommands(gen, nextEmptyRuns); }, delay);
+}
+
+function processCommands(commands: ViewerCommand[]): void {
+  for (const cmd of commands) {
+    switch (cmd.action) {
+      case 'navigate':
+        if (cmd.region) navigateToRegion(cmd.region);
+        break;
+      case 'add_overlay':
+        if (cmd.region) addRegionOverlay(cmd.region, cmd.label, cmd.color);
+        break;
+      case 'clear_overlays':
+        clearAllOverlays();
+        break;
+    }
+  }
+}
+
+function navigateToRegion(region: string): void {
+  if (region === 'full') { viewer?.viewport.goHome(); return; }
+  const rect = iiifRegionToViewportRect(region);
+  if (rect) viewer!.viewport.fitBounds(rect);
+}
+
+/** Resolve an IIIF region string to an OSD viewport rect. Image dims come from
+ *  the server (currentDocument.imageWidth/Height), falling back to OSD's own
+ *  content size for the single-image / no-dims case. */
+function iiifRegionToViewportRect(region: string): OpenSeadragon.Rect | null {
+  if (!viewer) return null;
+  const contentSize = viewer.world.getItemAt(0)?.getContentSize();
+  const width = currentDocument?.imageWidth ?? contentSize?.x;
+  const height = currentDocument?.imageHeight ?? contentSize?.y;
+  if (!width || !height) return null;
+
+  const pctMatch = region.match(/^pct:([0-9.]+),([0-9.]+),([0-9.]+),([0-9.]+)$/);
+  if (pctMatch) {
+    const [, px, py, pw, ph] = pctMatch.map(Number);
+    return viewer.viewport.imageToViewportRectangle(new OpenSeadragon.Rect(
+      (px / 100) * width,
+      (py / 100) * height,
+      (pw / 100) * width,
+      (ph / 100) * height,
+    ));
+  }
+
+  const pxMatch = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
+  if (pxMatch) {
+    const [, x, y, w, h] = pxMatch.map(Number);
+    return viewer.viewport.imageToViewportRectangle(new OpenSeadragon.Rect(x, y, w, h));
+  }
+
+  if (region === 'square') {
+    const side = Math.min(width, height);
+    const sx = (width - side) / 2;
+    const sy = (height - side) / 2;
+    return viewer.viewport.imageToViewportRectangle(new OpenSeadragon.Rect(sx, sy, side, side));
+  }
+
+  return null;
+}
+
+/** Draw a bordered (optionally labelled) overlay box for an IIIF region and
+ *  track it in overlayElements. Returns the element (or null if the region
+ *  can't be resolved). */
+function addRegionOverlay(region: string, label?: string, color?: string, fill?: string): HTMLElement | null {
+  const rect = iiifRegionToViewportRect(region);
+  if (!rect || !viewer) return null;
+
+  const el = document.createElement('div');
+  el.className = 'region-overlay';
+  const c = color || OVERLAY_STROKE;
+  el.style.border = `2px solid ${c}`;
+  el.style.pointerEvents = 'none';
+  if (fill) {
+    el.style.background = fill;
+  } else {
+    // Derive a low-opacity fill from an rgba color; fixed fallback otherwise.
+    const rgbaMatch = c.match(/^(rgba?\([^)]+,\s*)[0-9.]+\)$/);
+    el.style.background = rgbaMatch ? `${rgbaMatch[1]}0.1)` : OVERLAY_FILL;
+  }
+
+  if (label) {
+    const labelEl = document.createElement('span');
+    labelEl.className = 'region-label';
+    labelEl.textContent = label;
+    el.appendChild(labelEl);
+  }
+
+  viewer.addOverlay({ element: el, location: rect });
+  overlayElements.push(el);
+  return el;
+}
+
+/** Remove every tracked overlay (model-drawn AND the user highlight). */
+function clearAllOverlays(): void {
+  for (const el of overlayElements) viewer?.removeOverlay(el);
+  overlayElements.length = 0;
+  userHighlightEl = null;
+}
+
 /**
  * Load an adjacent (or the seed) scan into the viewer by calling the server's
  * view tool directly and re-rendering through the same parse path the host-driven
@@ -776,7 +967,10 @@ async function navigateToPage(targetId: string | null | undefined): Promise<void
   try {
     const result = await app.callServerTool({
       name: 'globalise_view_document_ui',
-      arguments: { documentId: targetId },
+      // Pass the stored viewUUID so the server preserves this session across
+      // the in-place page swap (remount semantics) — polling continues
+      // untouched, only the shadow overlays are cleared server-side.
+      arguments: { documentId: targetId, ...(viewUUID && { viewUUID }) },
     });
     if (result.isError) {
       const first = result.content?.[0];
@@ -789,6 +983,7 @@ async function navigateToPage(targetId: string | null | undefined): Promise<void
       // Set currentDocument BEFORE the await so the now-currentDocument-reading
       // button/keyboard handlers see the new page immediately.
       currentDocument = data;
+      adoptViewSession(data);
       await swapDocument(data);
       updateModelContext(data);
     } else {

@@ -39,6 +39,10 @@ if (htmlExists) {
   check(html.includes('select-mode'), 'select-mode button markup is present (plan 020)');
   check(html.includes('[Highlight: region '), 'highlight chat-token format is present (plan 020)');
   check(html.includes('region-label'), 'highlight label-chip class is present (plan 020)');
+  // Reverse channel (plan 021): the poll-tool name and the clear_overlays
+  // command handling must survive the bundle build.
+  check(html.includes('globalise_poll_viewer_commands'), 'poll-tool name is present (plan 021)');
+  check(html.includes('clear_overlays'), 'clear_overlays command handling is present (plan 021)');
 }
 
 finish('Viewer build check');
