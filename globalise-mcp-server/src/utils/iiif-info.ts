@@ -3,8 +3,8 @@
  *
  * Extracted from `page-image.ts` so BOTH the inspect tool and the view tool
  * resolve a page's native pixel dimensions the same way (the view tool needs
- * them to seed the viewer session's imageWidth/imageHeight for overlay
- * projection). The info.json responses are tiny and immutable per scan, so the
+ * them to seed the viewer session's imageWidth/imageHeight for region
+ * coordinate projection). The info.json responses are tiny and immutable per scan, so the
  * cache is aggressive; a fetch failure degrades gracefully to `undefined` —
  * callers keep working without dims (bounds checks + clamps handle it).
  */

@@ -60,8 +60,8 @@ const OPEN_WORLD_BY_TOOL: Record<string, boolean> = {
 };
 
 // readOnlyHint by tool: true for every tool EXCEPT the two viewer-session tools
-// (plan 021), which mutate the in-memory command queue (add/clear overlays,
-// drain the queue) and so are deliberately NOT read-only (rijksmuseum ANN_VIEWER
+// (plan 021), which mutate the in-memory command queue (queue and drain
+// navigate commands) and so are deliberately NOT read-only (rijksmuseum ANN_VIEWER
 // parity). This per-tool map replaces the old blanket readOnly assertion.
 const READ_ONLY_BY_TOOL: Record<string, boolean> = {
   globalise_search_transcriptions: true,

@@ -73,7 +73,7 @@
     },
     {
       "name": "globalise_navigate_viewer",
-      "description": "Steer an open viewer: zoom to a region or draw labelled overlay boxes onto the scan (append-only; needs the viewUUID)."
+      "description": "Zoom/pan an open viewer to a region (needs the viewUUID from globalise_view_document_ui)."
     },
     {
       "name": "globalise_poll_viewer_commands",

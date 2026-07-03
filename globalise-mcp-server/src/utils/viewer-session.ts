@@ -17,25 +17,16 @@
 
 /** A command the iframe drains and executes; also the navigate_viewer input shape. */
 export interface ViewerCommand {
-  action: 'navigate' | 'add_overlay' | 'clear_overlays';
+  action: 'navigate';
   region?: string;
   relativeTo?: string;
   relativeToSize?: CropLocalSize;
-  label?: string;
-  color?: string;
 }
 
 /** Actual pixel dimensions of an inspected crop (for crop-local coordinates). */
 export interface CropLocalSize {
   width: number;
   height: number;
-}
-
-/** A shadow copy of an overlay the model has placed, for the show_overlays composite. */
-export interface OverlayEntry {
-  label?: string;
-  region: string;
-  color?: string;
 }
 
 export interface ViewerQueue {
@@ -46,7 +37,6 @@ export interface ViewerQueue {
   documentId: string;
   imageWidth?: number;
   imageHeight?: number;
-  activeOverlays: OverlayEntry[];
 }
 
 /**
@@ -65,6 +55,3 @@ export function sweepTtlMap<T extends { lastAccess: number }>(map: Map<string, T
 
 export const viewerQueues = new Map<string, ViewerQueue>();
 sweepTtlMap(viewerQueues);
-
-/** Cap the shadow overlay list — the compositor iterates all entries per show_overlays call. */
-export const ACTIVE_OVERLAYS_CAP = 64;

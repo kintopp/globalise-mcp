@@ -66,17 +66,12 @@ const HIGHLIGHT_FILL = 'rgba(59,130,246,0.12)';
 
 // Reverse-channel state (LLM→viewer commands; plan 021). The view tool mints a
 // viewUUID + server-side command queue; this iframe polls
-// globalise_poll_viewer_commands and executes drained commands (navigate to a
-// region, add/clear labelled overlays). Only coordinates cross the wire.
+// globalise_poll_viewer_commands and executes drained commands (zoom/pan to a
+// region). Only coordinates cross the wire.
 let viewUUID: string | null = null;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let pollGen = 0;
 const overlayElements: HTMLElement[] = [];
-
-// Model-drawn overlays default to orange; the user's own highlight keeps its
-// blue HIGHLIGHT_STROKE/FILL (passed explicitly).
-const OVERLAY_STROKE = 'rgba(255,165,0,0.9)';
-const OVERLAY_FILL = 'rgba(255,165,0,0.12)';
 
 // Initialize the MCP App with capabilities.
 //
@@ -369,10 +364,9 @@ async function swapDocument(data: DocumentData): Promise<void> {
 
   pageInfoEl.textContent = pageInfoText(data);
 
-  // All overlays (the user highlight AND any model-drawn boxes) belong to the
-  // previous page — clear them. The server also cleared its shadow overlay list
-  // on remount (viewUUID preserved). Select mode itself survives the in-place
-  // swap (rijksmuseum parity: the MouseTracker rides the persistent OSD canvas).
+  // The user highlight belongs to the previous page — clear it. Select mode
+  // itself survives the in-place swap (rijksmuseum parity: the MouseTracker
+  // rides the persistent OSD canvas).
   clearAllOverlays();
   removeSelectionPreview();
   dragStart = null;
@@ -722,9 +716,8 @@ function onSelectionRelease(event: OpenSeadragon.ReleaseMouseTrackerEvent): void
 
   clearUserHighlight();
   const region = `pct:${r.pctX.toFixed(1)},${r.pctY.toFixed(1)},${r.pctW.toFixed(1)},${r.pctH.toFixed(1)}`;
-  // Draw the persistent labelled highlight via the shared overlay system
-  // (plan 021 absorbed 020's inline build). It uses the blue HIGHLIGHT colors
-  // to distinguish the user's own mark from model-drawn orange overlays.
+  // Draw the persistent labelled highlight via the shared region-box helper
+  // (plan 021 absorbed 020's inline build), in the blue HIGHLIGHT colors.
   userHighlightEl = addRegionOverlay(region, 'Highlight', HIGHLIGHT_STROKE, HIGHLIGHT_FILL);
   // Stay in select mode after drawing — user exits explicitly (button, 'i', or Reset).
   void sendSelectionToChat(region);
@@ -783,17 +776,15 @@ async function sendSelectionToChat(region: string): Promise<void> {
   }
 }
 
-// ── Reverse channel: command polling + model-drawn overlays (plan 021) ──
+// ── Reverse channel: command polling (plan 021) ──
 //
 // The view tool mints a viewUUID and a server-side command queue; this iframe
 // polls globalise_poll_viewer_commands and executes drained commands. Ported
 // from rijksmuseum-mcp-plus/apps/artwork-viewer/src/viewer.ts.
 
 interface ViewerCommand {
-  action: 'navigate' | 'add_overlay' | 'clear_overlays';
+  action: 'navigate';
   region?: string;
-  label?: string;
-  color?: string;
 }
 
 // Adaptive polling. Each poll is a call_mcp round-trip the host records as a
@@ -853,17 +844,7 @@ async function pollForCommands(gen: number, emptyRuns: number): Promise<void> {
 
 function processCommands(commands: ViewerCommand[]): void {
   for (const cmd of commands) {
-    switch (cmd.action) {
-      case 'navigate':
-        if (cmd.region) navigateToRegion(cmd.region);
-        break;
-      case 'add_overlay':
-        if (cmd.region) addRegionOverlay(cmd.region, cmd.label, cmd.color);
-        break;
-      case 'clear_overlays':
-        clearAllOverlays();
-        break;
-    }
+    if (cmd.action === 'navigate' && cmd.region) navigateToRegion(cmd.region);
   }
 }
 
@@ -910,16 +891,17 @@ function iiifRegionToViewportRect(region: string): OpenSeadragon.Rect | null {
   return null;
 }
 
-/** Draw a bordered (optionally labelled) overlay box for an IIIF region and
- *  track it in overlayElements. Returns the element (or null if the region
- *  can't be resolved). */
+/** Draw a bordered (optionally labelled) box for an IIIF region and track it in
+ *  overlayElements. Backs the user's drag-select highlight (the LLM-overlay
+ *  command path was removed). Returns the element (or null if the region can't
+ *  be resolved). */
 function addRegionOverlay(region: string, label?: string, color?: string, fill?: string): HTMLElement | null {
   const rect = iiifRegionToViewportRect(region);
   if (!rect || !viewer) return null;
 
   const el = document.createElement('div');
   el.className = 'region-overlay';
-  const c = color || OVERLAY_STROKE;
+  const c = color || HIGHLIGHT_STROKE;
   el.style.border = `2px solid ${c}`;
   el.style.pointerEvents = 'none';
   if (fill) {
@@ -927,7 +909,7 @@ function addRegionOverlay(region: string, label?: string, color?: string, fill?:
   } else {
     // Derive a low-opacity fill from an rgba color; fixed fallback otherwise.
     const rgbaMatch = c.match(/^(rgba?\([^)]+,\s*)[0-9.]+\)$/);
-    el.style.background = rgbaMatch ? `${rgbaMatch[1]}0.1)` : OVERLAY_FILL;
+    el.style.background = rgbaMatch ? `${rgbaMatch[1]}0.1)` : HIGHLIGHT_FILL;
   }
 
   if (label) {
@@ -942,7 +924,7 @@ function addRegionOverlay(region: string, label?: string, color?: string, fill?:
   return el;
 }
 
-/** Remove every tracked overlay (model-drawn AND the user highlight). */
+/** Remove every tracked box (the user highlight). */
 function clearAllOverlays(): void {
   for (const el of overlayElements) viewer?.removeOverlay(el);
   overlayElements.length = 0;
@@ -969,7 +951,7 @@ async function navigateToPage(targetId: string | null | undefined): Promise<void
       name: 'globalise_view_document_ui',
       // Pass the stored viewUUID so the server preserves this session across
       // the in-place page swap (remount semantics) — polling continues
-      // untouched, only the shadow overlays are cleared server-side.
+      // untouched.
       arguments: { documentId: targetId, ...(viewUUID && { viewUUID }) },
     });
     if (result.isError) {

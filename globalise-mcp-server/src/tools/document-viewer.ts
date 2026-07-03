@@ -27,7 +27,7 @@ export const viewDocumentUiInputSchema = z.object({
   highlightTerms: z.array(z.string()).optional().default([])
     .describe('Search terms to highlight in the transcription'),
   viewUUID: z.string().optional()
-    .describe('Existing viewer session to preserve (in-viewer page navigation). When live, the same UUID is kept: overlays cleared, page swapped. Omit on first open.'),
+    .describe('Existing viewer session to preserve (in-viewer page navigation). When live, the same UUID is kept and the page is swapped. Omit on first open.'),
 });
 
 export type ViewDocumentUiInput = z.infer<typeof viewDocumentUiInputSchema>;
@@ -80,7 +80,7 @@ export const viewDocumentUiOutputSchema = z.object({
   /** Viewer session for the LLM→viewer reverse channel (plan 021) */
   viewUUID: z.string().optional()
     .describe('Viewer session UUID — pass to globalise_navigate_viewer to steer this open viewer.'),
-  imageWidth: z.number().optional().describe("The scan's native pixel width (for overlay coordinate projection)"),
+  imageWidth: z.number().optional().describe("The scan's native pixel width (for region coordinate projection)"),
   imageHeight: z.number().optional().describe("The scan's native pixel height"),
 });
 
@@ -185,24 +185,23 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
     throw new Error(`No IIIF image URL found for document ${documentUrn}`);
   }
 
-  // Resolve native dims (for the viewer session's overlay coordinate space)
-  // and mint-or-remount the viewer command queue (plan 021). Dims degrade to
-  // undefined on failure — the reverse channel still works, overlays just
-  // can't be projected server-side until a dims-bearing page is opened.
+  // Resolve native dims (for the viewer session's region coordinate space) and
+  // mint-or-remount the viewer command queue (plan 021). Dims degrade to
+  // undefined on failure — the reverse channel still works, regions just can't
+  // be projected server-side until a dims-bearing page is opened.
   const dims = await fetchIiifDims(documentUrn, iiifImageUrl);
 
   // Mint a fresh session, or — when a live UUID is supplied (in-viewer page
   // navigation) — reuse it with remount semantics: identity preserved, content
-  // swapped, overlays cleared. Do NOT touch lastPolledAt: the iframe is already
-  // polling this UUID. A stale supplied UUID (TTL-evicted) silently mints a
-  // fresh one; the viewer adopts whatever comes back.
+  // swapped. Do NOT touch lastPolledAt: the iframe is already polling this
+  // UUID. A stale supplied UUID (TTL-evicted) silently mints a fresh one; the
+  // viewer adopts whatever comes back.
   const viewUUID = input.viewUUID && viewerQueues.has(input.viewUUID) ? input.viewUUID : randomUUID();
   const existing = viewerQueues.get(viewUUID);
   if (existing) {
     existing.documentId = documentUrn;
     existing.imageWidth = dims?.width;
     existing.imageHeight = dims?.height;
-    existing.activeOverlays = [];
     existing.lastAccess = Date.now();
   } else {
     viewerQueues.set(viewUUID, {
@@ -212,7 +211,6 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
       documentId: documentUrn,
       imageWidth: dims?.width,
       imageHeight: dims?.height,
-      activeOverlays: [],
     });
   }
 

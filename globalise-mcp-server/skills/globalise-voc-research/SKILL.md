@@ -38,7 +38,7 @@ Any page opens in the web viewer at
 | `globalise_navigate` | Read sequentially — fetch the previous or next page relative to an ID. | Remote |
 | `globalise_view_document_ui` | Open the interactive split-view widget (zoomable IIIF scan + transcription, optional highlight) for a human to look at. Its result carries a `viewUUID` — pass it to `globalise_navigate_viewer` to steer that open viewer. | MCP Apps widget |
 | `globalise_inspect_page_image` | **Look at the page yourself.** Fetch a page scan or region as an image and read it — re-transcribe a user-highlighted passage (a "[Highlight: region pct:…]" message) as a second opinion on the HTR, or zoom into a detail on request. When a viewer is open for the page it also auto-zooms there. | Live IIIF image API |
-| `globalise_navigate_viewer` | **Steer the open viewer.** Zoom it to a region, or draw labelled overlay boxes back onto the user's scan (and clear them). Needs the `viewUUID` from `globalise_view_document_ui`. Overlays are append-only and persist until cleared. | In-memory session queue |
+| `globalise_navigate_viewer` | **Steer the open viewer.** Zoom/pan it to a region to direct the user's attention. Needs the `viewUUID` from `globalise_view_document_ui`. | In-memory session queue |
 
 > Internal: `globalise_poll_viewer_commands` is the viewer iframe's own command-polling channel (app-only, hidden from the agent tool list) — you never call it directly.
 
@@ -69,15 +69,11 @@ garbled HTR passage. You can also call it proactively (region defaults to
 **Reverse channel (steer the viewer back).** The viewer runs a live session
 identified by the `viewUUID` in the `globalise_view_document_ui` result. When
 you `globalise_inspect_page_image` a non-full region and a viewer is open, it
-**auto-zooms** to that region (no extra call). To draw on the scan, call
-`globalise_navigate_viewer` with that `viewUUID` and commands (`navigate`,
-`add_overlay` with a `label`, `clear_overlays`) — labelled orange boxes appear
-in the user's viewer within a second or two. Overlays are **append-only** (to
-reposition, `clear_overlays` then re-add all). To confirm a box landed where
-you intended, re-inspect with `show_overlays: true` and the `verificationRegion`
-the navigate response hands you — the returned crop then has your boxes drawn
-on it. A `deliveryState` of `queued_waiting_for_viewer` is normal (the viewer is
-offscreen) — not a failure.
+**auto-zooms** to that region (no extra call). To move the user's view without
+fetching bytes for your own analysis, call `globalise_navigate_viewer` with that
+`viewUUID` and a `navigate` command — the viewer zooms/pans to the region within
+a second or two. A `deliveryState` of `queued_waiting_for_viewer` is normal (the
+viewer is offscreen) — not a failure.
 
 **Vocabulary lookup** rides alongside step 2: `globalise_lookup_commodity` turns a
 trade good into the Dutch term the corpus uses (plus period variants where the

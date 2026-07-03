@@ -164,7 +164,7 @@ Corpus caveats that apply to every tool:
 - The HTR model was trained on Latin script only: transcriptions of non-Roman-script languages (Persian, Bengali, Tamil, Sinhala, Chinese, Japanese, Gujarati, Buginese, Old Church Slavonic, Ancient Greek, Ancient Hebrew) are unreliable gibberish — offer the user the National Archives page-scan link from the document metadata instead. Malay ("msa") is a macrolanguage with no script metadata, so offer scan links for it too.
 - The search tokenizer strips punctuation and treats hyphens as word separators ("oost-indie" matches like "oost indie").
 - Response size: to stay within the client's per-result limit, the four list tools (globalise_search_transcriptions, globalise_find_archival_documents, globalise_lookup_commodity, globalise_lookup_measure) may return fewer than the requested \`size\` — \`pagination.hasMore\` is then true and a \`note\` states how many of how many results were kept; recover the rest by paging with a higher \`from\`, narrowing filters, or lowering \`size\` (or \`fragmentSize\` for search). globalise_retrieve_document and globalise_navigate may likewise drop trailing transcription lines on dense pages, signaled by \`text.truncated\` + \`text.totalLines\`. The reported total count is never affected by either trim.
-- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages. Two local glossaries resolve VOC vocabulary alongside search — globalise_lookup_commodity (trade good → the Dutch term the corpus uses, a sourced definition, and any period spelling variants) and globalise_lookup_measure (unit of weight/volume/length → its type, spelling variants, and period conversion ratios). globalise_inspect_page_image fetches a page scan (or a region of it) as an image for the assistant's own visual reading — call it when the user highlights a region in the document viewer, or to re-transcribe a specific passage as a second opinion on the HTR. globalise_navigate_viewer can draw labelled boxes in the user's open viewer (viewUUID from globalise_view_document_ui).`;
+- Typical workflow: scope with globalise_find_archival_documents (local finding aids), search transcriptions, then retrieve or view individual pages. Two local glossaries resolve VOC vocabulary alongside search — globalise_lookup_commodity (trade good → the Dutch term the corpus uses, a sourced definition, and any period spelling variants) and globalise_lookup_measure (unit of weight/volume/length → its type, spelling variants, and period conversion ratios). globalise_inspect_page_image fetches a page scan (or a region of it) as an image for the assistant's own visual reading — call it when the user highlights a region in the document viewer, or to re-transcribe a specific passage as a second opinion on the HTR. globalise_navigate_viewer zooms/pans the user's open viewer to a region (viewUUID from globalise_view_document_ui).`;
 
 /**
  * Per-tool builders that turn a result into clickable viewer markdown links,
@@ -629,7 +629,7 @@ export function createServer(): McpServer {
         "Region coordinates: 'pct:x,y,w,h' (percentage of the full image, recommended), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). Quick reference: top-left quarter pct:0,0,50,50; bottom-right quarter pct:50,50,50,50; center strip pct:25,25,50,50; whole page 'full'. " +
         "The response includes nativeWidth/nativeHeight (the scan's true pixel size) and cropPixelWidth/cropPixelHeight (the returned crop's size). The size is clamped so crops are never upscaled; request up to 2016px for small handwriting, and quality 'gray' can help with faint ink. " +
         'The corpus transcriptions are machine HTR: use this tool to re-transcribe a specific passage as a second opinion where the HTR looks garbled (strongest on short passages, proper names, numerals, and marginalia; on long dense text the HTR is often the better reading — say so). Transcribe what you actually see and flag uncertain readings. Especially valuable on non-Latin-script pages (Persian, Tamil, Chinese, ...), where the Latin-script HTR is known-unreliable. ' +
-        "Auto-navigation: when a viewer is open for this page, it automatically zooms to the inspected region (navigateViewer defaults to true). Use globalise_navigate_viewer separately for overlays, labels, or clear_overlays. After placing overlays, verify each with show_overlays:true and a tight region around it (the navigate response includes a ready-to-paste verificationRegion per overlay) — the returned crop then has your boxes composited onto it.",
+        "Auto-navigation: when a viewer is open for this page, it automatically zooms to the inspected region (navigateViewer defaults to true). Use globalise_navigate_viewer separately to steer the user's open viewer to a region without fetching bytes for your own analysis.",
       inputSchema: inspectPageImageToolInputSchema as z.ZodObject<z.ZodRawShape>,
       ...outputSchemaField(inspectPageImageOutputSchema),
       annotations: EXTERNAL_READ_ONLY,
@@ -678,26 +678,24 @@ export function createServer(): McpServer {
 
   // ==========================================================================
   // Reverse channel (plan 021): globalise_navigate_viewer lets the model steer
-  // an already-open viewer — zoom to a region, draw labelled overlays, clear
-  // them — by pushing commands into a server-side per-viewUUID queue that the
-  // iframe drains via globalise_poll_viewer_commands. These MUTATE session
-  // state, so they carry VIEWER_SESSION annotations (not read-only).
+  // an already-open viewer — zoom/pan to a region — by pushing commands into a
+  // server-side per-viewUUID queue that the iframe drains via
+  // globalise_poll_viewer_commands. These MUTATE session state, so they carry
+  // VIEWER_SESSION annotations (not read-only).
   // ==========================================================================
 
   server.registerTool(
     'globalise_navigate_viewer',
     {
       description:
-        'Steers an already-open GLOBALISE page viewer: zoom to a region, add a labelled overlay, or clear overlays. ' +
+        'Zooms/pans an already-open GLOBALISE page viewer to a region — steer the user\'s view to a detail. ' +
         'Requires a viewUUID from a prior globalise_view_document_ui call (the viewer must be open). ' +
-        'Not for opening the viewer — use globalise_view_document_ui. Not for visual analysis — use globalise_inspect_page_image. ' +
-        'Commands execute in order: typically clear_overlays → navigate → add_overlay.\n\n' +
+        'Not for opening the viewer — use globalise_view_document_ui. Not for visual analysis — use globalise_inspect_page_image (which also auto-zooms the open viewer to whatever it inspects).\n\n' +
         'By default, region coordinates are in full-image space (percentages or pixels of the original scan), not relative to the current viewport — the same pct:x,y,w,h used in globalise_inspect_page_image targets the identical area here. Exception: when a command includes relativeTo, region is interpreted in that inspected crop\'s local coordinate space.\n\n' +
-        'For accurate overlay placement, inspect the target area with globalise_inspect_page_image FIRST, verify the region contains what you expect, then use the same or refined coordinates here — do not estimate positions from memory.\n\n' +
+        'For an accurate zoom, inspect the target area with globalise_inspect_page_image FIRST, verify the region contains what you expect, then use the same or refined coordinates here — do not estimate positions from memory.\n\n' +
         "Region formats: 'pct:x,y,w,h' (percentage of the full scan), 'crop_pixels:x,y,w,h' (pixels of the full scan — bound with nativeWidth/nativeHeight from globalise_inspect_page_image; when used with relativeTo + relativeToSize it is instead pixels within that crop), 'x,y,w,h' (legacy IIIF pixels), or 'full' | 'square'. Out-of-bounds regions are rejected with a recovery hint — correct and retry.\n\n" +
-        'Overlays persist until clear_overlays — each call APPENDS (append-only; no move/delete-one, so repositioning means clear_overlays then re-add ALL overlays you want to keep). Prefer distinct color values when placing several so they stay distinguishable in globalise_inspect_page_image(show_overlays:true). Each add_overlay response includes a per-overlay verificationRegion for the verify-after step.\n\n' +
-        'Coordinate shortcut: when placing overlays from a prior inspect crop, pass relativeTo with the crop\'s region string and give region in crop-local coordinates (pct: directly, or crop_pixels: with relativeToSize:{width:cropPixelWidth,height:cropPixelHeight}) — the server projects to full-image space deterministically.\n\n' +
-        'The deliveryState field says whether the iframe drained the commands immediately (delivered_recently), the viewer exists but has not polled recently so the commands are queued (queued_waiting_for_viewer — typical when scrolled offscreen), or no viewer has connected yet (no_live_viewer_seen). In the queued case the overlay state is preserved server-side and applies when the viewer resumes polling — do NOT narrate this as a delivery failure.',
+        'Coordinate shortcut: to zoom to a sub-region of a prior inspect crop, pass relativeTo with the crop\'s region string and give region in crop-local coordinates (pct: directly, or crop_pixels: with relativeToSize:{width:cropPixelWidth,height:cropPixelHeight}) — the server projects to full-image space deterministically.\n\n' +
+        'The deliveryState field says whether the iframe drained the commands immediately (delivered_recently), the viewer exists but has not polled recently so the commands are queued (queued_waiting_for_viewer — typical when scrolled offscreen), or no viewer has connected yet (no_live_viewer_seen). In the queued case the command is preserved server-side and applies when the viewer resumes polling — do NOT narrate this as a delivery failure.',
       inputSchema: navigateViewerToolInputSchema as z.ZodObject<z.ZodRawShape>,
       ...outputSchemaField(navigateViewerOutputSchema),
       annotations: VIEWER_SESSION,

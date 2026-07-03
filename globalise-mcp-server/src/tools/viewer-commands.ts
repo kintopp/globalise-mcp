@@ -3,28 +3,26 @@
  * LLM→viewer reverse channel (plan 021, rijksmuseum-mcp-plus
  * `src/registration/tools/viewer.ts` `navigate_viewer` parity).
  *
- * The model pushes viewer commands (zoom to a region, add/clear labelled
- * overlays) into a server-side per-viewUUID queue; the iframe drains it by
- * polling `globalise_poll_viewer_commands`. Registration stays in index.ts
- * (repo convention); this module holds the schemas + handler logic.
+ * The model pushes viewer commands (zoom/pan to a region) into a server-side
+ * per-viewUUID queue; the iframe drains it by polling
+ * `globalise_poll_viewer_commands`. Registration stays in index.ts (repo
+ * convention); this module holds the schemas + handler logic.
  */
 
 import { z } from 'zod';
 import {
   IIIF_REGION_RE, parsePctRegion, cropPixelsToIiifPixels, checkRegionBounds,
-  projectToFullImage, regionToPixels, computeVerificationRegion, computeDeliveryState,
+  projectToFullImage, computeDeliveryState,
   type DeliveryState,
 } from '../utils/iiif.js';
-import { viewerQueues, ACTIVE_OVERLAYS_CAP, type ViewerCommand } from '../utils/viewer-session.js';
+import { viewerQueues, type ViewerCommand } from '../utils/viewer-session.js';
 
 export const navigateViewerInputSchema = z.object({
   viewUUID: z.string().describe('Viewer UUID from a prior globalise_view_document_ui call'),
   commands: z.array(z.object({
-    action: z.enum(['navigate', 'add_overlay', 'clear_overlays']).describe(
-      "Command type and its minimal valid shape: 'navigate' → needs region; " +
-      "'add_overlay' → needs region, plus optional label + color; " +
-      "'clear_overlays' → no other fields."),
-    region: z.string().optional().describe("IIIF region (required for navigate/add_overlay): 'full', 'square', 'pct:x,y,w,h', 'crop_pixels:x,y,w,h', or 'x,y,w,h'"),
+    action: z.enum(['navigate']).describe(
+      "Command type: 'navigate' zooms/pans the viewer to a region (needs region)."),
+    region: z.string().optional().describe("IIIF region (required for navigate): 'full', 'square', 'pct:x,y,w,h', 'crop_pixels:x,y,w,h', or 'x,y,w,h'"),
     relativeTo: z.string().optional().describe(
       "Crop region from a prior globalise_inspect_page_image call. When provided, " +
       "'region' is interpreted as coordinates within that crop's local space and " +
@@ -37,15 +35,13 @@ export const navigateViewerInputSchema = z.object({
       'Actual pixel dimensions of the inspected crop, copied from ' +
       'globalise_inspect_page_image cropPixelWidth/cropPixelHeight. Required when ' +
       'relativeTo is set and region uses crop_pixels:.'),
-    label: z.string().optional().describe('Label text for add_overlay'),
-    color: z.string().optional().describe('CSS color for the add_overlay border (default: orange)'),
   })).min(1).describe('Commands to execute in the viewer, in order'),
 });
 
 export const navigateViewerOutputSchema = z.object({
   viewUUID: z.string(),
   documentId: z.string().optional()
-    .describe('Document ID of the page in this viewer session — the identity needed for the show_overlays verify-after call.'),
+    .describe('Document ID of the page in this viewer session.'),
   queued: z.number().int(),
   regionRecovery: z.object({
     requested: z.string().describe('The offending region exactly as supplied.'),
@@ -55,18 +51,6 @@ export const navigateViewerOutputSchema = z.object({
     .describe('Out-of-bounds recovery hint. Present only on a region-out-of-bounds error — mirrors the recovery payload the text channel renders, so a structuredContent reader can self-correct without parsing prose.'),
   imageWidth: z.number().int().optional(),
   imageHeight: z.number().int().optional(),
-  overlays: z.array(z.object({
-    label: z.string().optional(),
-    region: z.string(),
-    pixelRect: z.string().optional(),
-    verificationRegion: z.string().optional()
-      .describe('Ready-to-paste pct: crop centred on this overlay (≥12% per axis). Use with globalise_inspect_page_image(show_overlays:true, region:<this>, viewUUID:<same UUID>) to verify placement after add_overlay.'),
-  })).optional(),
-  currentOverlays: z.array(z.object({
-    label: z.string().optional(),
-    region: z.string(),
-    color: z.string().optional(),
-  })).optional(),
   pendingCommandCount: z.number().int().optional()
     .describe('Commands sitting in the queue that the iframe has not yet drained.'),
   lastPolledAt: z.string().optional()
@@ -80,10 +64,8 @@ export const navigateViewerOutputSchema = z.object({
 
 export const pollViewerCommandsOutputSchema = z.object({
   commands: z.array(z.object({
-    action: z.enum(['navigate', 'add_overlay', 'clear_overlays']),
+    action: z.enum(['navigate']),
     region: z.string().optional(),
-    label: z.string().optional(),
-    color: z.string().optional(),
   })).describe('Pending viewer commands drained from the queue, in order. Empty when nothing is queued.'),
 });
 
@@ -95,9 +77,9 @@ export type NavigateViewerResult =
 
 /**
  * Push commands into a viewer's queue and report delivery state (port of
- * rijksmuseum `navigate_viewer`'s seven behaviors: missing-queue retry,
- * validation chain, OOB reject with recovery, relativeTo projection,
- * crop_pixels stripping, queue + shadow overlays, response shape).
+ * rijksmuseum `navigate_viewer`'s behaviors: missing-queue retry, validation
+ * chain, OOB reject with recovery, relativeTo projection, crop_pixels
+ * stripping, queue, response shape).
  */
 export async function navigateViewer(
   input: z.output<typeof navigateViewerInputSchema>,
@@ -132,12 +114,12 @@ export async function navigateViewer(
     );
   }
 
-  // 2. Validation chain — navigate/add_overlay require a region; relativeTo must
-  //    be pct:; relativeToSize requires relativeTo; relativeTo + crop_pixels
-  //    requires relativeToSize; relativeToSize only with crop_pixels.
+  // 2. Validation chain — navigate requires a region; relativeTo must be pct:;
+  //    relativeToSize requires relativeTo; relativeTo + crop_pixels requires
+  //    relativeToSize; relativeToSize only with crop_pixels.
   const commands: ViewerCommand[] = input.commands.map((c) => ({ ...c }));
   for (const cmd of commands) {
-    if (cmd.action === 'navigate' || cmd.action === 'add_overlay') {
+    if (cmd.action === 'navigate') {
       if (!cmd.region) {
         const m = `'${cmd.action}' requires a region. Use 'full', 'square', 'x,y,w,h', 'pct:x,y,w,h', or 'crop_pixels:x,y,w,h'.`;
         return navError(m, m, undefined, queue.documentId);
@@ -168,7 +150,6 @@ export async function navigateViewer(
   // 3. OOB reject — reject rather than silent-clamp. Skip when relativeTo is
   //    used (validated post-projection below).
   for (const cmd of commands) {
-    if (cmd.action !== 'navigate' && cmd.action !== 'add_overlay') continue;
     if (!cmd.region) continue;
     if (cmd.relativeTo) continue;
     const oob = checkRegionBounds(cmd.region, queue.imageWidth, queue.imageHeight);
@@ -226,34 +207,11 @@ export async function navigateViewer(
     }
   }
 
-  // 6. Queue + maintain the server-side shadow overlay list (capped at 64 so a
-  //    long session can't grow it unboundedly — the compositor iterates all
-  //    entries on every show_overlays call).
+  // 6. Queue the commands for the iframe to drain.
   queue.commands.push(...commands);
   queue.lastAccess = Date.now();
-  for (const cmd of commands) {
-    if (cmd.action === 'clear_overlays') queue.activeOverlays = [];
-    else if (cmd.action === 'add_overlay') {
-      queue.activeOverlays.push({ label: cmd.label, region: cmd.region!, color: cmd.color });
-      if (queue.activeOverlays.length > ACTIVE_OVERLAYS_CAP) {
-        queue.activeOverlays = queue.activeOverlays.slice(-ACTIVE_OVERLAYS_CAP);
-      }
-    }
-  }
 
-  // 7. Response — per-overlay pixelRect + verificationRegion, delivery state,
-  //    per-state narration + a verify-after nudge.
-  const overlayDetails = (queue.imageWidth && queue.imageHeight)
-    ? commands
-        .filter((c) => c.action === 'add_overlay')
-        .map((c) => ({
-          label: c.label,
-          region: c.region!,
-          pixelRect: regionToPixels(c.region!, queue!.imageWidth!, queue!.imageHeight!),
-          verificationRegion: computeVerificationRegion(c.region!, queue!.imageWidth, queue!.imageHeight),
-        }))
-    : undefined;
-
+  // 7. Response — delivery state + per-state narration.
   const now = Date.now();
   const deliveryState: DeliveryState = computeDeliveryState(queue.lastPolledAt, now);
   const recentlyPolledByViewer = deliveryState === 'delivered_recently';
@@ -264,43 +222,23 @@ export async function navigateViewer(
     queued: commands.length,
     imageWidth: queue.imageWidth,
     imageHeight: queue.imageHeight,
-    overlays: overlayDetails?.length ? overlayDetails : undefined,
-    currentOverlays: queue.activeOverlays.length ? queue.activeOverlays : undefined,
     pendingCommandCount: queue.commands.length,
     lastPolledAt: queue.lastPolledAt != null ? new Date(queue.lastPolledAt).toISOString() : undefined,
     recentlyPolledByViewer,
     deliveryState,
   };
 
-  const overlayCount = queue.activeOverlays.length;
-  const overlayClause = overlayCount ? ` | ${overlayCount} active overlays` : '';
   const shortUuid = input.viewUUID.slice(0, 8);
   const baseText = (() => {
     switch (deliveryState) {
       case 'delivered_recently':
-        return `Delivered ${commands.length} commands to active viewer ${shortUuid}${overlayClause}`;
+        return `Delivered ${commands.length} commands to active viewer ${shortUuid}`;
       case 'queued_waiting_for_viewer':
-        return `Queued ${commands.length} commands for viewer ${shortUuid} (offscreen or paused — overlay state preserved, will apply when viewer resumes polling)${overlayClause}`;
+        return `Queued ${commands.length} commands for viewer ${shortUuid} (offscreen or paused — will apply when viewer resumes polling)`;
       case 'no_live_viewer_seen':
-        return `Queued ${commands.length} commands for viewer ${shortUuid} (no viewer has connected yet)${overlayClause}`;
+        return `Queued ${commands.length} commands for viewer ${shortUuid} (no viewer has connected yet)`;
     }
   })();
 
-  // Verify-and-adjust nudge: fires when the batch added an overlay AND the
-  // queue has dims (so verificationRegion is computable). Surfaces the exact
-  // pct: crop to pass to globalise_inspect_page_image(show_overlays:true).
-  const verifiable = overlayDetails?.filter((o) => o.verificationRegion) ?? [];
-  const nudge = verifiable.length && queue.documentId
-    ? (() => {
-      const pairs = verifiable
-        .map((o) => `${o.label ? `"${o.label}" → ` : ''}${o.verificationRegion}`)
-        .join('; ');
-      return (
-        ` | Verify each overlay with globalise_inspect_page_image(documentId:"${queue.documentId}", show_overlays:true, viewUUID:"${input.viewUUID}", region:"<verificationRegion>"): ${pairs}. ` +
-        'To reposition, issue clear_overlays then re-add ALL overlays with corrected coordinates (append-only — there is no move/delete-one).'
-      );
-    })()
-    : '';
-
-  return { ok: true, data, text: baseText + nudge };
+  return { ok: true, data, text: baseText };
 }

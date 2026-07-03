@@ -22,7 +22,7 @@ Ask your AI assistant a question in natural language, and will automatically cho
 
 **`globalise_inspect_page_image`** — Fetches a page scan, or a region of it, as an image for the assistant itself to look at. In the viewer, press `i` (or the ☐ button) and drag a box over the scan: the assistant receives the coordinates, retrieves that crop of the original image, and can re-transcribe or describe exactly what you marked — a second opinion on the machine transcription for garbled names, numerals, marginalia, or non-Latin scripts. The assistant can also zoom into a page by itself when you ask about a specific detail.
 
-**`globalise_navigate_viewer`** — Lets the assistant steer an open viewer back: zoom it to a region, or draw labelled boxes over the scan ("here's the line I read"), and clear them again. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match; overlays it draws persist until cleared. A companion internal tool, `globalise_poll_viewer_commands`, is the viewer's own polling channel that delivers those commands to the open page — it is not something you call directly.
+**`globalise_navigate_viewer`** — Lets the assistant steer an open viewer: zoom it to a region to direct your attention to a detail. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match. A companion internal tool, `globalise_poll_viewer_commands`, is the viewer's own polling channel that delivers those commands to the open page — it is not something you call directly.
 
 ## Resources
 
