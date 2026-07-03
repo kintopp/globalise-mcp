@@ -6,7 +6,6 @@
  */
 
 import { z } from 'zod';
-import sharp from 'sharp';
 import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache, apiGetBinary } from '../utils/api-client.js';
 import { LRUCache } from '../utils/cache.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
@@ -16,6 +15,7 @@ import {
   type RegionBoundsIssue,
 } from '../utils/iiif.js';
 import { fetchIiifDims } from '../utils/iiif-info.js';
+import { readImageDimensions } from '../utils/image-dimensions.js';
 import { viewerQueues } from '../utils/viewer-session.js';
 import { DocumentResponse } from '../utils/types.js';
 
@@ -176,18 +176,13 @@ export async function inspectPageImage(
   }
   const fetchTimeMs = Math.round(performance.now() - fetchStart);
 
-  // 10. Actual crop pixel dimensions, read from the returned bytes. Non-fatal —
-  //     dims stay undefined if sharp can't parse the buffer.
+  // 10. Actual crop pixel dimensions, parsed from the returned JPEG/PNG header
+  //     (pure-JS, no native sharp). Non-fatal — dims stay undefined on an
+  //     unparseable buffer.
   const imageBuffer = Buffer.from(image.base64, 'base64');
-  let cropPixelWidth: number | undefined;
-  let cropPixelHeight: number | undefined;
-  try {
-    const meta = await sharp(imageBuffer).metadata();
-    cropPixelWidth = meta.width;
-    cropPixelHeight = meta.height;
-  } catch {
-    // keep dims undefined
-  }
+  const cropDims = readImageDimensions(imageBuffer);
+  const cropPixelWidth = cropDims?.width;
+  const cropPixelHeight = cropDims?.height;
 
   // 11. Auto-navigate the open viewer to the inspected region (plan 021):
   //     a non-full region + a live viewer + navigateViewer (default true).
