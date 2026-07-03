@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { randomUUID } from 'crypto';
-import { Readable } from 'stream';
+import { Readable, PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
 import { createGunzip } from 'zlib';
 
@@ -209,6 +209,22 @@ export function ensureDatabaseFile(): Promise<void> {
  * is the sole cross-process interaction — last-writer-wins on a *complete* file
  * is harmless — and the catch's unlinkSync only removes this process's own temp.
  */
+/** Log network progress at most every ~4 MB of compressed transfer. */
+const DOWNLOAD_PROGRESS_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Idle timeout: abort if no bytes arrive for this long. Armed before the fetch
+ * (so a hung connect/handshake trips it) and re-armed on every chunk (so a
+ * mid-stream stall trips it too). Plain `fetch()` has NO timeout, so a wrong or
+ * firewalled ARCHIVAL_DB_URL — e.g. the manifest's localhost default with no
+ * server running — otherwise hangs the tool call forever. Override via
+ * ARCHIVAL_DB_TIMEOUT_MS (raise it on slow links; lower it in tests).
+ */
+function downloadIdleTimeoutMs(): number {
+  const v = Number(process.env.ARCHIVAL_DB_TIMEOUT_MS);
+  return Number.isFinite(v) && v > 0 ? v : 30_000;
+}
+
 async function downloadArchivalDb(url: string, target: string): Promise<void> {
   console.error(`[archival-db] index not present; downloading from ${url} ...`);
 
@@ -217,29 +233,89 @@ async function downloadArchivalDb(url: string, target: string): Promise<void> {
     headers.authorization = `Bearer ${process.env.ARCHIVAL_DB_TOKEN}`;
   }
 
-  const response = await fetch(url, { headers, redirect: 'follow' });
+  const idleMs = downloadIdleTimeoutMs();
+  const controller = new AbortController();
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const armIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => controller.abort(), idleMs);
+  };
+  const idleSecs = Math.round(idleMs / 1000);
+
+  // Phase 1 — connect + response headers (fail fast if unreachable/hung).
+  armIdle();
+  let response: Response;
+  try {
+    response = await fetch(url, { headers, redirect: 'follow', signal: controller.signal });
+  } catch (error) {
+    clearTimeout(idleTimer);
+    const reason = controller.signal.aborted
+      ? `no response within ${idleSecs}s — server unreachable or not responding`
+      : (error instanceof Error ? error.message : String(error));
+    throw new Error(`could not reach ${url}: ${reason}`);
+  }
   if (!response.ok || !response.body) {
+    clearTimeout(idleTimer);
     throw new Error(`HTTP ${response.status} fetching ${url}`);
   }
 
+  // Phase 2 — stream to a private temp file, gunzipping when the URL ends .gz.
+  const totalBytes = Number(response.headers.get('content-length')) || 0;
+  const totalMb = totalBytes ? (totalBytes / 1024 / 1024).toFixed(1) : '';
   mkdirSync(dirname(target), { recursive: true });
   const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
-  const gzipped = new URL(url).pathname.endsWith('.gz');
-  const source = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 
-  try {
-    if (gzipped) {
-      await pipeline(source, createGunzip(), createWriteStream(tmp));
-    } else {
-      await pipeline(source, createWriteStream(tmp));
+  // A pass-through that counts bytes, re-arms the idle timer, and logs progress
+  // so a healthy-but-slow 27 MB download isn't mistaken for a stall.
+  let received = 0;
+  let nextLogAt = DOWNLOAD_PROGRESS_BYTES;
+  const monitor = new PassThrough();
+  monitor.on('data', (chunk: Buffer) => {
+    received += chunk.length;
+    armIdle();
+    if (received >= nextLogAt) {
+      nextLogAt += DOWNLOAD_PROGRESS_BYTES;
+      const mb = (received / 1024 / 1024).toFixed(1);
+      const pct = totalBytes ? ` (${Math.round((received / totalBytes) * 100)}%)` : '';
+      console.error(`[archival-db] downloaded ${mb}${totalMb ? ` / ${totalMb}` : ''} MB${pct} ...`);
     }
+  });
+
+  const bodyStream = response.body as import('node:stream/web').ReadableStream;
+  try {
+    // Detect gzip by the magic number (1f 8b) rather than the URL suffix: the
+    // public browser asset URL ends in .gz, but the api.github.com asset URL
+    // (used to test against the private repo with a token) serves the same
+    // gzip bytes with no .gz suffix. Peek the first chunk, then re-emit it
+    // ahead of the remaining body.
+    armIdle();
+    const reader = bodyStream.getReader();
+    const first = await reader.read();
+    reader.releaseLock();
+    const head = first.value ? Buffer.from(first.value) : Buffer.alloc(0);
+    const isGzip = head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+
+    const source = Readable.from((async function* () {
+      if (head.length) yield head;
+      yield* Readable.fromWeb(bodyStream);
+    })());
+
+    const stages = isGzip
+      ? [source, monitor, createGunzip(), createWriteStream(tmp)]
+      : [source, monitor, createWriteStream(tmp)];
+    await pipeline(stages);
     renameSync(tmp, target);
   } catch (error) {
     if (existsSync(tmp)) unlinkSync(tmp);
-    throw error;
+    const reason = controller.signal.aborted
+      ? `stalled — no data for ${idleSecs}s`
+      : (error instanceof Error ? error.message : String(error));
+    throw new Error(`download from ${url} failed: ${reason}`);
+  } finally {
+    clearTimeout(idleTimer);
   }
 
-  console.error(`[archival-db] index ready at ${target}`);
+  console.error(`[archival-db] index ready at ${target} (${(received / 1024 / 1024).toFixed(1)} MB downloaded)`);
 }
 
 /**

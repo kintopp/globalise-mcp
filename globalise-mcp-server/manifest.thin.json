@@ -5,7 +5,7 @@
   "display_name": "GLOBALISE VOC Transcriptions (thin)",
   "version": "2.6.1",
   "description": "Thin variant: downloads the ~26 MB finding-aid index on first use instead of bundling it. Small install, one-time fetch.",
-  "long_description": "Same ten tools as the full GLOBALISE bundle, but **without** the ~112 MB finding-aid index baked in — so the download is a few MB instead of ~31 MB. (The small commodities and weights & measures glossaries are still bundled.)\n\nThe first time you use **globalise_find_archival_documents**, the server downloads the compressed index (~26 MB `.gz`) from the configured URL, decompresses it into your data directory, and opens it read-only. Every later call reuses the cached copy; the download happens once. Startup and the other six tools (search, retrieve, navigate, view, lookup_commodity, lookup_measure) never wait on it — they call the public GLOBALISE / Nationaal Archief services, or the bundled glossaries, directly.\n\nConfigure the **index download URL** and **data directory** at install time. The default URL points at a local HTTP server (`127.0.0.1:8000`) for testing; for real use, point it at any HTTPS URL that serves `archival-index.sqlite.gz`. No account or credentials are required.",
+  "long_description": "Same ten tools as the full GLOBALISE bundle, but **without** the ~112 MB finding-aid index baked in — so the download is a few MB instead of ~31 MB. (The small commodities and weights & measures glossaries are still bundled.)\n\nThe first time you use **globalise_find_archival_documents**, the server downloads the compressed index (~26 MB `.gz`) from the configured URL, decompresses it into your data directory, and opens it read-only. Every later call reuses the cached copy; the download happens once. Startup and the other six tools (search, retrieve, navigate, view, lookup_commodity, lookup_measure) never wait on it — they call the public GLOBALISE / Nationaal Archief services, or the bundled glossaries, directly.\n\nThe **index download URL** defaults to the project's GitHub release asset, so first-run works with no setup; override it (and the **data directory**) at install time only to self-host or mirror. gzip (`.gz`) or a raw `.sqlite` are both accepted — gzip is auto-detected. No account or credentials are required.",
   "author": {
     "name": "Arno Bosse",
     "url": "https://github.com/kintopp"
@@ -94,8 +94,8 @@
     "archival_db_url": {
       "type": "string",
       "title": "Index download URL",
-      "description": "URL the finding-aid index is fetched from on first use. Must serve archival-index.sqlite.gz (gzip) or archival-index.sqlite. Default targets a local test server (run: python3 -m http.server 8000 --directory <repo>/globalise-mcp-server/data).",
-      "default": "http://127.0.0.1:8000/archival-index.sqlite.gz",
+      "description": "URL the ~27 MB finding-aid index is fetched from on first use of archival search (decompresses to ~112 MB, then cached locally). Defaults to the project's GitHub release asset; override only to self-host or mirror. Serves gzip (.gz) or a raw .sqlite — gzip is auto-detected.",
+      "default": "https://github.com/kintopp/globalise-mcp/releases/download/archival-index-v1/archival-index.sqlite.gz",
       "required": false
     },
     "data_directory": {
