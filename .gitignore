@@ -3,6 +3,8 @@ offline/
 
 # Local development notes
 CLAUDE.md
+AGENTS.md
+.codex/
 
 # Dependencies
 node_modules/
