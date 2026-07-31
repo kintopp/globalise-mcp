@@ -1,0 +1,43 @@
+name: CI
+
+# The npm project lives in globalise-mcp-server/ (the git root is the parent
+# monorepo dir), hence the working-directory default and cache path below.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: globalise-mcp-server
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: globalise-mcp-server/.nvmrc
+          cache: npm
+          cache-dependency-path: globalise-mcp-server/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      # Full build first: the offline test chain needs its outputs — dist/ for
+      # test:smoke (stdio handshake against the built server) and the local
+      # SQLite DBs, which ensure:db decompresses from the committed data/*.gz
+      # (no network). The stamp step's "[stamp] no v* tag found" on a tagless
+      # Actions checkout is expected and harmless (see scripts/stamp-build-info.ts).
+      - run: npm run build
+      # Offline only. The network-backed suites (test:live, test:cli) are
+      # deliberately NOT run here: they hit the HuC/Gloccoli production API,
+      # which is known to auto-block IPs it dislikes — hammering it from
+      # GitHub's shared runners risks getting Actions egress ranges banned and
+      # adds flakiness CI can't fix. The compensating habit is `npm run
+      # test:live` locally before releases (see CLAUDE.md "Pre-push testing");
+      # remember a push to main auto-deploys to Railway prod, so this workflow
+      # gates the merge, not the deploy.
+      - run: npm test
+      # Prove the Claude Desktop bundle still packs (manifest validity +
+      # staging), so a packaging break surfaces here, not on release day.
+      - run: npm run build:mcpb
