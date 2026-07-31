@@ -76,6 +76,17 @@ const READ_ONLY_BY_TOOL: Record<string, boolean> = {
   globalise_poll_viewer_commands: false,
 };
 
+/**
+ * Deferred-tool-catalogue gloss budget: hosts behind Anthropic tool-search cut
+ * the shown description at exactly 79 CHARACTERS (code points, not bytes; no
+ * word-boundary trim), so every description must open with a complete sentence
+ * that fits the budget — the loaded description after it can be as long and
+ * detailed as it likes (providers reward that). Settled during the ub-sgbr
+ * sibling verification (2026-07-04); the assertion is ported from its
+ * test/smoke.test.js.
+ */
+const GLOSS_BUDGET = 79;
+
 /** Recursively assert a JSON schema contains no $ref keys (claude.ai rejects them). */
 function hasRef(node: unknown): boolean {
   if (Array.isArray(node)) return node.some(hasRef);
@@ -135,6 +146,16 @@ async function main() {
     // the viewer's outputSchema is registered behind the same gate (v2.5.4).
     check(tool.outputSchema !== undefined, `outputSchema registered: ${tool.name}`);
     check(!hasRef(tool.outputSchema), `$ref-free outputSchema: ${tool.name}`);
+    // Description opens with a complete sentence within the 79-char gloss budget.
+    const desc = tool.description ?? '';
+    const sentenceEnd = desc.indexOf('. ');
+    const lead = sentenceEnd === -1 ? desc : desc.slice(0, sentenceEnd + 1);
+    const leadLen = [...lead].length;
+    check(lead.trimEnd().endsWith('.'), `description opens with a complete sentence: ${tool.name}`);
+    check(
+      leadLen <= GLOSS_BUDGET,
+      `first sentence within gloss budget (${leadLen}/${GLOSS_BUDGET} chars): ${tool.name}`,
+    );
   }
   const viewerTool = tools.find((t) => t.name === 'globalise_view_document_ui');
   const viewerMeta = viewerTool?._meta as { ui?: { resourceUri?: string } } | undefined;

@@ -549,7 +549,8 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_search_transcriptions',
-    'Search the ~4.8M transcribed VOC pages by free text, with filters for inventory number(s) and language(s). ' +
+    'Search the transcribed pages by free text. ' +
+      'Covers the full corpus, with filters for inventory number(s) and language(s). ' +
       'Query syntax (Elasticsearch): a bare space means OR — use uppercase AND for all-terms; plus NOT, wildcards (* ?), fuzzy matching (~N, for HTR/OCR spelling noise), exact phrases in quotes; query defaults to "*" (match everything). ' +
       'Languages accept ISO 639-3 codes or English names; matchAll=true requires pages to contain ALL listed languages (bilingual documents) by post-filtering a capped candidate window — totals are then a lower bound, see the response note. ' +
       'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +
@@ -568,7 +569,8 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_retrieve_document',
-    'Retrieve one page by document ID ("NL-HaNA_{archive}_{inventory}_{scan}") or URN ("urn:globalise:..."). ' +
+    "Retrieve one page's transcription and metadata by document ID or URN. " +
+      'IDs look like "NL-HaNA_{archive}_{inventory}_{scan}" (URN form: "urn:globalise:..."). ' +
       'Returns the transcription line-by-line, metadata (languages, dates, license), previous/next page IDs, ' +
       'and links to the web viewer and the National Archives page scan. ' +
       'On very dense pages trailing lines may be trimmed to fit the response — text.truncated is then true and text.totalLines gives the full count (use globalise_view_document_ui for the complete page). ' +
@@ -584,7 +586,8 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_navigate',
-    'Fetch the previous or next page relative to a document ID, to read through archival materials sequentially. ' +
+    'Fetch the previous or next page relative to a document ID. ' +
+      'Use it to read through archival materials sequentially. ' +
       'Returns the target page\'s details (text, metadata, links); on very dense pages trailing transcription lines may be trimmed to fit the response (flagged by text.truncated + text.totalLines). Errors if no page exists in that direction.',
     navigateToolInputSchema,
     navigateOutputSchema,
@@ -597,7 +600,8 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_find_archival_documents',
-    'Search a local index of 228K+ VOC finding-aid entries to scope by metadata before searching transcriptions. ' +
+    'Search finding-aid metadata to scope the archive before full-text search. ' +
+      'A local index of 228K+ entries. ' +
       'Two sources: OBP digitized indexes (~227K entries: settlement, year, folio, inventory, description) and GM Generale Missiven (~950 official letters: chamber, dates, scan URLs, and — for the ~558 published in RGP — published-edition links to Retroboeken scans + GitHub plain text). ' +
       'The query field uses SQLite FTS5 — ' + FTS_OPERATORS + ', and (expr) grouping. ' + FTS_AUTOQUOTE + ' ' +
       'Note: settlement is OBP-only; chamber/htrAvailable are GM-only; folio filters require an inventoryNumber. ' +
@@ -612,8 +616,9 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_lookup_commodity',
-    'Look up VOC trade goods in a ~3,500-entry glossary: bilingual labels plus a sourced, confidence-rated definition. ' +
-      'Two main uses: (1) resolve a modern/English term to the Dutch word the corpus uses (coffee→koffie, mace→foelie); (2) read a sourced definition. Some concepts also carry period spelling variants (altLabels), but only ~10% do — pepper, coffee, nutmeg have none — so for recall in globalise_search_transcriptions take the Dutch label, OR in any altLabels, then add fuzzy (~1)/wildcards (the corpus prefers c- over k-, -ij over -ie: koffie→coffij). ' +
+    'Resolve a trade good to the historical term the corpus uses, with a definition. ' +
+      'A ~3,500-entry glossary: bilingual labels plus a sourced, confidence-rated definition per concept. ' +
+      'Two main uses: (1) resolve a modern/English term to the historical, predominantly Dutch word the corpus uses (coffee→koffie, mace→foelie); (2) read a sourced definition. Some concepts also carry period spelling variants (altLabels), but only ~10% do — pepper, coffee, nutmeg have none — so for recall in globalise_search_transcriptions take the Dutch label, OR in any altLabels, then add fuzzy (~1)/wildcards (the corpus prefers c- over k-, -ij over -ie: koffie→coffij). ' +
       'The query field uses SQLite FTS5 over labels + variants + definitions — ' + FTS_OPERATORS + '; label/variant hits rank above definition hits. Omit the query to page through the glossary alphabetically. ' +
       'Every definition carries its definitionSource and a confidence rating — over half are LLM-generated, so present low/medium-low ones tentatively, say only what the definition states, and prefer the authoritative sources (wnt, aat, vocGlossarium, PoolParty). prefLabelEn is occasionally a mistranslation — prefer the definition. The raw concept ID stays internal, but each result includes thesaurusUrl, a public permalink to the concept in the GLOBALISE thesaurus (its SKOS hierarchy of broader/narrower terms + cited source, often a Zotero record) — offer it when a user wants to place a good in its trade taxonomy or follow its source.',
     lookupCommodityToolInputSchema,
@@ -626,8 +631,8 @@ export function createServer(): McpServer {
   registerJsonTool(
     server,
     'globalise_lookup_measure',
-    'Look up VOC weights & measures: ~213 historical units of weight, volume, length, area, quantity, and misc. ' +
-      'They come from the 1764–1771 Memoriën van Munten, Maaten, en Gewigten. ' +
+    'Look up historical weights and measures and their conversion ratios. ' +
+      '~213 units of weight, volume, length, area, quantity, and misc, from the 1764–1771 Memoriën van Munten, Maaten, en Gewigten. ' +
       'Each result reliably carries: the unit label, its type (weight/volume/length/area/quantities/misc — load-bearing, since a few labels like roede/voet are homonyms distinguished only by type), period spelling variants, and the conversion ratios it appears in (~731 across the dataset). ' +
       'This is NOT a precise unit converter: early-modern units were unstable, so a ratio holds only for the settlement and commodity it was recorded for (a bahar of pepper ≠ a bahar of cloves) — always read each conversion against its `context` field, and do not convert to modern equivalents without it. The context often pins the commodity as well as the place (e.g. "rijst, Batavia", "goud, zilver, Mokka"), and the same unit\'s ratio routinely differs by good — so the context is where the commodity-specific value lives, not just the prose definition. A self-referential ratio ("1 X = 1 X") attests the unit was used in that context without a recorded local equivalence. ' +
       'Spelling variants double as query expansion: feed them into globalise_search_transcriptions (which is spelling-blind) to catch documents a modern spelling misses. ' +
@@ -652,7 +657,8 @@ export function createServer(): McpServer {
     'globalise_inspect_page_image',
     {
       description:
-        "Returns image bytes (base64) of a VOC page scan — or a region of it — for the assistant's own visual analysis. Not for the user to view: use globalise_view_document_ui for the interactive viewer. Not for finding pages: use globalise_search_transcriptions. " +
+        "Returns page-scan image bytes for the assistant's own visual analysis. " +
+        'Fetches the scan (base64) — whole page or a region of it. Not for the user to view: use globalise_view_document_ui for the interactive viewer. Not for finding pages: use globalise_search_transcriptions. ' +
         "Use region 'full' (default) to see the whole page, or a region to zoom into details: read a specific passage, a name, a numeral, marginalia, seals, or stamps. " +
         "Call it when the user highlights a region in the document viewer — a chat message or context note like \"[Highlight: region pct:31.2,18.4,22.0,6.1 on document NL-HaNA_1.04.02_9966_0106]\" — passing that documentId and region verbatim. " +
         "Region coordinates: 'pct:x,y,w,h' (percentage of the full image, recommended), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). Quick reference: top-left quarter pct:0,0,50,50; bottom-right quarter pct:50,50,50,50; center strip pct:25,25,50,50; whole page 'full'. " +
@@ -717,7 +723,8 @@ export function createServer(): McpServer {
     'globalise_navigate_viewer',
     {
       description:
-        'Zooms/pans an already-open GLOBALISE page viewer to a region — steer the user\'s view to a detail. ' +
+        "Zooms or pans the user's already-open page viewer to a region. " +
+        'Use it to steer the user\'s view to a detail. ' +
         'Requires a viewUUID from a prior globalise_view_document_ui call (the viewer must be open). ' +
         'Not for opening the viewer — use globalise_view_document_ui. Not for visual analysis — use globalise_inspect_page_image (which also auto-zooms the open viewer to whatever it inspects).\n\n' +
         'By default, region coordinates are in full-image space (percentages or pixels of the original scan), not relative to the current viewport — the same pct:x,y,w,h used in globalise_inspect_page_image targets the identical area here. Exception: when a command includes relativeTo, region is interpreted in that inspected crop\'s local coordinate space.\n\n' +
@@ -750,7 +757,7 @@ export function createServer(): McpServer {
     'globalise_poll_viewer_commands',
     {
       title: 'Poll Viewer Commands',
-      description: 'Internal: poll for pending viewer navigation commands',
+      description: 'Internal: poll for pending viewer navigation commands.',
       inputSchema: pollViewerCommandsInputSchema as unknown as typeof pollViewerCommandsInputSchema.shape,
       ...outputSchemaField(pollViewerCommandsOutputSchema as unknown as typeof pollViewerCommandsOutputSchema.shape),
       annotations: VIEWER_SESSION,
@@ -787,7 +794,8 @@ export function createServer(): McpServer {
     VIEW_DOCUMENT_UI_TOOL_NAME,
     {
       description:
-        'Display a VOC page in an interactive viewer: a zoomable IIIF scan image beside its line-numbered transcription. ' +
+        'Display a page for the user in an interactive scan-plus-transcription viewer. ' +
+        'Shows a zoomable IIIF scan image beside its line-numbered transcription. ' +
         'Takes a document ID or URN; supports optional search-term highlighting. ' +
         'When the user selects text in the transcription panel they typically want a translation of those words from 17th/18th-century Dutch to modern English.',
       // Pass the strict schema at runtime (registerAppTool forwards it verbatim
