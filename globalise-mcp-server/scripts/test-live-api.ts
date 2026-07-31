@@ -1,11 +1,12 @@
 /**
- * Live integration tests for the three network-backed tools —
+ * Live integration tests for the four network-backed tools —
  * globalise_search_transcriptions, globalise_retrieve_document,
- * globalise_navigate — which the rest of the suite never executes (it covers
- * the two local-SQLite tools + registration/schemas only). Every result is
- * validated against the tool's own OUTPUT zod schema, so this suite is also
- * the upstream-contract-drift detector: if the Broccoli API changes shape, a
- * `.parse()` here fails.
+ * globalise_navigate, globalise_inspect_page_image — which the rest of the
+ * suite never executes (it covers the two local-SQLite tools +
+ * registration/schemas only). Every result is validated against the tool's
+ * own OUTPUT zod schema, so this suite is also the upstream-contract-drift
+ * detector: if the Broccoli API (or the service.archief.nl IIIF image stack)
+ * changes shape, a `.parse()` here fails.
  *
  * Plain Node script (no framework). Imports the tools directly from src via
  * tsx — no build needed, but it requires NETWORK and a healthy upstream, so it
@@ -28,6 +29,11 @@ import {
   navigateInputSchema,
   navigateOutputSchema,
 } from '../src/tools/convenience.js';
+import {
+  inspectPageImage,
+  inspectPageImageInputSchema,
+  inspectPageImageOutputSchema,
+} from '../src/tools/page-image.js';
 import { check, finish } from './test-utils.js';
 
 // Stable, known-good document used throughout the repo's docs; ..._0107 exists.
@@ -91,6 +97,34 @@ async function main() {
   console.log('6. retrieve with URN-form input (normalization round-trip)');
   const urnDoc = getDocumentOutputSchema.parse(await getDocument({ documentId: DOC_URN }));
   check(urnDoc.id === DOC_URN, `URN input yields the same id as bare-id input (got ${urnDoc.id})`);
+
+  console.log('7. inspect a page-image region (IIIF crop path)');
+  // A pct: region exercises the full pipeline — document resolution, the
+  // info.json dims fetch, the never-upscale clamp, and the crop bytes fetch.
+  // navigateViewer: false keeps the call pure (no viewer session exists here).
+  const inspected = await inspectPageImage(
+    inspectPageImageInputSchema.parse({
+      documentId: DOC,
+      region: 'pct:25,25,50,25',
+      size: 400,
+      navigateViewer: false,
+    }),
+  );
+  check(inspected.ok === true, `inspect succeeded${inspected.ok ? '' : ` (error: ${inspected.error})`}`);
+  if (inspected.ok) {
+    const meta = inspectPageImageOutputSchema.parse(inspected.meta);
+    check(inspected.image.base64.length > 1000, `image bytes returned (base64 length ${inspected.image.base64.length})`);
+    check(/^image\//.test(inspected.image.mimeType), `image mimeType (got ${inspected.image.mimeType})`);
+    check(meta.documentId === DOC_URN, `meta.documentId is the URN (got ${meta.documentId})`);
+    check(
+      typeof meta.nativeWidth === 'number' && meta.nativeWidth > 0,
+      `native dims resolved from info.json (nativeWidth=${meta.nativeWidth})`,
+    );
+    check(
+      typeof meta.cropPixelWidth === 'number' && meta.cropPixelWidth <= 400,
+      `crop honors the requested size (cropPixelWidth=${meta.cropPixelWidth})`,
+    );
+  }
 
   finish('Live API');
 }
