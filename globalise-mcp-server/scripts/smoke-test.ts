@@ -90,11 +90,15 @@ async function main() {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [serverEntry],
+    stderr: 'pipe',
   });
   const client = new Client({ name: 'globalise-smoke-test', version: '1.0.0' });
 
   console.log('1. initialize');
   await client.connect(transport);
+  // Capture the server's stderr for step 7 (per-call log-line contract).
+  let serverStderr = '';
+  transport.stderr?.on('data', (chunk: Buffer) => { serverStderr += chunk.toString(); });
   const serverVersion = client.getServerVersion();
   check(serverVersion?.name === 'globalise-mcp-server', `server name (got: ${serverVersion?.name})`);
   check(Boolean(client.getInstructions()), 'server instructions present');
@@ -223,6 +227,31 @@ async function main() {
     typeof badIdPayload.suggestion === 'string' && badIdPayload.suggestion.includes('NL-HaNA'),
     'error suggestion shows the expected ID format',
   );
+
+  console.log('7. per-call log lines on stderr ({tool, ms, ok, error?, input?})');
+  // The four calls above (4, 4b, 5, 6) must each have emitted one JSON log
+  // line in the family-shared shape (rijksmuseum/iconclass parity — the
+  // `railway logs --json` analysis contract).
+  const logLines = serverStderr
+    .split('\n')
+    .flatMap((line) => {
+      try {
+        const parsed: unknown = JSON.parse(line);
+        return parsed && typeof parsed === 'object' && 'tool' in parsed ? [parsed as Record<string, unknown>] : [];
+      } catch {
+        return [];
+      }
+    });
+  check(logLines.length === 4, `one log line per tool call (got: ${logLines.length})`);
+  const okLine = logLines.find((l) => l.tool === 'globalise_find_archival_documents' && l.ok === true);
+  check(okLine !== undefined, 'success call logged with ok: true');
+  check(typeof okLine?.ms === 'number', 'log line carries ms timing');
+  check(
+    (okLine?.input as { source?: string } | undefined)?.source === 'gm',
+    'log line echoes the call input',
+  );
+  const errLine = logLines.find((l) => l.tool === 'globalise_retrieve_document');
+  check(errLine?.ok === false && typeof errLine?.error === 'string', 'failed call logged with ok: false + error');
 
   await client.close();
 

@@ -128,10 +128,12 @@ const PLATFORM_RESULT_CHAR_CEILING = Number(process.env.RESULT_CHAR_CEILING) || 
 const SAFE_RESULT_BUDGET = Math.round(PLATFORM_RESULT_CHAR_CEILING * 0.8);
 
 /**
- * The shared result is serialized into up to two METERED copies today: the text
- * block (always — currently a full JSON copy the model reads on claude.ai) and
- * structuredContent (read by ChatGPT now, by Claude soon). Both count toward the
- * host ceiling, so the shared data must fit `budget / copies`.
+ * The shared result is serialized into up to two copies today: the text block
+ * (always — currently a full JSON copy the model reads on claude.ai) and
+ * structuredContent. Anthropic documents a ~150K character per-result ceiling,
+ * but does not specify whether/how structuredContent is counted relative to
+ * text. Until host behavior is clearer, budget conservatively as if duplicated
+ * data in both channels can pressure the same result/session limit.
  *
  * FUTURE: once the host fleet reads structuredContent, the text channel can
  * become a small summary/marker that no longer duplicates the data — set
@@ -319,13 +321,40 @@ function outputSchemaField<T>(outputSchema: T): { outputSchema: T } | Record<str
  * Run a tool handler, formatting any throw as an isError result (SEP-1303).
  * Shared by registerJsonTool and the app-tool handler — their success paths
  * differ (content shape) but their error path is identical (finding 20).
+ *
+ * Also emits one JSON line per call on stderr — `{tool, ms, ok, error?,
+ * input?}` — the family-shared shape (rijksmuseum-mcp-plus `withLogging`,
+ * iconclass `registration.ts`), so `railway logs --json` feeds the same
+ * analysis pipeline across the sibling servers. `log: false` opts a tool out
+ * (only globalise_poll_viewer_commands: the viewer iframe polls it every
+ * 1-4 s, which would drown the log — the same exemption rijksmuseum makes).
  */
-async function runTool(name: string, fn: () => Promise<CallToolResult>): Promise<CallToolResult> {
+async function runTool(
+  name: string,
+  fn: () => Promise<CallToolResult>,
+  opts: { input?: unknown; log?: boolean } = {},
+): Promise<CallToolResult> {
+  const start = performance.now();
+  let result: CallToolResult;
+  let thrown: string | undefined;
   try {
-    return await fn();
+    result = await fn();
   } catch (error) {
-    return errorResponse(name, error);
+    thrown = error instanceof Error ? error.message : String(error);
+    result = errorResponse(name, error);
   }
+  if (opts.log !== false) {
+    const ms = Math.round(performance.now() - start);
+    const ok = result.isError !== true;
+    console.error(JSON.stringify({
+      tool: name,
+      ms,
+      ok,
+      ...(thrown !== undefined && { error: thrown }),
+      ...(opts.input !== undefined && { input: opts.input }),
+    }));
+  }
+  return result;
 }
 
 const READ_ONLY_BASE = {
@@ -397,7 +426,7 @@ function registerJsonTool<Schema extends z.ZodObject<z.ZodRawShape>>(
         fitResultToBudget(result, trimStrategy, effectiveResultBudgetBytes());
         const links = viewerLinks?.(result) ?? [];
         return toolResponse(name, result, links);
-      }),
+      }, { input: args }),
   );
 }
 
@@ -673,7 +702,7 @@ export function createServer(): McpServer {
           ],
           ...structuredPayload(result.meta),
         };
-      }),
+      }, { input: args }),
   );
 
   // ==========================================================================
@@ -709,7 +738,7 @@ export function createServer(): McpServer {
           ...structuredPayload(result.data),
           ...(result.ok ? {} : { isError: true as const }),
         };
-      }),
+      }, { input: args }),
   );
 
   // Poll tool: app-only (_meta.ui.visibility: ['app'], NO resourceUri). The
@@ -744,7 +773,7 @@ export function createServer(): McpServer {
           content: [{ type: 'text', text: commands.length ? `${commands.length} commands polled` : 'No pending commands' }],
           ...structuredPayload({ commands }),
         };
-      }),
+      }, { log: false }),
   );
 
   // ==========================================================================
@@ -832,7 +861,7 @@ export function createServer(): McpServer {
               ],
           ...structuredPayload(docResult),
         };
-      }),
+      }, { input: args }),
   );
 
   return server;
