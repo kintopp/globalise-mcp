@@ -152,21 +152,16 @@ export async function inspectPageImage(
   }
 
   // 9. Fetch the crop bytes (timed). Full-page fetches are cached — they
-  //    repeat often in exploration sessions. `getCachedApiGet` is JSON-only
-  //    (it calls `response.json()` internally), so binary crops are cached
-  //    manually against the same LRUCache type instead of routing through it.
+  //    repeat often in exploration sessions. The cache is driven directly via
+  //    `LRUCache.getOrFetch` (cache-first + in-flight dedup) rather than
+  //    `getCachedApiGet`, because the loader here is `apiGetBinary`, not the
+  //    JSON-only `apiGet` that wrapper hardcodes.
   const fetchStart = performance.now();
   let image: { base64: string; mimeType: string };
   try {
     if (iiifRegion === 'full') {
       const imgCacheKey = `img:${documentUrn}:${effectiveSize}:${input.rotation}:${input.quality}`;
-      const cached = fullImageCache.get(imgCacheKey) as { base64: string; mimeType: string } | undefined;
-      if (cached !== undefined) {
-        image = cached;
-      } else {
-        image = await apiGetBinary(fetchUrl);
-        fullImageCache.set(imgCacheKey, image);
-      }
+      image = await fullImageCache.getOrFetch(imgCacheKey, () => apiGetBinary(fetchUrl)) as { base64: string; mimeType: string };
     } else {
       image = await apiGetBinary(fetchUrl);
     }

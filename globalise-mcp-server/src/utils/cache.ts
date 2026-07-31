@@ -1,5 +1,5 @@
 /**
- * LRU (Least Recently Used) Cache with TTL support
+ * LRU (Least Recently Used) Cache with TTL support and in-flight dedup
  *
  * Provides a simple in-memory cache with automatic eviction of:
  * - Least recently used entries when cache is full
@@ -15,6 +15,12 @@ export class LRUCache<T> {
   private cache = new Map<string, CacheEntry<T>>();
   private maxSize: number;
   private ttlMs: number;
+
+  /**
+   * Loads currently in flight, keyed by cacheKey. Per-instance state, so two
+   * caches with a coincidentally-equal key never collide. Cleared on settle.
+   */
+  private inFlight = new Map<string, Promise<T>>();
 
   /**
    * Create a new LRU cache
@@ -72,6 +78,40 @@ export class LRUCache<T> {
       value,
       timestamp: Date.now()
     });
+  }
+
+  /**
+   * Return the cached value, join an in-flight load for the same key, or
+   * invoke `loader` once and cache its result. Concurrent misses share one
+   * upstream request (family cache-seam contract; see ub-sgbr
+   * src/lib/cache.js#fetchCached — the abort/waiter machinery there is
+   * deliberately not ported: no GLOBALISE caller threads a cancel signal).
+   * A rejected load caches nothing and is cleared, so the next caller
+   * retries; `!== undefined` keeps a legitimately-cached falsy value a hit
+   * (finding 13).
+   */
+  async getOrFetch(key: string, loader: () => Promise<T>): Promise<T> {
+    const cached = this.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const existing = this.inFlight.get(key);
+    if (existing) {
+      return existing;
+    }
+    const promise = loader()
+      .then((value) => {
+        this.set(key, value);
+        return value;
+      })
+      .finally(() => {
+        // Identity guard: only the entry that owns this slot may clear it.
+        if (this.inFlight.get(key) === promise) {
+          this.inFlight.delete(key);
+        }
+      });
+    this.inFlight.set(key, promise);
+    return promise;
   }
 
   /**

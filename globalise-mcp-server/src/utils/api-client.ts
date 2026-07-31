@@ -411,16 +411,9 @@ export const documentCache = new LRUCache<unknown>(100, 300000);  // 100 docs, 5
 export const indicesCache = new LRUCache<unknown>(10, 3600000);   // 10 items, 1 hour TTL
 
 /**
- * In-flight fetches per cache, so N concurrent misses for the same key share
- * one upstream request instead of firing N (finding 13). Keyed by the cache
- * instance (then by cacheKey) so different caches with a coincidentally-equal
- * key never collide. Entries are cleared when the request settles.
- */
-const inFlightByCache = new WeakMap<LRUCache<unknown>, Map<string, Promise<unknown>>>();
-
-/**
- * Make a cached GET request to the API
- * Checks cache first, falls back to API call if not found
+ * Make a cached GET request to the API. Cache-first with in-flight dedup —
+ * both now live inside LRUCache.getOrFetch (plan 025); this stays the one
+ * JSON-over-HTTP convenience wrapper the tools call.
  *
  * @param url The URL to fetch
  * @param cacheKey The key to use for caching
@@ -433,36 +426,7 @@ export async function getCachedApiGet<T>(
   cache: LRUCache<unknown>,
   timeoutMs?: number
 ): Promise<T> {
-  // `!== undefined` (not truthiness): a legitimately-cached falsy value is a
-  // hit, not a miss (finding 13).
-  const cached = cache.get(cacheKey);
-  if (cached !== undefined) {
-    return cached as T;
-  }
-
-  let inFlight = inFlightByCache.get(cache);
-  if (!inFlight) {
-    inFlight = new Map();
-    inFlightByCache.set(cache, inFlight);
-  }
-
-  // Dedup concurrent misses: reuse an outstanding fetch for the same key.
-  const existing = inFlight.get(cacheKey);
-  if (existing) {
-    return existing as Promise<T>;
-  }
-
-  const promise = apiGet<T>(url, timeoutMs)
-    .then((result) => {
-      cache.set(cacheKey, result);
-      return result;
-    })
-    .finally(() => {
-      inFlight.delete(cacheKey);
-    });
-
-  inFlight.set(cacheKey, promise as Promise<unknown>);
-  return promise;
+  return cache.getOrFetch(cacheKey, () => apiGet<T>(url, timeoutMs)) as Promise<T>;
 }
 
 /**
