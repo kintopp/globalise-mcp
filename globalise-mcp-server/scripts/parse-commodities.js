@@ -35,7 +35,6 @@ const OUTPUT_PATH = join(__dirname, '../src/resources/commodities.json');
 
 // SKOS namespace prefixes
 const SKOS = 'http://www.w3.org/2004/02/skos/core#';
-const DCTERMS = 'http://purl.org/dc/terms/';
 
 // Commodities concept scheme URI
 const COMMODITIES_SCHEME = 'https://digitaalerfgoed.poolparty.biz/globalise/be873c02-658f-4764-a010-f00840f7f087';
@@ -207,7 +206,7 @@ async function parseCommodities() {
   let withDefinition = 0;
   let withAltLabels = 0;
 
-  for (const [uri, data] of concepts) {
+  for (const [, data] of concepts) {
     if (data.broader === NOT_YET_CLASSIFIED_URI) {
       notYetClassifiedCount++;
       if (shouldInclude(data)) notYetClassifiedIncluded++;

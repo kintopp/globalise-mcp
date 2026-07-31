@@ -213,7 +213,6 @@ function regenerate() {
   for (const row of conversionsData.rows) {
     const fromId = row.from_Unit_ID;
     const toId = row.to_unit_ID;  // lowercase 'u' in source TSV
-    const fromAmount = row.from_amount;
     const toAmountMin = row.to_amount_min;
     const toAmountMax = row.to_amount_max;
     const commodity = row.commodity;
