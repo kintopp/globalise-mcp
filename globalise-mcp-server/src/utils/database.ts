@@ -12,6 +12,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import { Readable, PassThrough } from 'stream';
 import { pipeline } from 'stream/promises';
@@ -29,15 +30,37 @@ export type DbStatement = StatementSync;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * Expand shell-style variables a host may pass through verbatim. Claude
+ * Desktop interpolates `${VAR}` inside manifest mcp_config *templates* but
+ * not inside user_config *default values*, so the thin manifest's literal
+ * `${HOME}/.globalise-mcp` reached Node untouched and fs treated it as a
+ * real directory name (observed in the wild: `ENOENT mkdir '${HOME}/…'`).
+ * Node's fs does no substitution, so do it here: `${VAR}` from the
+ * environment (HOME/USERPROFILE fall back to os.homedir()), plus a leading
+ * `~`. Unknown variables are left as-is so the error still names them.
+ */
+export function expandPathVars(p: string): string {
+  const expanded = p.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (match, name: string) => {
+    const fromEnv = process.env[name];
+    if (fromEnv) return fromEnv;
+    return name === 'HOME' || name === 'USERPROFILE' ? homedir() : match;
+  });
+  if (expanded === '~' || expanded.startsWith('~/') || expanded.startsWith('~\\')) {
+    return join(homedir(), expanded.slice(1));
+  }
+  return expanded;
+}
+
 // Database file location - can be overridden by environment variable
 const DEFAULT_DB_PATH = join(__dirname, '..', '..', 'data', 'archival-index.sqlite');
-const DB_PATH = process.env.ARCHIVAL_DB_PATH || DEFAULT_DB_PATH;
+const DB_PATH = expandPathVars(process.env.ARCHIVAL_DB_PATH || DEFAULT_DB_PATH);
 
 // Reference vocabularies (commodities thesaurus, and weights & measures later)
 // live in a separate, small SQLite file from the large archival index, so each
 // can be built, shipped, and degraded independently. Overridable for tests.
 const DEFAULT_REFERENCE_DB_PATH = join(__dirname, '..', '..', 'data', 'reference.sqlite');
-const REFERENCE_DB_PATH = process.env.REFERENCE_DB_PATH || DEFAULT_REFERENCE_DB_PATH;
+const REFERENCE_DB_PATH = expandPathVars(process.env.REFERENCE_DB_PATH || DEFAULT_REFERENCE_DB_PATH);
 
 // Lazy-initialized database instances
 let db: Db | null = null;
@@ -228,6 +251,11 @@ function downloadIdleTimeoutMs(): number {
 async function downloadArchivalDb(url: string, target: string): Promise<void> {
   console.error(`[archival-db] index not present; downloading from ${url} ...`);
 
+  // Provision the cache dir BEFORE fetching: a bad data directory (unwritable,
+  // or an unexpanded variable that survived expandPathVars) should fail fast
+  // as a filesystem error, not after a 27 MB download.
+  mkdirSync(dirname(target), { recursive: true });
+
   const headers: Record<string, string> = { accept: 'application/octet-stream' };
   if (process.env.ARCHIVAL_DB_TOKEN) {
     headers.authorization = `Bearer ${process.env.ARCHIVAL_DB_TOKEN}`;
@@ -262,7 +290,6 @@ async function downloadArchivalDb(url: string, target: string): Promise<void> {
   // Phase 2 — stream to a private temp file, gunzipping when the URL ends .gz.
   const totalBytes = Number(response.headers.get('content-length')) || 0;
   const totalMb = totalBytes ? (totalBytes / 1024 / 1024).toFixed(1) : '';
-  mkdirSync(dirname(target), { recursive: true });
   const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
 
   // A pass-through that counts bytes, re-arms the idle timer, and logs progress

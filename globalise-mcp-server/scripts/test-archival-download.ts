@@ -24,7 +24,7 @@ process.env.ARCHIVAL_DB_PATH = target;
 process.env.ARCHIVAL_DB_TIMEOUT_MS = '700'; // fast idle timeout for the hang test
 delete process.env.ARCHIVAL_DB_TOKEN;
 
-const { ensureDatabaseFile } = await import('../src/utils/database.js');
+const { ensureDatabaseFile, expandPathVars } = await import('../src/utils/database.js');
 
 const listen = (s: Server): Promise<number> =>
   new Promise((res) => s.listen(0, '127.0.0.1', () => {
@@ -91,6 +91,29 @@ console.log('3. gzip at a non-.gz URL → sniffed by magic bytes + gunzipped');
   check(existsSync(target), 'target file written');
   check(existsSync(target) && readFileSync(target).equals(payload), 'gzip sniffed + gunzipped despite non-.gz URL');
   await close(srv);
+}
+
+// 4. Path variable expansion — Claude Desktop passes user_config *defaults*
+//    through verbatim, so the manifest's literal "${HOME}/.globalise-mcp"
+//    reached fs.mkdir untouched (real-world ENOENT from the 2026-08-03 thin
+//    bundle test). expandPathVars must resolve it in code.
+console.log('4. expandPathVars resolves host-unexpanded variables');
+{
+  const { homedir } = await import('node:os');
+  const home = homedir();
+  check(expandPathVars('${HOME}/.globalise-mcp/x.sqlite') === join(home, '.globalise-mcp', 'x.sqlite'),
+    'literal ${HOME} expands to os.homedir()');
+  check(expandPathVars('~/.globalise-mcp') === join(home, '.globalise-mcp'),
+    'leading ~ expands to os.homedir()');
+  const prevHome = process.env.HOME;
+  delete process.env.HOME;
+  check(expandPathVars('${HOME}/y') === join(home, 'y'),
+    '${HOME} falls back to os.homedir() when env HOME is unset');
+  if (prevHome !== undefined) process.env.HOME = prevHome;
+  check(expandPathVars('${NO_SUCH_VAR_XYZ}/z') === '${NO_SUCH_VAR_XYZ}/z',
+    'unknown variables stay literal (so errors still name them)');
+  check(expandPathVars('/plain/absolute/path') === '/plain/absolute/path',
+    'plain paths pass through untouched');
 }
 
 rmSync(dir, { recursive: true, force: true });

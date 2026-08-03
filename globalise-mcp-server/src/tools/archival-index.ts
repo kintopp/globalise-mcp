@@ -478,8 +478,21 @@ export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput
   try {
     await ensureDatabaseFile();
   } catch (error) {
+    // A local filesystem failure (cache dir/write/rename) needs different
+    // advice than a download failure — pointing someone with an unwritable
+    // data directory at the URL setting sends them down the wrong road.
+    const errno = (error as NodeJS.ErrnoException).code;
+    const isFsError = typeof errno === 'string' &&
+      ['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM', 'EROFS', 'ENOSPC', 'EEXIST', 'EINVAL'].includes(errno);
+    const message = error instanceof Error ? error.message : String(error);
+    if (isFsError) {
+      throw new ToolError(
+        `Could not prepare the local index cache: ${message}`,
+        `This is a local filesystem problem (${errno}), not a download failure — check that the "Data directory" extension setting points to a writable folder (it is created automatically if missing). The other GLOBALISE tools work without this local index.`,
+      );
+    }
     throw new ToolError(
-      `Could not download the archival index: ${error instanceof Error ? error.message : String(error)}`,
+      `Could not download the archival index: ${message}`,
       'Check the index download URL in the extension settings — it must serve archival-index.sqlite (or .sqlite.gz) over HTTP. The other GLOBALISE tools work without this local index.',
     );
   }
