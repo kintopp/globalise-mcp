@@ -16,8 +16,8 @@ authors:
 repository-code: "https://github.com/kintopp/globalise-mcp"
 url: "https://globalise-mcp-production.up.railway.app/mcp"
 license: MIT
-version: "2.10.6"
-date-released: "2026-06-18"
+version: "2.11.10"
+date-released: "2026-08-03"
 keywords:
   - digital humanities
   - colonial archives
