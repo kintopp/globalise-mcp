@@ -151,7 +151,7 @@ export const searchOutputSchema = z.object({
       count: z.number(),
     })).optional(),
     languages: z.array(languageSchema.extend({ count: z.number() })).optional(),
-  }).optional(),
+  }).optional().describe('Facet counts over the filtered result set. A facet for a field you are filtering ON is omitted (upstream computes self-facets without their own filter, i.e. as unfiltered corpus counts) — the note field says so when it happens.'),
   pagination: z.object({
     from: z.number(),
     size: z.number(),
@@ -169,11 +169,22 @@ export type SearchTranscriptionsInput = z.infer<typeof searchTranscriptionsInput
 async function search(input: SearchInput): Promise<SearchOutput> {
   const indexName = API_CONFIG.DEFAULT_INDEX;
 
+  // Upstream facets are multi-select: a field's own facet ignores that
+  // field's filter and returns unfiltered corpus counts (verified live for
+  // both invNr and langIso). Cross-field facets respect the filters. A
+  // self-facet would read as filtered statistics when it is not — skip it
+  // upstream and record the omission for the response note.
+  const selfFacetOmitted = {
+    invNr: Boolean(input.filters?.invNr),
+    langIso: Boolean(input.languages?.length),
+  };
   const aggs = input.includeAggregations ? {
-    invNr: { order: 'countDesc', size: 10 },
+    ...(selfFacetOmitted.invNr ? {} : { invNr: { order: 'countDesc', size: 10 } }),
     document: { order: 'countDesc', size: 10 },
-    langIso: { order: 'countDesc', size: 10 },
-    langLabel: { order: 'countDesc', size: 10 },
+    ...(selfFacetOmitted.langIso ? {} : {
+      langIso: { order: 'countDesc', size: 10 },
+      langLabel: { order: 'countDesc', size: 10 },
+    }),
   } : {};
 
   // Build terms filters from language codes and custom filters
@@ -236,6 +247,17 @@ async function search(input: SearchInput): Promise<SearchOutput> {
     };
   }
 
+  let note: string | undefined;
+  if (input.includeAggregations) {
+    const omitted = [
+      ...(selfFacetOmitted.invNr ? ['topInventoryNumbers (inventoryNumber filter active)'] : []),
+      ...(selfFacetOmitted.langIso ? ['languages (languages filter active)'] : []),
+    ];
+    if (omitted.length) {
+      note = `Aggregations omitted: ${omitted.join(', ')} — the upstream facet for a filtered field ignores its own filter and would show unfiltered corpus counts. The other aggregations respect the filters.`;
+    }
+  }
+
   return {
     total: response.total,
     results,
@@ -245,6 +267,7 @@ async function search(input: SearchInput): Promise<SearchOutput> {
       size: input.size,
       hasMore: response.total.value > input.from + input.size,
     },
+    ...(note ? { note } : {}),
   };
 }
 

@@ -109,8 +109,8 @@ export async function navigateViewer(
   }
   if (!queue) {
     return navError(
-      'No active viewer for this UUID',
-      'No active viewer for this UUID — open a page with globalise_view_document_ui first',
+      'Unknown or expired viewUUID',
+      'Unknown or expired viewUUID — no queue exists for it (sessions expire after ~30 min idle). Open the page again with globalise_view_document_ui and use the fresh viewUUID it returns.',
     );
   }
 
@@ -236,7 +236,7 @@ export async function navigateViewer(
       case 'queued_waiting_for_viewer':
         return `Queued ${commands.length} commands for viewer ${shortUuid} (offscreen or paused — will apply when viewer resumes polling)`;
       case 'no_live_viewer_seen':
-        return `Queued ${commands.length} commands for viewer ${shortUuid} (no viewer has connected yet)`;
+        return `Queued ${commands.length} commands for viewer ${shortUuid} — the viewUUID is valid but its iframe has not started polling yet (typical right after globalise_view_document_ui returns; the widget usually connects within a few seconds of rendering). The commands are held and will apply on its first poll — no retry needed.`;
     }
   })();
 

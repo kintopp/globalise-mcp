@@ -9,6 +9,8 @@
  */
 
 import type { Server } from 'node:http';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import express, { Request, Response } from 'express';
@@ -79,6 +81,27 @@ export function createHttpServer(options: HttpServerOptions): Server {
   });
 
   // ==========================================================================
+  // Archival index download (thin-.mcpb support)
+  // ==========================================================================
+
+  // Serves the committed compressed finding-aid index so thin .mcpb installs
+  // can fetch it from this deployment instead of a GitHub release asset —
+  // release-download URLs 404 while the repo is private, this route does not.
+  // The .gz ships in the deploy (it is the build's own DB source), so there is
+  // nothing extra to provision. sendFile handles ETag/ranges; the gzip is the
+  // payload itself, not transport encoding, hence the explicit content-type.
+  const archivalGzPath = fileURLToPath(new URL('../../data/archival-index.sqlite.gz', import.meta.url));
+  app.get('/archival-index.sqlite.gz', originGuard, (_req: Request, res: Response) => {
+    if (!existsSync(archivalGzPath)) {
+      res.status(404).json({ error: 'archival-index.sqlite.gz is not present on this deployment' });
+      return;
+    }
+    res.sendFile(archivalGzPath, {
+      headers: { 'Content-Type': 'application/gzip' },
+    });
+  });
+
+  // ==========================================================================
   // Streamable HTTP Transport (stateless)
   // ==========================================================================
 
@@ -145,6 +168,7 @@ export function createHttpServer(options: HttpServerOptions): Server {
     console.error('[HTTP] Endpoints:');
     console.error(`[HTTP]   POST http://localhost:${port}/mcp     (Streamable HTTP, stateless)`);
     console.error(`[HTTP]   GET  http://localhost:${port}/health`);
+    console.error(`[HTTP]   GET  http://localhost:${port}/archival-index.sqlite.gz`);
     console.error(`[HTTP] CORS: ${allowedOrigins.join(', ')}`);
     console.error('='.repeat(65));
   });
