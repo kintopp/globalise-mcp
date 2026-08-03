@@ -11,7 +11,7 @@ import { LRUCache } from '../utils/cache.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import {
   extractIiifImageUrl, IIIF_REGION_RE, checkRegionBounds, cropPixelsToIiifPixels,
-  computeEffectiveSize, buildIiifRegionUrl,
+  computeEffectiveSize, buildIiifRegionUrl, computeDeliveryState,
   type RegionBoundsIssue,
 } from '../utils/iiif.js';
 import { fetchIiifDims } from '../utils/iiif-info.js';
@@ -55,7 +55,8 @@ export const inspectPageImageOutputSchema = z.object({
   fetchTimeMs: z.number().optional(),
   viewerUrl: z.string().optional().describe('Web viewer deep link for the whole page'),
   viewUUID: z.string().optional().describe('The active viewer session this inspect targeted (for follow-up globalise_navigate_viewer calls)'),
-  viewerNavigated: z.boolean().optional().describe('True if the open viewer was auto-zoomed to the inspected region'),
+  viewerNavigated: z.boolean().optional().describe('True only when the open viewer is actively polling and the auto-zoom was delivered. When the zoom was merely queued (iframe not polling), viewerZoomQueued is true instead.'),
+  viewerZoomQueued: z.boolean().optional().describe('True when the auto-zoom command was queued but the viewer iframe has not polled recently — it applies if/when the iframe polls. On hosts whose app bridge does not support server tools, queued commands are never delivered.'),
   error: z.string().optional(),
   regionRecovery: z.object({
     requested: z.string(),
@@ -181,13 +182,23 @@ export async function inspectPageImage(
 
   // 11. Auto-navigate the open viewer to the inspected region (plan 021):
   //     a non-full region + a live viewer + navigateViewer (default true).
+  //     "Navigated" is claimed only when the iframe is actually polling
+  //     (delivered_recently) — an enqueue alone is reported as queued, so this
+  //     caption can no longer contradict navigate_viewer's delivery state for
+  //     the same session (2026-08-03 stdio test report §4.2).
   let viewerNavigated = false;
+  let viewerZoomQueued = false;
   if (input.navigateViewer && activeViewUUID && iiifRegion !== 'full') {
     const queue = viewerQueues.get(activeViewUUID);
     if (queue) {
+      const now = Date.now();
       queue.commands.push({ action: 'navigate', region: iiifRegion });
-      queue.lastAccess = Date.now();
-      viewerNavigated = true;
+      queue.lastAccess = now;
+      if (computeDeliveryState(queue.lastPolledAt, now) === 'delivered_recently') {
+        viewerNavigated = true;
+      } else {
+        viewerZoomQueued = true;
+      }
     }
   }
 
@@ -205,6 +216,7 @@ export async function inspectPageImage(
     captionParts.push(`| crop ${cropPixelWidth}×${cropPixelHeight}px`);
   }
   if (viewerNavigated) captionParts.push('| viewer navigated');
+  else if (viewerZoomQueued) captionParts.push('| viewer zoom queued (iframe not polling yet)');
   else if (activeViewUUID) captionParts.push(`| viewer open (${activeViewUUID.slice(0, 8)})`);
   captionParts.push(`| full page: ${VIEWER_URL_PREFIX}${documentUrn}`);
   const caption = captionParts.join(' ');
@@ -227,6 +239,7 @@ export async function inspectPageImage(
     viewerUrl: `${VIEWER_URL_PREFIX}${documentUrn}`,
     viewUUID: activeViewUUID,
     viewerNavigated: viewerNavigated || undefined,
+    viewerZoomQueued: viewerZoomQueued || undefined,
   };
 
   return { ok: true, image, meta, caption };

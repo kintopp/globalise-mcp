@@ -235,8 +235,18 @@ export async function navigateViewer(
         return `Delivered ${commands.length} commands to active viewer ${shortUuid}`;
       case 'queued_waiting_for_viewer':
         return `Queued ${commands.length} commands for viewer ${shortUuid} (offscreen or paused — will apply when viewer resumes polling)`;
-      case 'no_live_viewer_seen':
+      case 'no_live_viewer_seen': {
+        const ageSecs = Math.round((now - queue.createdAt) / 1000);
+        // Young queue: the iframe simply hasn't connected yet — benign. Old
+        // queue with zero polls ever: the host's app bridge most likely does
+        // not support app-initiated tool calls (serverTools), so the reverse
+        // channel cannot work there at all — say so instead of promising a
+        // first poll that will never come (2026-08-03 stdio test report §4.3).
+        if (ageSecs > 30) {
+          return `Queued ${commands.length} commands for viewer ${shortUuid}, but its iframe has never polled in the ${ageSecs}s since it was opened. If the widget is visibly rendered, this host's MCP Apps bridge likely does not support app-initiated tool calls (serverTools capability), and queued viewer commands will never be delivered here. Do not keep re-sending; to show the user a detail, use globalise_inspect_page_image (its returned image works on every host) or share the region as a viewer link.`;
+        }
         return `Queued ${commands.length} commands for viewer ${shortUuid} — the viewUUID is valid but its iframe has not started polling yet (typical right after globalise_view_document_ui returns; the widget usually connects within a few seconds of rendering). The commands are held and will apply on its first poll — no retry needed.`;
+      }
     }
   })();
 
