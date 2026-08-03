@@ -20,10 +20,12 @@ Complete documentation of HTTP status codes and error handling for the GLOBALISE
 
 ---
 
-## Error Response Format
+## Error Response Formats
 
-All error responses share a single, consistent shape — an integer `code` (mirroring the
-HTTP status) and a human-readable `message`:
+### Application-level errors
+
+Errors produced by the API application use an integer `code` (mirroring the HTTP status) and
+a human-readable `message`:
 
 ```json
 { "code": 404, "message": "bodyId not found: urn:globalise:NL-HaNA_1.04.02_9966_9999" }
@@ -43,9 +45,9 @@ HTTP status) and a human-readable `message`:
 | Unknown `indexName` | 404 | `{"code":404,"message":"Unknown index: … See /brinta/globalise/indices for known indices"}` |
 | Non-existent / malformed document | 404 | `{"code":404,"message":"bodyId not found: …"}` |
 
-There is **no** `error`, `details`, `documentId`, `suggestion`, or `retryAfter` field — only
-`code` and `message`. Parse `message` for display; branch on `code` (or the HTTP status) for
-logic. The illustrative bodies shown per-status below follow this same `{code, message}` shape.
+These application responses have **no** `error`, `details`, `documentId`, `suggestion`, or
+`retryAfter` field — only `code` and `message`. Parse `message` for display; branch on `code`
+(or the HTTP status) for logic.
 
 ---
 
@@ -335,17 +337,24 @@ async function apiRequest(url, options) {
   const response = await fetch(url, options);
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, error.message);
+    const contentType = response.headers.get("content-type") || "";
+    const body = contentType.includes("application/json")
+      ? await response.json().catch(() => ({}))
+      : { message: await response.text() };
+
+    const message = body.message || `HTTP ${response.status}`;
+
+    throw new ApiError(response.status, message, contentType);
   }
 
   return response.json();
 }
 
 class ApiError extends Error {
-  constructor(status, message) {
+  constructor(status, message, contentType) {
     super(message);
     this.status = status;
+    this.contentType = contentType;
     this.name = "ApiError";
   }
 }

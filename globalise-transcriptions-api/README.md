@@ -1,11 +1,11 @@
 # GLOBALISE Transcriptions API
 
-A REST API for searching and retrieving ~4.8 million Dutch East India Company (VOC) historical transcriptions from the 17th-18th centuries.
+A REST API for searching and retrieving approximately 4.78 million indexed pages of Dutch East India Company (VOC) historical transcriptions from the 17th-18th centuries.
 
 ## Key Features
 
-- **4.8M+ Transcriptions** - Machine-generated transcriptions of VOC archival documents
-- **No Authentication** - Public API, no API keys required
+- **~4.78M Indexed Pages** - Machine-generated transcriptions of VOC archival documents
+- **No Authentication** - Public API, no keys, tokens, or registration required
 - **CC0 License** - All transcriptions are freely usable
 - **Full-Text Search** - Elasticsearch-like query syntax with boolean operators, wildcards, and fuzzy matching
 - **Rich Metadata** - IIIF images, W3C Web Annotations, language classification
@@ -131,6 +131,7 @@ NL-HaNA, VOC, [inv.nr.], [scan nr.], transcription GLOBALISE project
 
 - **Index:** `globalise-2024.03.18-test`
 - **Transcription Date:** March 2024
+- **Indexed pages:** `4,784,614` (match-all count verified 2026-08-03)
 
 ## Additional Resources
 

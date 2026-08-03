@@ -308,7 +308,10 @@ Response from `GET /projects/globalise/{documentUrn}`
         "id": { "type": "string", "format": "uri" },
         "type": { "const": "Annotation" },
         "motivation": { "type": "string" },
-        "generated": { "type": "string", "format": "date-time" },
+        "generated": {
+          "type": "string",
+          "description": "Upstream timestamp. Live values are ISO-like local timestamps without a timezone offset, so this is intentionally not declared as RFC 3339 date-time."
+        },
         "generator": { "$ref": "#/$defs/generator" },
         "body": { "$ref": "#/$defs/annotationBody" },
         "target": {
@@ -343,8 +346,14 @@ Response from `GET /projects/globalise/{documentUrn}`
         "n": { "type": "string", "description": "Page/scan number" },
         "eDepotId": { "type": "string", "format": "uuid" },
         "creator": { "type": "string", "description": "Layout analysis software (e.g., 'Laypa')" },
-        "created": { "type": "string", "format": "date-time" },
-        "lastChange": { "type": "string", "format": "date-time" },
+        "created": {
+          "type": "string",
+          "description": "ISO-like local timestamp without a timezone offset"
+        },
+        "lastChange": {
+          "type": "string",
+          "description": "ISO-like local timestamp without a timezone offset"
+        },
         "comment": { "type": "string" },
         "naUrl": { "type": "string", "format": "uri", "description": "National Archives URL" },
         "trUrl": { "type": "string", "format": "uri", "description": "TextRepo URL" },
@@ -379,6 +388,10 @@ Response from `GET /projects/globalise/{documentUrn}`
         "selector": {
           "type": "object",
           "properties": {
+            "@context": {
+              "type": "string",
+              "description": "Optional JSON-LD context"
+            },
             "type": { "const": "TextAnchorSelector" },
             "start": { "type": "integer" },
             "end": { "type": "integer" }
@@ -389,6 +402,20 @@ Response from `GET /projects/globalise/{documentUrn}`
   }
 }
 ```
+
+---
+
+## W3C Annotation
+
+Each item in `DocumentResponse.anno` is a W3C Web Annotation carrying the page body,
+processing metadata, and targets for the scan image, IIIF Canvas, physical text, and—where
+available—logical text. The complete schema is the `w3cAnnotation` definition inside
+[Document Response](#document-response); the corresponding TypeScript interfaces are
+`W3CAnnotation`, `AnnotationBody`, `PageMetadata`, `AnnotationTarget`, and
+`TextAnchorSelector` below.
+
+Upstream annotation and page timestamps are timezone-less ISO-like strings. Selector objects
+may contain their own optional JSON-LD `@context`.
 
 ---
 
@@ -446,21 +473,39 @@ const parsed = parseDocumentUrn("urn:globalise:NL-HaNA_1.04.02_9966_0106");
 
 ## Language Codes
 
-Documents are classified using ISO 639-3 language codes:
+Documents are classified using ISO 639-3 language codes. Pages may be multilingual, so counts
+overlap. The full set of 23 codes was read from the live `langIso`/`langLabel` aggregations
+on 2026-08-03:
 
-| ISO Code | Label | Description |
-|----------|-------|-------------|
-| `nld` | Dutch | Primary language (~754k documents) |
-| `por` | Portuguese | Portuguese language |
-| `fra` | French | French language |
-| `deu` | German | German language |
-| `lat` | Latin | Latin language |
-| `eng` | English | English language |
-| `spa` | Spanish | Spanish language |
-| `unknown` | Unknown | Language not yet determined |
-| `art` | Cipher | Deliberately encrypted text |
+| ISO Code | Label | Matching pages |
+|----------|-------|---------------:|
+| `nld` | Dutch | 4,344,249 |
+| `unknown` | Unknown | 136,014 |
+| `fra` | French | 5,596 |
+| `eng` | English | 3,600 |
+| `lat` | Latin | 2,196 |
+| `por` | Portuguese | 583 |
+| `msa` | Malay | 502 |
+| `spa` | Spanish | 273 |
+| `deu` | German | 139 |
+| `sin` | Sinhala | 113 |
+| `dan` | Danish | 29 |
+| `lzh` | Classical Chinese | 20 |
+| `ita` | Italian | 18 |
+| `art` | Cipher | 8 |
+| `fas` | Persian | 8 |
+| `tam` | Tamil | 8 |
+| `jpn` | Japanese | 6 |
+| `ben` | Bengali | 3 |
+| `bug` | Buginese | 2 |
+| `chu` | Old Church Slavonic | 2 |
+| `guj` | Gujarati | 2 |
+| `grc` | Ancient Greek | 1 |
+| `hbo` | Ancient Hebrew | 1 |
 
 **Note:** "Unknown" means the language classification has not yet been performed, not that the language is unidentifiable. "Cipher" uses ISO code `art` (artificial language) for deliberately encrypted historical text.
+
+The API does not publish a closed language enum; additional codes may appear in future data.
 
 ---
 
@@ -509,7 +554,7 @@ interface SearchRequest {
 
 /** Search query parameters */
 interface SearchParams {
-  indexName: string;
+  indexName?: string;
   fragmentSize?: number;
   from?: number;
   size?: number;
@@ -585,6 +630,7 @@ interface AnnotationBody {
 
 /** Text anchor selector */
 interface TextAnchorSelector {
+  "@context"?: string;
   type: "TextAnchorSelector";
   start: number;
   end: number;
@@ -674,8 +720,7 @@ interface ParsedUrn {
   documentId: string;
 }
 
-/** API error response. Every error uses this shape: an integer `code` (mirrors the HTTP
- *  status) and a human-readable `message`. No `error`/`details`/`documentId`/`suggestion`. */
+/** API error response. */
 interface ApiError {
   code: number;
   message: string;

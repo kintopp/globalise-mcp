@@ -2,15 +2,15 @@ openapi: 3.1.0
 info:
   title: GLOBALISE Transcriptions API
   description: |
-    REST API for searching and retrieving ~4.8 million Dutch East India Company (VOC)
-    historical transcriptions from the 17th-18th centuries.
+    REST API for searching and retrieving approximately 4.78 million indexed pages of
+    Dutch East India Company (VOC) historical transcriptions from the 17th-18th centuries.
 
     ## Key Features
     - Full-text search with boolean operators, wildcards, and fuzzy matching
     - W3C Web Annotations with rich metadata
     - IIIF image references
     - Language classification
-    - No authentication required
+    - No application API key or token required
 
     ## License
     All transcriptions are available under CC0 (Creative Commons Zero) license.
@@ -40,7 +40,7 @@ paths:
       operationId: searchTranscriptions
       summary: Search transcriptions
       description: |
-        Full-text search across ~4.8 million VOC transcriptions.
+        Full-text search across approximately 4.78 million indexed VOC transcription pages.
 
         Supports:
         - Boolean operators: AND, OR, NOT
@@ -81,11 +81,11 @@ paths:
         - name: size
           in: query
           required: false
-          description: Number of results to return
+          description: Number of results to return. Use 0 for aggregations without result documents.
           schema:
             type: integer
             default: 10
-            minimum: 1
+            minimum: 0
         - name: sortBy
           in: query
           required: false
@@ -168,6 +168,12 @@ paths:
                     unknown: 1078
         "400":
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown search index
           content:
             application/json:
               schema:
@@ -260,6 +266,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /config:
+    get:
+      operationId: getConfiguration
+      summary: Get frontend configuration
+      description: >-
+        Returns the frontend SPA configuration. Its indexName is not a valid Broccoli
+        search index; use globalise-2024.03.18-test or omit indexName on search requests.
+      tags:
+        - Configuration
+      servers:
+        - url: https://transcriptions.globalise.huygens.knaw.nl
+          description: GLOBALISE Transcriptions frontend
+      responses:
+        "200":
+          description: Frontend configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppConfig"
+
+  /brinta/globalise/indices:
+    get:
+      operationId: getIndices
+      summary: Get search index field mappings
+      tags:
+        - Configuration
+      responses:
+        "200":
+          description: Available indices and indexed field types
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexInfo"
 
 components:
   schemas:
@@ -472,7 +512,9 @@ components:
           type: string
         generated:
           type: string
-          format: date-time
+          description: >-
+            ISO-like upstream-local timestamp without a timezone offset. Intentionally
+            not declared as RFC 3339 date-time.
         generator:
           type: object
           properties:
@@ -528,10 +570,10 @@ components:
           description: Layout analysis software (e.g., Laypa)
         created:
           type: string
-          format: date-time
+          description: ISO-like local timestamp without a timezone offset
         lastChange:
           type: string
-          format: date-time
+          description: ISO-like local timestamp without a timezone offset
         comment:
           type: string
         naUrl:
@@ -586,6 +628,9 @@ components:
         selector:
           type: object
           properties:
+            "@context":
+              type: string
+              description: Optional JSON-LD context
             type:
               type: string
               const: TextAnchorSelector
@@ -600,10 +645,8 @@ components:
         - code
         - message
       description: >-
-        All API errors share this shape: an integer `code` (mirroring the HTTP status) and a
-        human-readable `message`. Examples: {"code":404,"message":"bodyId not found: …"},
-        {"code":400,"message":"Unable to process JSON"},
-        {"code":404,"message":"Unknown index: …"}.
+        API errors use this shape: an integer `code` (mirroring the HTTP status) and a
+        human-readable `message`.
       properties:
         code:
           type: integer
@@ -611,3 +654,33 @@ components:
         message:
           type: string
           description: Human-readable error message
+
+    AppConfig:
+      type: object
+      required:
+        - indexName
+        - broccoliUrl
+      properties:
+        indexName:
+          type: string
+          description: Frontend SPA index setting; not a valid Broccoli search index
+          example: docs-2024-03-18-test
+        broccoliUrl:
+          type: string
+          format: uri
+          example: https://gloccoli.tt.di.huc.knaw.nl
+
+    IndexInfo:
+      type: object
+      description: Index name to indexed field/type mappings
+      additionalProperties:
+        type: object
+        additionalProperties:
+          type: string
+          enum: [keyword, text, date]
+      example:
+        globalise-2024.03.18-test:
+          invNr: keyword
+          document: keyword
+          langIso: keyword
+          langLabel: keyword

@@ -1,4 +1,4 @@
-# Authentication & Access
+# Access & Authentication
 
 The GLOBALISE Transcriptions API is a **public API** with no authentication required.
 
@@ -9,11 +9,17 @@ The GLOBALISE Transcriptions API is a **public API** with no authentication requ
 - **No tokens** - No OAuth or bearer tokens
 - **No rate limit headers** - No documented rate limiting
 
-Simply make requests directly to the API endpoints.
+Simply make requests directly to the API endpoints. Both `gloccoli.tt.di.huc.knaw.nl` and
+`transcriptions.globalise.huygens.knaw.nl` are reachable directly from ordinary client networks
+(verified 2026-08-03 from a local CLI for search, document retrieval, `/config`, index
+discovery, and CORS preflight).
 
 ## CORS Policy
 
-The API supports Cross-Origin Resource Sharing (CORS) for browser-based applications. CORS headers are returned **only when the request includes an `Origin` header** (i.e. real browser requests and preflight `OPTIONS`); a plain server-to-server request without `Origin` receives none.
+The API supports Cross-Origin Resource Sharing (CORS) for browser-based applications.
+CORS headers are returned **only when the request includes an `Origin` header** (i.e. real
+browser requests and preflight `OPTIONS`); a plain server-to-server request without `Origin`
+receives none.
 
 The server **reflects the caller's `Origin`** rather than returning a literal `*`, and allows credentials:
 
@@ -168,7 +174,7 @@ NL-HaNA, VOC, [inv.nr.], [scan nr.], transcription GLOBALISE project
 
 ## Security Considerations
 
-Since the API is public and read-only:
+Since the documented API surface is read-only and does not use application credentials:
 
 - **No sensitive data** - All content is historical public records
 - **No write operations** - API is read-only

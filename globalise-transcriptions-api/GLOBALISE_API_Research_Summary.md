@@ -3,6 +3,10 @@
 **Date:** December 21, 2025
 **Objective:** Document the API used by the GLOBALISE Transcriptions Viewer (https://transcriptions.globalise.huygens.knaw.nl)
 
+> **Historical research record:** This file describes the December 2025 discovery session and is
+> not the current operational access guide. See [Access & Authentication](./AUTHENTICATION.md)
+> and [Error Reference](./ERROR_REFERENCE.md) for current behavior.
+
 ## Executive Summary
 
 Successfully documented the GLOBALISE Transcriptions Viewer API through browser automation and network request monitoring. The API uses a REST-based architecture powered by the Broccoli/Gloccoli platform with separate services for search, annotations, and text storage.
@@ -356,10 +360,10 @@ Based on this research:
 
 ## Important Notes
 
-- ⚠️ **No authentication required** - API is public
+- ✅ **No authentication required** - Public API, no keys or tokens
 - ✅ **CC0 License** - Data is freely usable
-- 📝 **Citation required** - Include proper attribution
-- 🔍 **~4.8M transcriptions** available
+- 📝 **Academic citation expected** - CC0 does not legally require attribution, but research use should cite the project
+- 🔍 **4,784,614 indexed pages** in the match-all query verified 2026-08-03
 - 📅 **Data version**: March 2024 (v2.0 HTR)
 - ⚠️ **Machine-generated** - Contains errors, not manually verified
 
@@ -372,6 +376,10 @@ Based on the website:
 
 ## Conclusion
 
-The GLOBALISE API is well-structured, REST-based, and easy to work with. The dev-browser approach proved highly effective for API discovery. All major endpoints have been documented with examples. The API is ready for integration into analysis tools, data export scripts, or custom search interfaces.
+At the time of the December 2025 investigation, the GLOBALISE API was well-structured,
+REST-based, and directly reachable from the research environment. The dev-browser approach proved
+effective for API discovery, and the major viewer endpoints were documented with examples.
 
-**Key Takeaway:** Use dev-browser plugin for reliable browser automation with network monitoring. The API is straightforward once discovered, and the documentation provided should be sufficient for most integration needs.
+**Current takeaway:** The API contract documented here still holds and remains directly
+reachable (re-verified 2026-08-03). Treat this file as methodology/history and use the
+maintained reference files for current integration guidance.

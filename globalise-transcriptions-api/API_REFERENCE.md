@@ -4,6 +4,10 @@ Complete endpoint documentation for the GLOBALISE Transcriptions API.
 
 **Base URL:** `https://gloccoli.tt.di.huc.knaw.nl`
 
+> **Access status (verified 2026-08-03):** The API is public — no keys or tokens — and is
+> reachable directly from ordinary client networks. See
+> [Access & Authentication](./AUTHENTICATION.md).
+
 ---
 
 ## Endpoints Overview
@@ -19,7 +23,7 @@ Complete endpoint documentation for the GLOBALISE Transcriptions API.
 
 ## Search Transcriptions
 
-Full-text search across ~4.8 million VOC transcriptions.
+Full-text search across approximately 4.78 million indexed VOC transcription pages.
 
 **Endpoint:** `POST /projects/globalise/search`
 
@@ -195,6 +199,7 @@ See [Error Reference](./ERROR_REFERENCE.md) for detailed error documentation.
 | Status | Description |
 |--------|-------------|
 | 400 | Invalid query syntax or malformed request |
+| 404 | Unknown `indexName` |
 | 500 | Internal server error |
 | 504 | Request timeout (reduce result size) |
 
@@ -481,7 +486,7 @@ For full document retrieval with IIIF image data, use these parameters:
 | `anno[].body.metadata.inventoryNumber` | Archive inventory number |
 | `anno[].body.metadata.creator` | Layout analysis software (e.g., "Laypa") |
 | `anno[].body.metadata.naUrl` | Link to National Archives page |
-| `anno[].body.metadata.trUrl` | Link to TextRepo raw content |
+| `anno[].body.metadata.trUrl` | TextRepo provenance URL — **not publicly retrievable** (see note below) |
 | `anno[].body.metadata.prevPageId` | Previous page URN (for navigation) |
 | `anno[].body.metadata.nextPageId` | Next page URN (for navigation) |
 | `anno[].body.metadata.lang` | Language classification |
@@ -490,6 +495,19 @@ For full document retrieval with IIIF image data, use these parameters:
 | `views.self.lines` | Transcribed text as array of lines |
 | `iiif.manifest` | IIIF Presentation API manifest URL (when `includeResults=iiif`) |
 | `iiif.canvasIds[]` | IIIF Canvas URLs for this document (when `includeResults=iiif`) |
+
+> **Timestamp note:** Fields such as `generated`, `created`, and `lastChange` use ISO-like
+> strings without a timezone offset in the live data (for example,
+> `2023-09-04T01:43:55`). Treat them as upstream-local/unspecified-zone timestamps rather
+> than strict RFC 3339 instants.
+
+> **Note on TextRepo URLs:** `trUrl`, and the `Text`/`LogicalText` entries in `anno[].target[]`,
+> point at `globalise.tt.di.huc.knaw.nl/textrepo`. That service is gated behind HTTP Basic auth
+> (`WWW-Authenticate: Basic realm="Globalise Text Repository API"`) and returns **401 to
+> unauthenticated callers** on every route, verified 2026-08-03. Treat these as provenance
+> identifiers, not fetchable endpoints. You do not need them: Broccoli resolves the transcription
+> server-side and returns it in `views.self.lines` — that is where the text in this endpoint's
+> response comes from.
 
 > **Note on IIIF URLs:** The `iiif.manifest` and `iiif.canvasIds` fields are available in the raw API but are **not exposed in the MCP server**. IIIF Canvas URLs are fragment identifiers meant for IIIF viewers (e.g., Mirador), not direct access. The IIIF manifest JSON contains no useful information beyond what's already provided: high-resolution images are accessible via the `nationalArchives` URL, and inventory titles are in the document metadata. For viewing page scans, use the National Archives link returned by the MCP server.
 
@@ -626,7 +644,7 @@ No parameters required.
 | `indexName` | Index name configured for the **frontend SPA** (see warning below) |
 | `broccoliUrl` | Base URL for the search API |
 
-> ⚠️ **Do not use `/config`'s `indexName` for the search API.** As of 2026-06, `/config`
+> ⚠️ **Do not use `/config`'s `indexName` for the search API.** As of 2026-08-03, `/config`
 > advertises `docs-2024-03-18-test`, but searching the Broccoli API with that name returns
 > `404 Unknown index`. The only index the search/document endpoints actually serve is
 > `globalise-2024.03.18-test` (confirm via [`/brinta/globalise/indices`](#get-indices)).
@@ -687,19 +705,43 @@ curl "https://gloccoli.tt.di.huc.knaw.nl/brinta/globalise/indices"
 
 ## Language Classifications
 
-Documents are classified by language with both ISO codes and human-readable labels:
+Documents may carry more than one language, so the counts below overlap and do not sum to the
+match-all total. The full set of 23 codes was read from the live `langIso`/`langLabel`
+aggregations on 2026-08-03; treat the list as observed corpus data rather than an API enum that
+forbids future codes.
 
-| ISO Code | Label | Description |
-|----------|-------|-------------|
-| `nld` | Dutch | Primary language of most documents |
-| `por` | Portuguese | Portuguese language documents |
-| `fra` | French | French language documents |
-| `deu` | German | German language documents |
-| `lat` | Latin | Latin language documents |
-| `unknown` | Unknown | Language not yet determined |
-| `art` | Cipher | Deliberately encrypted text |
+| ISO Code | Label | Matching pages |
+|----------|-------|---------------:|
+| `nld` | Dutch | 4,344,249 |
+| `unknown` | Unknown | 136,014 |
+| `fra` | French | 5,596 |
+| `eng` | English | 3,600 |
+| `lat` | Latin | 2,196 |
+| `por` | Portuguese | 583 |
+| `msa` | Malay | 502 |
+| `spa` | Spanish | 273 |
+| `deu` | German | 139 |
+| `sin` | Sinhala | 113 |
+| `dan` | Danish | 29 |
+| `lzh` | Classical Chinese | 20 |
+| `ita` | Italian | 18 |
+| `art` | Cipher | 8 |
+| `fas` | Persian | 8 |
+| `tam` | Tamil | 8 |
+| `jpn` | Japanese | 6 |
+| `ben` | Bengali | 3 |
+| `bug` | Buginese | 2 |
+| `chu` | Old Church Slavonic | 2 |
+| `guj` | Gujarati | 2 |
+| `grc` | Ancient Greek | 1 |
+| `hbo` | Ancient Hebrew | 1 |
 
-**Note:** "Unknown" means the language has not yet been classified, not that it's unidentifiable. "Cipher" (ISO code `art` for "artificial language") indicates deliberately encrypted historical text.
+**Note:** "Unknown" means the language has not yet been classified, not that it is unidentifiable.
+"Cipher" uses ISO code `art` ("artificial language") for deliberately encrypted historical text.
+
+**Transcription reliability:** the HTR model was trained on Latin script only, so transcriptions
+of the non-Roman-script languages above (`fas`, `ben`, `tam`, `sin`, `lzh`, `jpn`, `guj`, `bug`,
+`chu`, `grc`, `hbo`) are unreliable. Prefer the `naUrl` page scan for those documents.
 
 ---
 
