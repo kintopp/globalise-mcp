@@ -170,6 +170,11 @@ function adoptViewSession(data: DocumentData): void {
   if (data.viewUUID && data.viewUUID !== viewUUID) {
     viewUUID = data.viewUUID;
     startPolling();
+  } else if (!data.viewUUID) {
+    // Silent before 2026-08-03: a result without a viewUUID skipped polling
+    // with no trace, making "host can't poll" indistinguishable from "UUID
+    // never arrived" in the host logs (stdio Desktop test report §4).
+    app.sendLog({ level: 'info', data: 'No viewUUID in tool result — reverse channel disabled for this view' });
   }
 }
 
