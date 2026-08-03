@@ -1,34 +1,23 @@
 # GLOBALISE MCP
 
-A Model Context Protocol (MCP) server and API documentation for accessing the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/) - a corpus of approximately 4.8M machine-generated transcriptions of Dutch East India Company (VOC) historical documents – in natural language. Beyond full-text search, the MCP server draws on local archival finding aids and glossaries of VOC commodities and historical weights and measures to provide richer, more contextualised answers to queries. Users can also view and interact with individual page scans and transcriptions from the corpus in their chat sessions.
+A Model Context Protocol (MCP) server and API documentation for accessing the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/) - a corpus of approximately 4.8M machine-generated transcriptions of Dutch East India Company (VOC) historical documents – in natural language. Beyond full-text search, the MCP server draws on archival finding aids and glossaries of VOC commodities and historical weights and measures to provide richer, more contextualised answers to queries. Users can view and interact with individual page scans and transcriptions from the corpus in their chat sessions.
 
 ### About GLOBALISE
 
-The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and making accessible the archives of the Dutch East India Company (VOC), one of the most extensive colonial archives in the world. The transcriptions are machine-generated using Handwritten Text Recognition (HTR) and are freely available under CC0.
+The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and making accessible the archives of the Dutch East India Company (VOC). The Globalise corpus focuses on the _Overgekomen Brieven en Papieren_ (Letters and papers received, OBP), which were sent from the company’s Asian headquarters in Batavia to the Dutch Republic in the seventeenth and eighteenth centuries. The transcriptions are machine-generated using Handwritten Text Recognition (HTR) and are freely available under a Creative Commons CC0 license together with their metadata and page scans.
 
-### Quickstart
+### Installation
 
-The simplest way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding rijksmuseum-mcp+ as a [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) to Claude using the URL below. This currently free for one connector - additional connectors require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
+The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Gobalise MCP as a hosted service or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This currently free for one connector - additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
 
 ```
 https://globalise-mcp-production.up.railway.app/mcp
 ```
-Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [instructions](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions. It is also possible to use the MCP server with OpenAI's ChatGPT. This requires you to first enable 'developer mode', which in turn requires a paid subscription.  
+Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [instructions](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions. 
 
-### Claude Desktop bundle (`.mcpb`)
+It's also possible to use a hosted MCP serverwith OpenAI's ChatGPT. However, this requires you to first enable 'developer mode' in ChatGPT, and then create a 'custom app' which in turn requires a paid 'Plus' or higher [subscription](https://chatgpt.com/pricing/) from OpenAI.
 
-For a one-click install with [Claude Desktop](https://claude.com/download) (macOS, Windows or Linux), build the bundle (the `mcpb` CLI is a devDependency, installed by `npm ci` — no global install needed). The bundle runs on Claude Desktop's own bundled Node 24 and needs no manual config-file editing – this is the least error-prone route for Windows:
-
-```bash
-npm ci
-npm run build:mcpb     # → dist/ub-sgbr-mcp.mcpb — open it with Claude Desktop
-```
-
-The install dialog offers an optional access token plus four optional endpoint overrides (GraphQL / full-text / IIIF image / OCR mediaserver), so an installed bundle can be repointed without a rebuild when the backend moves hosts.
-
-The server runs on the [**stable v2.0.0**](https://github.com/modelcontextprotocol/typescript-sdk) MCP SDK, released on 28 July 2026 alongside the [**2026-07-28**](https://blog.modelcontextprotocol.io/posts/2026-07-28/) MCP spec. A pre-built `.mcpb` installer is attached to the [latest GitHub release](https://github.com/kintopp/ub-sgbr-mcp/releases/latest).
-
-To run the server for free locally instead (stdio or HTTP), please see the [MCP server README](./globalise-mcp-server/README.md).
+To use the Globalise MCP without a subscription you can install the MCP server locally. The simplest way to do this is with this project's `.mcpb` bundle installer for [Claude Desktop](https://claude.com/download). Download the ~5MB installer, and double-click it to open it with Claude Desktop. This will install the Globalise MCP Server and a small ~110MB database with the finding aids and historical glossaries. Alternatively, you can also install it manually by following [these instructions](./globalise-mcp-server/README.md). 
 
 ### GLOBALISE MCP Server
 
@@ -106,7 +95,6 @@ apps/
 └── document-viewer/         # Interactive viewer (Vite SPA, bundled at build)
 scripts/
 └── cli.mjs                  # Headless MCP-client CLI (glob-mcp bin); test-cli.ts smoke-tests it
-justfile                     # `just` recipes for the CLI: setup / deps / cli / http / test
 ```
 #### [`globalise-transcriptions-api/`](./globalise-transcriptions-api/)
 

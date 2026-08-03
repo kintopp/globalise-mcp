@@ -1,53 +1,92 @@
 # GLOBALISE MCP Server
 
-An MCP server for searching and retrieving ~4.8M transcribed pages from the Dutch East India Company (VOC) archives, provided by the [GLOBALISE project](https://globalise.huygens.knaw.nl/).
+## Overview
 
-## Tools
+A TypeScript MCP server, built on the official [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk), that exposes ten tools over two transports: **stdio** for local hosts (Claude Desktop, ChatGPT Desktop) and **Streamable HTTP** (Express) for web hosts and the hosted Railway instance. The tools fall into two groups. The transcription tools (`search`, `retrieve`, `navigate`, `inspect_page_image`) proxy the upstream GLOBALISE services — the Gloccoli search API, TextRepo text storage, AnnoRepo annotations, and the Dutch National Archives IIIF image service — behind a unified client with caching, a byte-budget response trimmer, and structured error mapping. The archival finding-aid and glossary tools run entirely offline against bundled SQLite databases (an FTS5-indexed TANAP archival index plus the commodities and weights-&-measures reference glossaries), read via Node's built-in `node:sqlite` — the dependency tree is pure JavaScript, with no native binaries.
 
-Ask your AI assistant a question in natural language, and will automatically choose and combine the ten tools below to answer (often chaining several together in sequence).
+The server also registers an interactive document viewer: a single-file Vite SPA (OpenSeadragon deep-zoom scan beside the line-numbered transcription) served as an MCP Apps resource and rendered inline by supporting hosts, with a pair of session tools providing a two-way channel between the model and the open viewer. Finally, `scripts/cli.mjs` (`glob-mcp`) is a headless CLI **client** that drives the same server tools an LLM does — useful as a `jq`-friendly pipe or a debug harness.
 
-**`globalise_search_transcriptions`** — Searches the full text of all ~4.8 million transcribed pages for a word or phrase, much like a regular keyword search of a digitised archive, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number or language and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching (the latter helps to catch HTR errors and the inconsistent orthography typical of early-modern Dutch). This also helps address historical variants (the two glossary tools below assist with exactly this).
+## Architecture
 
-**`globalise_retrieve_document`** — Fetches a single page when you already have its identifier (for example `NL-HaNA_1.04.02_9966_0106`), returns the complete transcription line by line together with its metadata: languages, dates, and rights statement. It also reports the identifiers of the preceding and following pages and provides links to the GLOBALISE transcription viewer and the original scan held by the Dutch National Archives.
+```mermaid
+%%{init: {"flowchart": {"rankSpacing": 75}}}%%
+flowchart TD
+    A["LLM host / glob-mcp CLI"] --> B1["stdio JSON-RPC"]
+    A --> B2["Streamable HTTP<br/>(Express)"]
+    B1 --> C["src/index.ts<br/>createServer + register tools"]
+    B2 --> C
 
-**`globalise_navigate`** — Moves one page forward or backward from a given page, so you can read through a volume in sequence instead of jumping between scattered search results. It returns the neighbouring page in full — transcription, metadata, and links — and tells you when you have reached the beginning or end of the run.
+    C --> T1["globalise_search_transcriptions"]
+    C --> T2["globalise_retrieve_document"]
+    C --> T3["globalise_navigate"]
+    C --> T4["globalise_find_archival_documents"]
+    C --> T5["globalise_lookup_commodity"]
+    C --> T6["globalise_lookup_measure"]
+    C --> T7["globalise_view_document_ui"]
+    C --> T8["globalise_inspect_page_image"]
+    C --> T9["globalise_navigate_viewer"]
+    C --> T10["globalise_poll_viewer_commands"]
 
-**`globalise_find_archival_documents`** — Searches a local TANAP index of more than 228,000 finding-aid entries — the catalogue level that sits above the page transcriptions — so you can locate the right inventories before reading any pages. It covers two bodies of material: the OBP digitised indexes (some 227,000 entries recording, for each set of papers, the VOC settlement it came from, the year, and the inventory and folio) and the roughly 950 Generale Missiven, the governors-general's official dispatches from Batavia to the Dutch Republic, many of which link to their scholarly published edition (the RGP series). The inventory numbers it returns can be passed straight to a transcription search to reach the actual pages.
+    T1 --> GC["api-client<br/>cache, error mapping"]
+    T2 --> GC
+    T3 --> GC
+    T7 --> GC
+    T8 --> GC
+    GC -. "fetch" .-> GLO["Gloccoli search &<br/>retrieval API"]
 
-**`globalise_lookup_commodity`** — Looks up a trade good in a glossary of about 3,500 VOC commodities, returning the Dutch term the clerks actually used (so *mace* resolves to *foelie* and *coffee* to *koffie*), an English label, and a sourced, confidence-rated definition. It serves as the bridge between a modern vocabulary and the words to search for in the historical transcriptions; some entries also list period spelling variants, and every result can return a link to the concept's page in the official GLOBALISE commodities thesaurus. N.B. more than half of the definitions are AI-generated and labelled as such.
+    T4 --> FTS["FTS5 query sanitizer"]
+    T5 --> FTS
+    T6 --> FTS
+    FTS --> DBU["database.ts<br/>node:sqlite, read-only"]
+    DBU --> ARC[("archival-index.sqlite<br/>TANAP finding aids, ~112 MB")]
+    DBU --> REF[("reference.sqlite<br/>commodities + measures")]
 
-**`globalise_lookup_measure`** — Looks up a historical VOC unit of weight, volume, length, or area — some 213 units drawn from a 1764–1771 reference work — and returns its category, its period spelling variants, and the conversion ratios recorded for it. It is deliberately not a conversion calculator: early-modern measures were unstable, so a *bahar* of pepper was not a *bahar* of cloves, and each ratio is tied to the particular place and commodity it was recorded for (given in a context note). Its value lies in recovering the spellings to search for and understanding what a unit meant in a given trade, rather than in converting to modern metric values.
+    T8 --> IM["iiif utils<br/>region math, dimension parser"]
+    IM -. "fetch crop" .-> IIIF["National Archives<br/>IIIF image service"]
 
-**`globalise_view_document_ui`** — Opens a page in an interactive viewer that sets the zoomable, high-resolution scan of the original manuscript beside its line-numbered transcription, letting you check the machine reading against the original text. Search terms can be highlighted, and selecting a passage in the transcription is a natural way to ask the assistant for a modern rendering of the early-modern Dutch.
+    T7 --> UI["ui://globalise/document-viewer.html<br/>single-file Vite SPA (OpenSeadragon)"]
+    UI --> V["Viewer iframe<br/>rendered by the host"]
+    V -. "deep-zoom tiles" .-> IIIF
+    V --> T10
+    T9 --> VS["viewer-session<br/>command queue"]
+    VS --> T10
 
-**`globalise_inspect_page_image`** — Fetches a page scan, or a region of it, as an image for the assistant itself to look at. In the viewer, press `i` (or the ☐ button) and drag a box over the scan: the assistant receives the coordinates, retrieves that crop of the original image, and can re-transcribe or describe exactly what you marked — a second opinion on the machine transcription for garbled names, numerals, marginalia, or non-Latin scripts. The assistant can also zoom into a page by itself when you ask about a specific detail.
+    T1 --> O["response-size trimmer →<br/>content + structuredContent"]
+    T2 --> O
+    T3 --> O
+    T4 --> O
+    T5 --> O
+    T6 --> O
+    T8 --> O
+    O --> A
 
-**`globalise_navigate_viewer`** — Lets the assistant steer an open viewer: zoom it to a region to direct your attention to a detail. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match. A companion internal tool, `globalise_poll_viewer_commands`, is the viewer's own polling channel that delivers those commands to the open page — it is not something you call directly.
+    classDef client fill:#eef2ff,stroke:#4f46e5,color:#111827;
+    classDef server fill:#ecfeff,stroke:#0891b2,color:#111827;
+    classDef tools fill:#fef3c7,stroke:#d97706,color:#111827;
+    classDef wrapper fill:#f3e8ff,stroke:#9333ea,color:#111827;
+    classDef api fill:#dcfce7,stroke:#16a34a,color:#111827;
+    classDef data fill:#ffe4e6,stroke:#e11d48,color:#111827;
+    classDef backend fill:#e5e7eb,stroke:#374151,color:#111827;
 
-## Resources
+    class A,B1,B2,V client;
+    class C server;
+    class T1,T2,T3,T4,T5,T6,T7,T8,T9,T10 tools;
+    class VS,O,UI wrapper;
+    class GC,IM api;
+    class FTS,DBU,ARC,REF data;
+    class GLO,IIIF backend;
+```
 
-| URI | Description |
-|-----|-------------|
-| `ui://globalise/document-viewer.html` | MCP Apps document viewer (HTML, served to host iframes) |
+## Requirements
 
-## Environment Variables
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `TRANSPORT` | `stdio` | `http` for Streamable HTTP mode |
-| `PORT` | `3000` | HTTP port |
-| `MCP_ALLOWED_ORIGINS` | claude.ai/claude.com/chatgpt.com | **Enforced** Origin guard: rejects non-allowlisted browser origins with HTTP 403 (spec MUST, DNS-rebinding mitigation). Exact origins or `*.domain` globs; `*` disables. |
-| `ALLOWED_ORIGINS` | `*` | **Advisory** CORS allowlist — sets `Access-Control-Allow-Origin` response headers only; rejects nothing. Comma-separated; `*` allows all. This is a *separate* var from `MCP_ALLOWED_ORIGINS`: tightening the 403 guard does **not** tighten CORS headers, and vice versa. |
-| `STRUCTURED_CONTENT` | `true` | Set `false` to strip `outputSchema`/`structuredContent` for clients that reject them (MSTY, Jan.ai) |
+- **Node 24.x** — the server uses the built-in `node:sqlite` module (available without flags since Node 24.0). The `engines` field pins `>=24.15.0 <25` to match the runtime bundled with Claude Desktop.
+- **~115 MB of disk** for the local databases: the committed `data/*.sqlite.gz` archives are decompressed on first build.
+- **Network access** to the upstream GLOBALISE services for the transcription tools (locally-run servers may receive upstream `403` responses — see the transports table under [CLI](#cli)); the finding-aid and glossary tools work fully offline.
+- **No native binaries** — all dependencies are pure JavaScript, so there is no compilation step and the same install works across platforms.
 
 ## Quick Start
 
-**Hosted instance** (no setup required):
-```
-https://globalise-mcp-production.up.railway.app/mcp
-```
-
-**Local** (requires **Node 24** — the server uses the built-in `node:sqlite`):
+**Local** 
 
 stdio:
 ```bash
@@ -73,16 +112,11 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
-
-## Development
-
-```bash
-npm run build       # Viewer UI + TypeScript + archival index DB
-npm run dev         # tsc watch mode
-npm run inspector   # Build + run against MCP Inspector
-npm test            # Full offline suite (version-sync, FTS, SQLite tools, viewer, smoke, HTTP shutdown)
-npm run test:live   # Opt-in: live integration tests for search/retrieve/navigate (network required)
+**Hosted instance** (no setup required):
 ```
+https://globalise-mcp-production.up.railway.app/mcp
+```
+At present (July, 2026) it is possible to add one custom MCP server to Claude at no charge (additional servers require a subscription). Adding a hosted MCP server to ChatGPT requires the 'developer mode' which in turn is only possible via a subscription. Google has announced future support for hosted MCP servers in Gemini Desktop without specifying a timeline. Free access to a custom remote MCP server is possible via Mistral's LeChat web application. 
 
 ## CLI
 
@@ -95,38 +129,17 @@ list tools → JSONL, single-object tools → one compact JSON; counts/notes go 
 iframe, and the image tool returns base64 bytes for the model, none of which is meaningful headless.
 Exit codes: `0` ok · `1` tool/connection error · `2` usage error.
 
-### Install (CLI-only, via `just`)
+### Install (CLI-only)
 
-The CLI ships with a [`justfile`](justfile) of setup/run recipes. [`just`](https://github.com/casey/just)
-is a small command runner — install it per OS:
+Node 24.x is the only prerequisite — no extra tooling. From `globalise-mcp-server/`:
 
-**macOS**
 ```bash
-brew install just
+npm run setup   # stdio (default): install deps + build (decompresses the local DBs) — run once
+npm run deps    # http-only: install just the npm deps (the MCP SDK); skips the build + DBs
 ```
 
-**Linux**
-```bash
-sudo apt install just      # Debian 13+ / Ubuntu 24.04+
-sudo dnf install just      # Fedora
-sudo pacman -S just        # Arch
-# older distros / latest release → prebuilt binaries + cargo: https://github.com/casey/just#installation
-```
-
-**Windows** (PowerShell)
-```powershell
-winget install --id Casey.Just --exact   # or: scoop install just  /  choco install just
-```
-
-Then, from `globalise-mcp-server/`:
-```bash
-just            # list the recipes
-just setup      # stdio (default): install deps + build (decompresses the local DBs) — run once
-just deps       # http-only: install just the npm deps (the MCP SDK); skips the build + DBs
-```
-
-No `just`? The recipes are thin wrappers — `npm install` / `npm run build`, then `node scripts/cli.mjs …`
-(or `npm run cli -- …`) work identically.
+Both are thin aliases (`setup` = `npm install && npm run build`; `deps` = `npm install`) that exist to
+name the two starting points: the hosted-server route needs neither the build nor the 115 MB of DBs.
 
 ### Transports & requirements
 
@@ -136,84 +149,67 @@ build required.
 
 | | **stdio** (default) | **http** (`--http <url>`) |
 |---|---|---|
-| Setup recipe | `just setup` | `just deps` |
+| Setup | `npm run setup` | `npm run deps` |
 | Node.js | 24.x | 24.x |
 | Local build (`dist/`) | required | — |
 | Local DBs (~115 MB) | required (build decompresses them) | — |
-| Network | only `search` / `retrieve` / `navigate`; `find` / `commodity` / `measure` run offline | always (to the remote server) |
-| Best for | fully local use, offline finding-aid + glossary lookups | quickest start, no 115 MB build |
+| Network | only `search` / `retrieve` / `navigate`; these may receive upstream 403, while `find` / `commodity` / `measure` run offline | always (to the remote server) |
+| Best for | local development and offline finding-aid + glossary lookups | quickest start and hosted transcription access, no 115 MB build |
 
 ### Usage
 
-```bash
-# stdio (after `just setup`): glob-mcp spawns node dist/index.js
-just cli search "peper" --inventoryNumber 9966 --max 5 --fields id,document
-just cli retrieve NL-HaNA_1.04.02_9966_0106 --json
-just cli find "Amsterdam" --source gm --chamber Amsterdam --max 5 --table
-just cli commodity "mace" --fields prefLabelNl,prefLabelEn
-just cli navigate NL-HaNA_1.04.02_9966_0106 --direction next --fields targetDocument
+Everything after `npm run cli --` is forwarded verbatim to the CLI (the `--` is what stops npm from
+eating the flags); `node scripts/cli.mjs …` is the equivalent direct invocation.
 
-# http (after `just deps`): point at a running server — instant, no local build
-just http https://globalise-mcp-production.up.railway.app/mcp search "nootmuskaat" --max 3
-GLOBALISE_MCP_HTTP=https://globalise-mcp-production.up.railway.app/mcp just cli find "Batavia"
+```bash
+# stdio (after `npm run setup`): glob-mcp spawns node dist/index.js
+npm run cli -- search "peper" --inventoryNumber 9966 --max 5 --fields id,document
+npm run cli -- retrieve NL-HaNA_1.04.02_9966_0106 --json
+npm run cli -- find "Amsterdam" --source gm --chamber Amsterdam --max 5 --table
+npm run cli -- commodity "mace" --fields prefLabelNl,prefLabelEn
+npm run cli -- navigate NL-HaNA_1.04.02_9966_0106 --direction next --fields targetDocument
+
+# http (after `npm run deps`): point at a running server — instant, no local build
+npm run cli -- --http https://globalise-mcp-production.up.railway.app/mcp search "nootmuskaat" --max 3
+npm run cli -- --http https://globalise-mcp-production.up.railway.app/mcp retrieve NL-HaNA_1.04.02_9966_0106 --json
+GLOBALISE_MCP_HTTP=https://globalise-mcp-production.up.railway.app/mcp npm run cli -- find "Batavia"
 
 # discovery / dry-run / batch
-just cli --help                       # offline-safe usage + command list
-just cli search --help                # schema-derived flags + a worked example
-just cli tools --compact              # compact capability manifest (agent bootstrap)
-just cli --show-call search "peper"   # resolve {tool, arguments} without calling
-printf 'peper\nfoelie\n' | just cli commodity --stdin --max 2 --fields prefLabelNl
+npm run cli -- --help                       # offline-safe usage + command list
+npm run cli -- search --help                # schema-derived flags + a worked example
+npm run cli -- tools --compact              # compact capability manifest (agent bootstrap)
+npm run cli -- --show-call search "peper"   # resolve {tool, arguments} without calling
+printf 'peper\nfoelie\n' | npm run --silent cli -- commodity --stdin --max 2 --fields prefLabelNl
 ```
 
-Flags pass straight through `just` to the CLI, and `just`'s command-echo goes to stderr, so `just cli`
-stays pipe-safe (pure JSONL on stdout). `just test` (`npm run test:cli`) smoke-tests the CLI — out of the
+**Piping:** `npm run` prints a `> globalise-mcp-server@x.y.z cli` banner to **stdout**, which would
+corrupt the JSONL stream. When piping into `jq` or a file, either pass `--silent` *before* the script
+name (`npm run --silent cli -- …`, as above) or call `node scripts/cli.mjs …` directly — both leave
+stdout pure, with counts and notes on stderr. `npm run test:cli` smoke-tests the CLI — out of the
 default `npm test` chain, since it needs `dist/` + DBs + network.
 
-## Project Structure
+## Environment Variables
 
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `TRANSPORT` | `stdio` | `http` for Streamable HTTP mode |
+| `PORT` | `3000` | HTTP port |
+| `MCP_ALLOWED_ORIGINS` | claude.ai/claude.com/chatgpt.com | **Enforced** Origin guard: rejects non-allowlisted browser origins with HTTP 403 (spec MUST, DNS-rebinding mitigation). Exact origins or `*.domain` globs; `*` disables. |
+| `ALLOWED_ORIGINS` | `*` | **Advisory** CORS allowlist — sets `Access-Control-Allow-Origin` response headers only; rejects nothing. Comma-separated; `*` allows all. This is a *separate* var from `MCP_ALLOWED_ORIGINS`: tightening the 403 guard does **not** tighten CORS headers, and vice versa. |
+| `STRUCTURED_CONTENT` | `true` | Set `false` to strip `outputSchema`/`structuredContent` for clients that reject them (MSTY, Jan.ai) |
+
+## Development
+
+```bash
+npm run build       # Viewer UI + TypeScript + archival index DB
+npm run dev         # tsc watch mode
+npm run inspector   # Build + run against MCP Inspector
+npm test            # Full offline suite (version-sync, FTS, SQLite tools, viewer, smoke, HTTP shutdown)
+npm run test:live   # Opt-in: live integration tests; fails with 403 when local upstream access is denied
 ```
-src/
-├── index.ts                 # Entry point, tool + resource registration
-├── tools/                   # Tool implementations (search, document, viewer, archival-index)
-├── transports/http-server.ts  # Streamable HTTP transport
-└── utils/                   # API client, cache, SQLite, IIIF, types
-apps/
-└── document-viewer/         # Interactive viewer (Vite SPA, bundled at build)
-scripts/
-└── cli.mjs                  # Headless MCP-client CLI (glob-mcp bin); test-cli.ts smoke-tests it
-justfile                     # `just` recipes for the CLI: setup / deps / cli / http / test
-```
-
-## Authors
-
-[Arno Bosse](https://orcid.org/0000-0003-3681-1289) — [RISE](https://rise.unibas.ch/), University of Basel, with [Claude Code](https://claude.com/product/claude-code), Anthropic.
-
-The VOC transcriptions, finding aids, and vocabularies served by this software are produced by the [GLOBALISE project](https://globalise.huygens.knaw.nl/) at the Huygens Institute (KNAW) and made available under [CC0](https://creativecommons.org/publicdomain/zero/1.0/); the commodities and weights-&-measures glossaries are licensed CC-BY-SA-4.0 by their respective compilers.
-
-## Citation
-
-If you use the GLOBALISE MCP Server in your research, please cite it as follows (and cite the underlying GLOBALISE transcriptions separately — see the citation note in the [API documentation](../globalise-transcriptions-api/README.md#license--citation)):
-
-**APA (7th ed.)**
-
-> Bosse, A. (2026). *GLOBALISE MCP Server* (Version 2.10.6) [Software]. Research and Infrastructure Support (RISE), University of Basel. https://github.com/kintopp/globalise-mcp
-
-**BibTeX**
-```bibtex
-@software{bosse_2026_globalise_mcp,
-  author    = {Bosse, Arno},
-  title     = {{GLOBALISE MCP Server}},
-  year      = {2026},
-  version   = {2.10.6},
-  publisher = {Research and Infrastructure Support (RISE), University of Basel},
-  url       = {https://github.com/kintopp/globalise-mcp},
-  orcid     = {0000-0003-3681-1289},
-  note      = {Developed with Claude Code (Anthropic, \url{https://www.anthropic.com})}
-}
-```
-
-A machine-readable [`CITATION.cff`](CITATION.cff) is included in this directory.
 
 ## License
 
-MIT
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+The GLOBALISE transcriptions served by this software are licensed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/); the commodities and weights-&-measures glossaries are CC-BY-SA-4.0.
