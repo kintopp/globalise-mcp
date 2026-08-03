@@ -861,15 +861,23 @@ export function createServer(): McpServer {
           .filter(Boolean)
           .join('\n');
 
-        // Viewer reads structuredContent; the JSON-as-second-text-block shape
-        // survives only behind the STRUCTURED_CONTENT=false gate
+        // Viewer reads structuredContent when the host forwards it — but
+        // Claude Desktop's STDIO apps bridge strips structuredContent from the
+        // ontoolresult it hands the iframe (observed 2026-08-03: the widget
+        // received only the human-readable block and showed "Error parsing
+        // document", while the HTTP bridge delivered the same result intact).
+        // So over stdio always emit the dual-content shape whose JSON block
+        // the viewer's fallback parser reads; over HTTP the lone-text shape
+        // stays (one metered copy), with the JSON block only for
+        // STRUCTURED_CONTENT=false hosts.
+        const dualContent = !STRUCTURED_CONTENT_ENABLED || (process.env.TRANSPORT || 'stdio') !== 'http';
         return {
-          content: STRUCTURED_CONTENT_ENABLED
-            ? [{ type: 'text', text: humanReadable }]
-            : [
+          content: dualContent
+            ? [
                 { type: 'text', text: humanReadable },
                 { type: 'text', text: JSON.stringify(docResult) },
-              ],
+              ]
+            : [{ type: 'text', text: humanReadable }],
           ...structuredPayload(docResult),
         };
       }, { input: args }),
