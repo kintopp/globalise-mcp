@@ -124,7 +124,7 @@ async function main() {
     check(r.stderr.length > 0, 'stderr explains the error');
     const v = await runCli(['globalise_view_document_ui']);
     check(v.code === 2, `viewer tool name → exit 2 (got ${v.code})`);
-    check(/viewer\/stateful/.test(v.stderr), 'stderr hints the viewer tool is unavailable over the CLI');
+    check(/viewer\/image/.test(v.stderr), 'stderr hints the viewer tool is unavailable over the CLI');
   }
 
   // ── 6. tool/validation error → exit 1 (bad enum) ───────────────────────────────

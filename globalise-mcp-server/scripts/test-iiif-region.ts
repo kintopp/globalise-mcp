@@ -1,6 +1,6 @@
 /**
- * Unit tests for the IIIF region helpers in src/utils/iiif.ts (plan 020). All
- * pure functions — no network, no committed DB.
+ * Unit tests for the IIIF helpers in src/utils/iiif.ts (plan 020). All pure
+ * functions — no network, no committed DB.
  *
  * Run with: npm run test:iiif-region
  */
@@ -18,7 +18,9 @@ import {
 import {
   projectToFullImage,
   computeDeliveryState,
+  extractIiifImageUrl,
 } from '../src/utils/iiif.js';
+import type { DocumentResponse } from '../src/utils/types.js';
 import { check, finish } from './test-utils.js';
 
 // ---------------------------------------------------------------------------
@@ -229,4 +231,65 @@ console.log('8. computeDeliveryState');
   check(computeDeliveryState(now - 10000, now) === 'queued_waiting_for_viewer', '10s ago → queued_waiting_for_viewer');
 }
 
-finish('IIIF region tests');
+// ---------------------------------------------------------------------------
+// 9. extractIiifImageUrl — target selection by type, not position
+// ---------------------------------------------------------------------------
+
+console.log('9. extractIiifImageUrl');
+
+{
+  const IMG = 'https://service.archief.nl/iip/aa/bb/x.jp2/full/max/0/default.jpg';
+  // The Text/LogicalText targets are credentialed TextRepo URLs (Basic-auth
+  // 401 as of 2026-08). Selecting a target positionally would hand one of
+  // these to the viewer / globalise_inspect_page_image on any upstream
+  // reorder, and the `typeof source === 'string'` guard cannot tell it apart
+  // from an image URL — hence the by-type selection these cases pin down.
+  const TXT = 'https://globalise.tt.di.huc.knaw.nl/textrepo/rest/versions/v1/contents';
+
+  const target = (type: string, source: unknown) => ({ type, source });
+  // Cast: extractIiifImageUrl only reads anno[0].target, so a full
+  // DocumentResponse (profile/request/views) would be noise here.
+  const resp = (t: unknown[]) => ({ anno: [{ target: t }] }) as unknown as DocumentResponse;
+
+  // The ordering upstream actually serves, verified across 5 inventories
+  // (2026-08-03): [Image, Canvas, Text, Text, LogicalText, LogicalText].
+  const live = resp([
+    target('Image', IMG),
+    target('Canvas', 'https://data.globalise.huygens.knaw.nl/manifests/inventories/9966.json/canvas/p106'),
+    target('Text', TXT),
+    target('Text', TXT),
+    target('LogicalText', TXT),
+    target('LogicalText', TXT),
+  ]);
+  check(extractIiifImageUrl(live) === IMG, 'picks the Image target from the live upstream ordering');
+
+  // Regression guards: these returned the TextRepo URL under positional [0].
+  check(
+    extractIiifImageUrl(resp([target('Text', TXT), target('Canvas', 'c'), target('Image', IMG)])) === IMG,
+    'Text target first still yields the Image URL',
+  );
+  check(
+    extractIiifImageUrl(resp([target('LogicalText', TXT), target('Image', IMG)])) === IMG,
+    'LogicalText target first still yields the Image URL',
+  );
+
+  // Fallback: a payload without `type` degrades to the historic [0] behaviour.
+  check(
+    extractIiifImageUrl(resp([{ source: IMG }, { source: TXT }])) === IMG,
+    'untyped targets fall back to target[0]',
+  );
+  check(
+    extractIiifImageUrl(resp([target('Canvas', 'c'), target('Text', TXT)])) === 'c',
+    'no Image target falls back to target[0]',
+  );
+
+  // Pre-existing guards must survive the change.
+  check(
+    extractIiifImageUrl(resp([target('Image', { id: 'x', type: 'Image' })])) === undefined,
+    'object-shaped source returns undefined rather than "[object Object]"',
+  );
+  check(extractIiifImageUrl(resp([])) === undefined, 'empty target array returns undefined');
+  check(extractIiifImageUrl({} as unknown as DocumentResponse) === undefined, 'missing anno returns undefined');
+}
+
+finish('IIIF tests');

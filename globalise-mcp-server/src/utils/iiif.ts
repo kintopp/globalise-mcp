@@ -14,7 +14,15 @@ import { DocumentResponse } from './types.js';
  * Format: https://service.archief.nl/iip/{guid-path}.jp2/full/max/0/default.jpg
  */
 export function extractIiifImageUrl(response: DocumentResponse): string | undefined {
-  const target = response.anno?.[0]?.target?.[0];
+  // Select the Image target by `type`, not by position. Upstream currently
+  // orders targets [Image, Canvas, Text, Text, LogicalText, LogicalText], but
+  // the Text/LogicalText entries are credentialed TextRepo URLs (Basic-auth
+  // 401 as of 2026-08). A reorder would otherwise feed one of those to the
+  // viewer and to globalise_inspect_page_image, where the string check below
+  // cannot tell it apart from an image URL. Falls back to [0] so a payload
+  // that omits `type` behaves exactly as before.
+  const targets = response.anno?.[0]?.target;
+  const target = targets?.find((t) => t?.type === 'Image') ?? targets?.[0];
 
   // Require `source` to actually be a string rather than blind-casting it: the
   // API occasionally shapes a target's source as an object ({ id, type, … }).

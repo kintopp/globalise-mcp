@@ -527,11 +527,14 @@ export function createServer(): McpServer {
                   'https://service.archief.nl',
                 ],
                 // Network requests: API endpoints, plus service.archief.nl for
-                // the viewer's IIIF info.json fetch (deep-zoom, R19)
+                // the viewer's IIIF info.json fetch (deep-zoom, R19).
+                // globalise.tt.di.huc.knaw.nl (TextRepo) was dropped: the
+                // viewer never calls it — transcription text arrives
+                // pre-resolved from Broccoli as views.self.lines — and the
+                // service is Basic-auth gated (401) as of 2026-08.
                 connectDomains: [
                   'https://gloccoli.tt.di.huc.knaw.nl',
                   'https://annorepo.globalise.huygens.knaw.nl',
-                  'https://globalise.tt.di.huc.knaw.nl',
                   'https://service.archief.nl',
                 ],
               },
