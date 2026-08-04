@@ -16,7 +16,7 @@ Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you
 
 It is also possible to use a custom, hosted MCP server with other AI (web) applications, such as OpenAI's ChatGPT or Mistral's LeChat as well as a variety of open-source alternatives. Since the capabilities, conditions of use, and installation instructions differ in each case please consult the documentation of the respective tool for more details.    
 
-Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is via Claude Desktop [extensions](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).  Download this project's c. 5MB `.mcpb` extension from its repository on GitHub, and then navigate to Settings > Extensions in Claude Desktop to add it. This will install the Globalise MCP extension and download a small ~110MB database with the associated finding aids and historical glossaries. [Claude Desktop](https://claude.com/download) is freely available for macOS, Windows, and Linux. Alternatively, you can also install it manually and use it with a wide variety of open source tools and AI models by drawing on [these instructions](./globalise-mcp-server/README.md). 
+Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is via Claude Desktop [extensions](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).  Download this project's c. 5MB `.mcpb` extension from its repository on GitHub, and then navigate to _Settings_ → _Extensions_ in Claude Desktop to add it. This will install the Globalise MCP extension and download a small ~110MB database with the associated finding aids and historical glossaries. [Claude Desktop](https://claude.com/download) is freely available for macOS, Windows, and Linux. Alternatively, you can also install it manually and use it with a wide variety of open source tools and AI models by drawing on [these instructions](./globalise-mcp-server/README.md). 
 ### GLOBALISE MCP Server
 
 **Features:**
@@ -25,13 +25,16 @@ Alternatively, you can install the Globalise MCP server *locally* on your own co
 - Navigate between pages within an inventory
 - Search archival finding aids — 228K+ VOC document indexes
 - Look up VOC commodities and weights & measures — Dutch labels, definitions, period spellings and conversions
-- View a page interactively — scan alongside transcription
+- View a page — page image alongside its transcription
+- Direct the AI-Assistant to navigate and analyse the page image
 - SKILL file – provides the model with best practices for searching and retrieving data
 - CLI client - a command-line interface to the MCP server's tools
 
 #### MCP Server Tools
 
-Most of the tools listed here are designed to reproduce the functionality provided by the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/). In response to a natural language query, the MCP server will automatically choose and combine the ten tools below (often chaining several together in sequence) to produce an answer. A few tools, such as `globalise_inspect_page_image`, `globalise_navigate_viewer`, `globalise_lookup_commodity` and `globalise_lookup_measure` offer additional features not (yet) available in the GLOBALISE Transcriptions Viewer.
+Most of the tools listed here are designed to reproduce functionality provided by the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/). In response to a natural language query, the MCP server will automatically choose and combine the ten tools below (often chaining several together in sequence) to produce an answer. A few tools, such as `globalise_inspect_page_image`, `globalise_navigate_viewer`, `globalise_lookup_commodity` and `globalise_lookup_measure` offer additional features not available in the GLOBALISE Transcriptions Viewer.
+
+Tools:
 
 **`globalise_search_transcriptions`** — Searches the full text of approximately 4.78 million indexed transcription pages for a word or phrase, much like a regular keyword search, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number or language and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching. This also helps address historical variants.
 
@@ -53,9 +56,11 @@ Most of the tools listed here are designed to reproduce the functionality provid
 
 ### Supporting Datasets
 
+Both supporting datasets are bundled with the server as local SQLite databases — one for the archival finding aids, and a much smaller one for the two historical glossaries — so these lookups run on your own machine and remain available even when the upstream transcription API is not. The source files from which the databases are built are committed under [`globalise-mcp-server/data/sources/`](./globalise-mcp-server/data/sources/) and can be inspected directly: the OBP indexes, the Generale Missiven, and the commodities glossary are plain CSV/TSV files that open in any spreadsheet application, while the weights-and-measures dataset is in JSON format.
+
 #### Finding aids
 
-The server includes a local database of more than 228,000 finding-aid entries derived from the TANAP descriptions of the VOC archive (the catalogue layer that sits above the page-level transcriptions). The bulk of it (some 227,000 entries) comes from the digitised indexes to the *Overgekomen brieven en papieren* (OBP), the papers sent home from Asia, each entry recording the VOC settlement it concerns, the year, and the inventory number and folio where the papers sit. Alongside these are roughly 950 entries for the *Generale Missiven*, the governors-general's periodic dispatches from Batavia to the Dutch Republic, many linked to their published scholarly edition in the RGP series at the Huygens Institute. Because the index is bundled with the server, these searches run locally even when the upstream transcription API is unreachable. It is the dataset behind the `globalise_find_archival_documents` tool.
+The server includes a local database of more than 228,000 finding-aid entries derived from the TANAP descriptions of the VOC archive (the catalogue layer that sits above the page-level transcriptions). The bulk of it (some 227,000 entries) comes from the digitised indexes to the *Overgekomen brieven en papieren* (OBP), the papers sent home from Asia, each entry recording the VOC settlement it concerns, the year, and the inventory number and folio where the papers sit. Alongside these are roughly 950 entries for the *Generale Missiven*, the governors-general's periodic dispatches from Batavia to the Dutch Republic, many linked to their published scholarly edition in the RGP series at the Huygens Institute. It is the dataset behind the `globalise_find_archival_documents` tool.
 
 Sources:
 - [GLOBALISE — Digitized Indexes of the Dutch East India Company OBP (1602–1799)](https://hdl.handle.net/10622/LVOQTG) — IISG Dataverse
@@ -105,8 +110,6 @@ scripts/
 
 [Arno Bosse](https://orcid.org/0000-0003-3681-1289) — [RISE](https://rise.unibas.ch/), University of Basel, with [Claude Code](https://claude.com/product/claude-code), Anthropic.
 
-N.B. The VOC transcriptions, finding aids, and vocabularies served by this software are produced by the [GLOBALISE project](https://globalise.huygens.knaw.nl/) at the Huygens Institute (KNAW) and made available under [CC0](https://creativecommons.org/publicdomain/zero/1.0/); the commodities and weights-&-measures glossaries are licensed CC-BY-SA-4.0 by their respective compilers.
-
 ### Citation
 
 If you use the GLOBALISE MCP Server in your research, please cite it and the underlying GLOBALISE transcriptions separately:
@@ -139,6 +142,4 @@ A machine-readable [`CITATION.cff`](./CITATION.cff) for the GLOBALISE MCP server
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-The GLOBALISE transcriptions themselves are licensed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/) (Creative Commons Zero).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. The GLOBALISE transcriptions themselves are licensed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/) (Creative Commons Zero).
