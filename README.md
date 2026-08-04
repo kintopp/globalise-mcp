@@ -1,12 +1,14 @@
 # Globalise MCP
 
-A Model Context Protocol (MCP) server and API documentation for accessing a corpus of approximately 4.8M machine-generated transcriptions of 17-18th century Dutch East India Company (VOC) records hosted by the [GLOBALISE project](https://globalise.huygens.knaw.nl) at the Royal Netherlands Academy of Arts and Sciences (KNAW). Beyond offering natural language search and retrieval of the corpus, the Globalise MCP also draws on local archival finding aids and glossaries of VOC commodities and historical weights and measures to allow the AI-assistant to offer richer, more contextualised answers to user queries. In addition, users can view and interact with individual page scans and transcriptions from the corpus in their chat sessions.
+A Model Context Protocol (MCP) server and API documentation for accessing transcriptions of 17-18th century Dutch East India Company (VOC) records hosted by the [GLOBALISE project](https://globalise.huygens.knaw.nl). Beyond offering natural language search and retrieval of the corpus, the Globalise MCP also draws on archival finding aids and glossaries of VOC commodities and historical weights and measures to allow the AI-assistant to offer richer, more contextualised answers to user queries. In addition, users can view and interact with individual page scans and transcriptions from the corpus in their chat sessions.
+
 ### About GLOBALISE
 
 The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [making accessible](https://transcriptions.globalise.huygens.knaw.nl/) the archives of the Dutch East India Company (VOC). The Globalise corpus focuses on the [_Overgekomen Brieven en Papieren_](https://www.nationaalarchief.nl/onderzoeken/archief/1.04.02) which were sent from the company’s Asian headquarters in Batavia to the Dutch Republic in the seventeenth and eighteenth centuries and are now held by the [Dutch National Archives](https://www.nationaalarchief.nl). The transcriptions were machine-generated using an open-source [Handwritten Text Recognition (HTR) toolkit](https://github.com/knaw-huc/loghi) and are freely available under a Creative Commons [CC0 license](https://creativecommons.org/publicdomain/zero/1.0) together with their metadata and page scans.
+
 ### Installation
 
-The easiest way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector – additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
+The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector – additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
 
 ```
 https://globalise-mcp-production.up.railway.app/mcp
@@ -16,19 +18,24 @@ Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you
 
 It is also possible to use a custom, hosted MCP server with other AI (web) applications, such as OpenAI's ChatGPT or Mistral's LeChat as well as a variety of open-source alternatives. Since the capabilities, conditions of use, and installation instructions differ in each case please consult the documentation of the respective tool for more details.    
 
-Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is via Claude Desktop [extensions](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).  Download this project's c. 5MB `.mcpb` extension from its repository on GitHub, and then navigate to _Settings_ → _Extensions_ in Claude Desktop to add it. This will install the Globalise MCP extension and download a small ~110MB database with the associated finding aids and historical glossaries. [Claude Desktop](https://claude.com/download) is freely available for macOS, Windows, and Linux. Alternatively, you can also install it manually and use it with a wide variety of open source tools and AI models by drawing on [these instructions](./globalise-mcp-server/README.md). 
+Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is via Claude Desktop [extensions](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop). Download this project's ~5MB `.mcpb` extension and then navigate to _Settings_ → _Extensions_ in Claude Desktop to add it. This will install the extension and download a small ~110MB database with the associated finding aids and historical glossaries. To install the Globalise MCP server manually for use with other tools and applications please consult the [technical guidelines](./globalise-mcp-server/README.md). 
+
+### Sample Research Queries
+
+<to be added>
+
 ### GLOBALISE MCP Server
 
 **Features:**
-- Search transcriptions — full-text queries with inventory/language filters and aggregations
-- Retrieve documents — metadata, annotations, and IIIF image URLs
+- Search transcriptions (full-text queries with inventory/language filters and aggregations)
+- Retrieve documents (metadata, annotations, and IIIF image URLs)
 - Navigate between pages within an inventory
-- Search archival finding aids — 228K+ VOC document indexes
-- Look up VOC commodities and weights & measures — Dutch labels, definitions, period spellings and conversions
-- View a page — page image alongside its transcription
-- Direct the AI-Assistant to navigate and analyse the page image
-- SKILL file – provides the model with best practices for searching and retrieving data
-- CLI client - a command-line interface to the MCP server's tools
+- Search archival finding aids (228K+ VOC document indexes)
+- Look up VOC commodities and weights & measures (historical labels, definitions, period spellings and conversions)
+- View a page image alongside its transcription inline in the chat
+- Direct the AI-assistant to navigate and analyse a page image
+- SKILL file (provides the AI-assistant with best practices for searching and retrieving data)
+- CLI client (a command-line interface to the MCP server's tools and data)
 
 #### MCP Server Tools
 
@@ -54,17 +61,15 @@ Most of the tools listed here are designed to reproduce functionality provided b
 
 **`globalise_navigate_viewer`** — Lets the AI assistant steer an open viewer: for example to zoom it to a region to direct your attention to a detail. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match. A companion internal tool, `globalise_poll_viewer_commands`, is the viewer's own channel for passing the navigation commands to the open page.
 
-### Finding Aids and Glossaries
-
-Both supporting datasets — one for the archival finding aids (~108MB), and a much smaller one (~3MB) for the two historical glossaries — are stored as SQLite databases. If you install Globalise MCP locally, these are also saved on your computer. But the source files from which the databases are built can always be inspected directly: the [`globalise-mcp-server/data/sources/`](./globalise-mcp-server/data/sources/) directory contains the OBP indexes, the Generale Missiven, and the commodities glossary as plain CSV/TSV files, and the weights-and-measures dataset in JSON format.
+### Supporting Datasets
 
 #### Finding aids
 
-The server includes a local database of more than 228,000 finding-aid entries derived from the TANAP descriptions of the VOC archive (the catalogue layer that sits above the page-level transcriptions). The bulk of it (some 227,000 entries) comes from the digitised indexes to the *Overgekomen brieven en papieren* (OBP), the papers sent home from Asia, each entry recording the VOC settlement it concerns, the year, and the inventory number and folio where the papers sit. Alongside these are roughly 950 entries for the *Generale Missiven*, the governors-general's periodic dispatches from Batavia to the Dutch Republic, many linked to their published scholarly edition in the RGP series at the Huygens Institute. It is the dataset behind the `globalise_find_archival_documents` tool.
+A local SQLite database of more than 228,000 finding-aid entries derived from the TANAP descriptions of the VOC archive (the catalogue layer that sits above the page-level transcriptions). The bulk of it (some 227,000 entries) comes from the digitised indexes to the *Overgekomen brieven en papieren* (OBP), the papers sent home from Asia, each entry recording the VOC settlement it concerns, the year, and the inventory number and folio where the papers sit. Alongside these are roughly 950 entries for the *Generale Missiven*, the governors-general's periodic dispatches from Batavia to the Dutch Republic, many linked to their published scholarly edition in the RGP series at the Huygens Institute. It is the dataset behind the `globalise_find_archival_documents` tool.
 
 **Editorial methodology:**
 
-The original finding aids were not revised in substance: no entry has been added, removed, or reworded, and every description remains exactly as published. The *Generale Missiven* file is identical to the CSV distributed on the Dataverse (see below); the *OBP* indexes are distributed as a spreadsheet (version 2, 2025) and were exported with all sixteen columns and all 227,526 rows intact. What the build adds is structure rather than content. It loads only the subset of columns the search tool actually uses — thirteen of the sixteen *OBP* columns and eighteen of the twenty-four *Generale Missiven* columns — setting aside internal bookkeeping such as the typoscript folio strings, the scan filenames, and a manual-check notes column. It then converts folio, scan, and year figures from text into numbers so they can be filtered and sorted, treating blanks as "unknown" rather than as zero. The Dutch `HTR van IJsberg beschikbaar?` column is read as a true/false flag. Finally, it builds a full-text index over the descriptions and a set of ordinary indexes over inventory number, settlement, and year. The two collections are kept as separate tables and searched as one, so a single query reaches both the papers and the dispatches.
+The original finding aids were not substantially revised: no entry has been added, removed, or reworded, and every description remains exactly as published. The *Generale Missiven* file is identical to the CSV distributed on the Dataverse (see below); the *OBP* indexes are distributed as a spreadsheet (version 2, 2025) and were exported with all sixteen columns and all 227,526 rows intact. What the build adds is structure rather than content. It loads only the subset of columns the search tool actually uses — thirteen of the sixteen *OBP* columns and eighteen of the twenty-four *Generale Missiven* columns — setting aside internal bookkeeping such as the typoscript folio strings, the scan filenames, and a manual-check notes column. It then converts folio, scan, and year figures from text into numbers so they can be filtered and sorted, treating blanks as "unknown" rather than as zero. The Dutch `HTR van IJsberg beschikbaar?` column is read as a true/false flag. Finally, it builds a full-text index over the descriptions and a set of ordinary indexes over inventory number, settlement, and year. The two collections are kept as separate tables and searched as one, so a single query reaches both the papers and the dispatches.
 
 Local:
 - Generale Missiven ([generale-missiven.csv](./globalise-mcp-server/data/sources/generale-missiven.csv))
@@ -78,7 +83,7 @@ Sources:
 
 #### Historical glossaries
 
-Two reference vocabularies, in a small local database, help translate between modern vocabulary and the historical and regional terms found in the corpus. The commodities glossary covers about 3,500 trade goods, giving for each the period Dutch term, an English label, spelling variants, and a sourced, confidence-rated definition, with links to the official GLOBALISE commodities thesaurus. N.B. The commodities glossary was derived from the October 2023 (v1) release of the GLOBALISE commodities thesaurus and was subsequently extensively revised and enriched, including with the help of AI models (more than half of the definitions are AI-generated and labelled as such). For this reason, it is NOT an official dataset of the GLOBALISE project. The weights-and-measures glossary describes some 213 historical units of weight, volume, length, and area drawn from an eighteenth-century reference work (1764–1771), recording each unit's spelling variants and the place- and commodity-specific conversion ratios attested for it. This document was only lightly revised, but is also NOT an official dataset of the GLOBALISE project. Both glossaries retain their original CC-BY-SA-4.0 license, and power the `globalise_lookup_commodity` and `globalise_lookup_measure` tools.
+Two reference vocabularies, in a small, local SQLite database, help translate between modern vocabulary and the historical and regional terms found in the corpus. The commodities glossary covers about 3,500 trade goods, giving for each the period Dutch term, an English label, spelling variants, and a sourced, confidence-rated definition, with links to the official GLOBALISE commodities thesaurus. N.B. The commodities glossary was derived from the October 2023 (v1) release of the GLOBALISE commodities thesaurus and was subsequently extensively revised and enriched, including with the help of AI models (more than half of the definitions are AI-generated and labelled as such). For this reason, it is NOT an official dataset of the GLOBALISE project. The weights-and-measures glossary describes some 213 historical units of weight, volume, length, and area drawn from an eighteenth-century reference work (1764–1771), recording each unit's spelling variants and the place- and commodity-specific conversion ratios attested for it. This document was only lightly revised, but is also NOT an official dataset of the GLOBALISE project. Both glossaries retain their original CC-BY-SA-4.0 license, and power the `globalise_lookup_commodity` and `globalise_lookup_measure` tools.
 
 **Editorial methodology:**
 
@@ -96,11 +101,9 @@ Sources:
 
 ### SKILL file
 
+A skill file (SKILL.md, often combined with other resources into a zip archive with a  .skill suffix) gives an AI assistant detailed guidance in natural language on how to use an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Making use of a skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses. At present, the Globalise skill offers fairly generic guidance; adding specific collection and domain expertise would make it substantially better.
+
 The project's skill is available as [`globalise-voc-research.skill`](./globalise-mcp-server/skills/globalise-voc-research.skill) (source: [`SKILL.md`](./globalise-mcp-server/skills/globalise-voc-research/SKILL.md)).
-
-A skill file (SKILL.md, often combined with other resources into a zip archive with a  .skill suffix) gives an AI assistant detailed guidance in natural language on how to use an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Making use of a skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
-
-At present, the Globalise skill offers fairly generic guidance; adding specific collection and domain expertise would make it substantially better.
 
 ### Repository Contents
 
