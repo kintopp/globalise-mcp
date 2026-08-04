@@ -16,7 +16,7 @@ import { createReadStream, existsSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getDatabasePath } from '../src/utils/database.js';
-import { runInTransaction, writeGzipArtifact } from './db-build-utils.js';
+import { runInTransaction, stampDataVersion, writeGzipArtifact } from './db-build-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,6 +29,12 @@ const DB_PATH = getDatabasePath();
 
 const OBP_CSV = join(SOURCES_DIR, 'obp-indexes.csv');
 const GM_CSV = join(SOURCES_DIR, 'generale-missiven.csv');
+
+// Data version stamped into the built DB (PRAGMA user_version). Independent of
+// the server's semver and of reference.sqlite's counter — bump it only when a
+// rebuild changes the shipped finding-aid bytes (new source release, schema
+// change, corrected rows). 1 = the OBP v2 (2025) + Generale Missiven build.
+const DATA_VERSION = 1;
 
 // Batch size for inserts
 const BATCH_SIZE = 5000;
@@ -340,6 +346,7 @@ function optimizeDatabase(db: DatabaseSync): void {
   db.exec('ANALYZE');
   db.exec('VACUUM');
   console.log('  Database optimized');
+  stampDataVersion(db, DATA_VERSION);
 }
 
 async function main(): Promise<void> {

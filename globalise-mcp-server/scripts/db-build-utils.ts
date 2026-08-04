@@ -41,6 +41,42 @@ export function runInTransaction(db: DatabaseSync, fn: () => void): void {
 }
 
 /**
+ * Stamp a data version into the DB header (`PRAGMA user_version`).
+ *
+ * This is the *data* version, deliberately independent of the server's semver:
+ * the DBs are rebuilt from their own sources on their own cadence, so aligning
+ * them to the code version would either bump the code for a typo fix in a
+ * glossary or freeze the data version across a code release. Each build script
+ * owns its own counter (`DATA_VERSION`) for the same reason — reference.sqlite
+ * and archival-index.sqlite change independently of each other.
+ *
+ * Bump the calling script's DATA_VERSION whenever a rebuild changes the shipped
+ * bytes in a way a consumer should notice (new/renamed column, corrected rows,
+ * refreshed source dataset). Readers can then compare `PRAGMA user_version`
+ * against what they expect instead of guessing from file mtimes.
+ *
+ * Note the limit: this catches drift *across* a bump, not within one. A stale
+ * decompressed .sqlite built from the same DATA_VERSION still reads as current,
+ * so the `ensure:db` "only decompresses when absent" trap in CLAUDE.md is not
+ * fixed by this — it is only made diagnosable once a bump has happened. Bump
+ * conservatively (any shipped-byte change) to keep that window small.
+ */
+export function stampDataVersion(db: DatabaseSync, version: number): void {
+  if (!Number.isInteger(version) || version < 0) {
+    throw new Error(`DATA_VERSION must be a non-negative integer, got ${version}`);
+  }
+  // PRAGMA takes a literal, not a bound parameter; the guard above keeps the
+  // interpolation safe. Stamped after VACUUM so it cannot depend on VACUUM's
+  // (real, but implicit) guarantee to preserve user_version.
+  db.exec(`PRAGMA user_version = ${version}`);
+  const readBack = db.prepare('PRAGMA user_version').get() as { user_version: number };
+  if (readBack.user_version !== version) {
+    throw new Error(`user_version stamp failed: wrote ${version}, read ${readBack.user_version}`);
+  }
+  console.log(`  Data version: ${version} (PRAGMA user_version)`);
+}
+
+/**
  * Refresh the committed deploy artifact (`${dbPath}.gz`) from the freshly-built
  * DB, so ensure-*-db.ts can ship it without rebuilding from source on every
  * deploy (R18) and the committed .gz never drifts from the DB it was built from.
