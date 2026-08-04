@@ -16,7 +16,7 @@
  * one-line fix (`npm version X.Y.Z --no-git-tag-version` folded into the
  * release), not a failure.
  *
- * manifest.json / manifest.thin.json are deliberately NOT checked: their
+ * manifest.json is deliberately NOT checked: its
  * version is stamped from package.json at pack time (scripts/build-mcpb.ts),
  * so the committed values are cosmetic and carry no sync obligation.
  *

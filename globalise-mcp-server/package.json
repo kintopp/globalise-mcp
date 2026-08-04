@@ -1,6 +1,6 @@
 {
   "name": "globalise-mcp-server",
-  "version": "2.11.10",
+  "version": "0.9.0",
   "description": "MCP server for GLOBALISE Transcriptions Viewer - search Dutch East India Company (VOC) historical transcriptions",
   "type": "module",
   "main": "dist/index.js",
@@ -17,9 +17,7 @@
     "build:db:commodities": "npx tsx scripts/build-commodities-db.ts",
     "ensure:db": "npx tsx scripts/ensure-archival-db.ts && npx tsx scripts/ensure-reference-db.ts",
     "build:mcpb": "npm run build && npx tsx scripts/build-mcpb.ts",
-    "build:mcpb:thin": "npm run build && npx tsx scripts/build-mcpb.ts thin",
     "validate:mcpb": "npx -y @anthropic-ai/mcpb validate manifest.json",
-    "validate:mcpb:thin": "npx -y @anthropic-ai/mcpb validate manifest.thin.json",
     "test:mcpb": "npx tsx scripts/test-mcpb-bundle.ts",
     "lint": "eslint src/ scripts/",
     "dev": "tsc --watch",

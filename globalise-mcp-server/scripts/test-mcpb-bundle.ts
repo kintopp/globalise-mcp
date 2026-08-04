@@ -9,16 +9,18 @@
  *   4. an offline tool call (globalise_find_archival_documents) returns a
  *      non-error result with structuredContent
  *
- * The test auto-detects the staged variant:
- *   - FULL  (data/archival-index.sqlite present in the stage): launches with
- *     ARCHIVAL_DB_PATH pointing at the bundled DB; check 4 proves the on-device
- *     index works with no network.
- *   - THIN  (no bundled DB): spins up a localhost server that serves the
- *     committed data/archival-index.sqlite.gz, points ARCHIVAL_DB_URL at it and
- *     ARCHIVAL_DB_PATH at a fresh temp dir, and check 4 proves the FIRST-RUN
- *     DOWNLOAD materializes the index and answers the query.
+ * The shipped bundle does NOT carry the archival index (it is downloaded on
+ * first use), so check 4 normally exercises the download: the test spins up a
+ * localhost server for the committed data/archival-index.sqlite.gz, points
+ * ARCHIVAL_DB_URL at it and ARCHIVAL_DB_PATH at a fresh temp dir, and proves
+ * the FIRST-RUN DOWNLOAD materializes the index and answers the query.
  *
- * Usage: npm run test:mcpb            (after npm run build:mcpb[:thin])
+ * The bundled-index branch below is kept as a fallback for a hand-staged tree
+ * that has data/archival-index.sqlite in it: it then launches against that file
+ * and check 4 proves the on-device index works with no network. The retired
+ * "full" bundle variant used to take this path.
+ *
+ * Usage: npm run test:mcpb            (after npm run build:mcpb)
  *        npx tsx scripts/test-mcpb-bundle.ts [path/to/stage]
  */
 
@@ -133,36 +135,38 @@ function check(ok: boolean, label: string, detail?: string): void {
 async function main(): Promise<void> {
   const entry = join(STAGE_DIR, 'dist', 'index.js');
   if (!existsSync(entry)) {
-    throw new Error(`Staged server not found at ${entry}.\nRun \`npm run build:mcpb\` (or \`:thin\`) first.`);
+    throw new Error(`Staged server not found at ${entry}.\nRun \`npm run build:mcpb\` first.`);
   }
 
   const manifest = JSON.parse(readFileSync(join(STAGE_DIR, 'manifest.json'), 'utf-8')) as { tools: Array<{ name: string }> };
   const declaredTools = new Set(manifest.tools.map((t) => t.name));
 
-  // Variant detection: the full bundle ships the DB; the thin one does not.
+  // The shipped bundle omits the index, so this is normally false; it is true
+  // only for a hand-staged tree that has the DB copied in.
   const bundledDb = join(STAGE_DIR, 'data', 'archival-index.sqlite');
-  const isThin = !existsSync(bundledDb);
+  const indexIsBundled = existsSync(bundledDb);
 
-  // Build the launch env + (for thin) the download source and a temp target.
+  // Build the launch env +, when the index is not bundled, the download source
+  // and a temp target for it to land in.
   const env: Record<string, string> = { TRANSPORT: 'stdio', STRUCTURED_CONTENT: 'true' };
   let gzServer: { url: string; close: () => Promise<void> } | undefined;
   let tmpDataDir: string | undefined;
   let downloadTarget: string | undefined;
 
-  if (isThin) {
+  if (indexIsBundled) {
+    env.ARCHIVAL_DB_PATH = bundledDb;
+    console.log('Index: bundled in the stage at data/archival-index.sqlite\n');
+  } else {
     const gzPath = join(PACKAGE_ROOT, 'data', 'archival-index.sqlite.gz');
     if (!existsSync(gzPath)) {
-      throw new Error(`Thin test needs ${gzPath} to serve; run \`npm run build\` to materialize the .gz.`);
+      throw new Error(`The download test needs ${gzPath} to serve; run \`npm run build\` to materialize the .gz.`);
     }
     gzServer = await startGzServer(gzPath);
-    tmpDataDir = mkdtempSync(join(tmpdir(), 'globalise-mcpb-thin-'));
+    tmpDataDir = mkdtempSync(join(tmpdir(), 'globalise-mcpb-'));
     downloadTarget = join(tmpDataDir, 'archival-index.sqlite');
     env.ARCHIVAL_DB_URL = gzServer.url;
     env.ARCHIVAL_DB_PATH = downloadTarget;
-    console.log(`Variant: THIN — serving index at ${gzServer.url}\n         downloading to ${downloadTarget}\n`);
-  } else {
-    env.ARCHIVAL_DB_PATH = bundledDb;
-    console.log('Variant: FULL — bundled DB at data/archival-index.sqlite\n');
+    console.log(`Index: not bundled — serving at ${gzServer.url}\n       downloading to ${downloadTarget}\n`);
   }
 
   console.log(`Launching staged bundle server: ${entry}\n`);
@@ -206,13 +210,13 @@ async function main(): Promise<void> {
     check(callResult?.structuredContent !== undefined,
       'tool result carries structuredContent');
     check(parsed.databaseInfo?.available === true,
-      isThin ? 'thin: index downloaded on first use and queried' : 'bundled SQLite index is available on-device',
+      indexIsBundled ? 'bundled SQLite index is available on-device' : 'index downloaded on first use and queried',
       `results=${Array.isArray(parsed.results) ? parsed.results.length : 'n/a'}`);
 
-    // Thin-only: the download actually materialized a full-size file on disk.
-    if (isThin && downloadTarget) {
+    // Download path only: the fetch actually materialized a full-size file.
+    if (!indexIsBundled && downloadTarget) {
       const ok = existsSync(downloadTarget) && statSync(downloadTarget).size > 100 * 1024 * 1024;
-      check(ok, 'thin: downloaded index file is on disk',
+      check(ok, 'downloaded index file is on disk',
         existsSync(downloadTarget) ? `${(statSync(downloadTarget).size / 1024 / 1024).toFixed(1)} MB` : 'missing');
     }
   } finally {

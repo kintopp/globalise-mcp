@@ -2,10 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/dist/mcpb-manifest.schema.json",
   "manifest_version": "0.3",
   "name": "globalise-voc-transcriptions",
-  "display_name": "GLOBALISE VOC Transcriptions",
-  "version": "2.6.1",
-  "description": "Search and read ~4.8M machine-transcribed pages of Dutch East India Company (VOC) records, 17th-18th century.",
-  "long_description": "GLOBALISE serves machine transcriptions (HTR) of roughly 4.8 million pages of Dutch East India Company (VOC) records held at the Nationaal Archief in The Hague, spanning the 17th and 18th centuries and written mostly in early-modern Dutch.\n\nThis bundle runs the GLOBALISE MCP server **locally** inside Claude Desktop and exposes ten tools:\n\n- **globalise_search_transcriptions** - full-text search across all ~4.8M transcribed pages, with composable inventory and language filters and language/inventory/document aggregations.\n- **globalise_retrieve_document** - fetch a single page by document ID or URN: full line-by-line transcription, metadata, and previous/next page links.\n- **globalise_navigate** - step to the previous or next page for sequential reading.\n- **globalise_find_archival_documents** - query a bundled local index of 228K+ VOC finding-aid descriptions (offline; powered by SQLite FTS5) to scope a search before hitting the transcription API.\n- **globalise_view_document_ui** - open an interactive side-by-side viewer (IIIF deep-zoom scan image + transcription) as an MCP App.\n- **globalise_inspect_page_image** - fetch a page scan or region as an image for the assistant's own visual reading (re-transcription second opinion; supports user highlights from the viewer).\n- **globalise_navigate_viewer** - steer an open viewer: zoom it to a region (auto-zoom also happens when you inspect a region).\n- **globalise_poll_viewer_commands** - internal; the viewer's command-polling channel that delivers navigate commands to the open iframe.\n- **globalise_lookup_commodity** - look up VOC trade goods in a bundled commodities thesaurus (3,508 concepts) with bilingual NL/EN labels, period spelling variants, and sourced definitions.\n- **globalise_lookup_measure** - look up VOC weights & measures in a bundled glossary (213 units) with period spelling variants, definitions, and period-reported conversion ratios.\n\nThe finding-aid index and reference glossaries ship inside the bundle and are queried entirely on-device; transcription search, page retrieval, and IIIF images are fetched from the public GLOBALISE/Nationaal Archief services at request time. No account, API key, or credentials are required.",
+  "display_name": "Globalise MCP",
+  "version": "0.9.0",
+  "description": "A Model Context Protocol (MCP) server for accessing a corpus of c. 4.8M machine-generated transcriptions of 17-18th century Dutch East India Company (VOC) records hosted by the GLOBALISE project at the Royal Netherlands Academy of Arts and Sciences (KNAW).",
+  "long_description": "**Features:**  \n• Search transcriptions (full-text queries with inventory/language filters and aggregations)  \n• Retrieve documents (metadata, annotations, and IIIF image URLs)  \n• Navigate between pages within an inventory  \n• Search archival finding aids (228K+ VOC document indexes)  \n• Look up VOC commodities and weights & measures (historical labels, definitions, period spellings and conversions)  \n• View a page image alongside its transcription inline in the chat  \n• Direct the AI-assistant to navigate and analyse a page image  \n• SKILL file (provides the AI-assistant with best practices for searching and retrieving data)  \n• CLI client (a command-line interface to the MCP server's tools and data)",
   "author": {
     "name": "Arno Bosse",
     "url": "https://github.com/kintopp"
@@ -15,7 +15,7 @@
     "url": "https://github.com/kintopp/globalise-mcp"
   },
   "homepage": "https://transcriptions.globalise.huygens.knaw.nl",
-  "documentation": "https://github.com/kintopp/globalise-mcp/blob/main/globalise-mcp-server/MCPB.md",
+  "documentation": "https://github.com/kintopp/globalise-mcp/blob/main/globalise-mcp-server/docs/mcpb.md",
   "support": "https://github.com/kintopp/globalise-mcp/issues",
   "license": "MIT",
   "keywords": [
@@ -39,7 +39,9 @@
       ],
       "env": {
         "TRANSPORT": "stdio",
-        "ARCHIVAL_DB_PATH": "${__dirname}/data/archival-index.sqlite",
+        "ARCHIVAL_DB_PATH": "${user_config.data_directory}/archival-index.sqlite",
+        "ARCHIVAL_DB_URL": "${user_config.archival_db_url}",
+        "ARCHIVAL_DB_TOKEN": "${user_config.archival_db_token}",
         "STRUCTURED_CONTENT": "${user_config.structured_content}",
         "DEBUG": "${user_config.debug_logging}"
       }
@@ -60,7 +62,7 @@
     },
     {
       "name": "globalise_find_archival_documents",
-      "description": "Query a bundled local index of 228K+ VOC finding-aid descriptions (OBP indexes + Generale Missiven) to scope a search."
+      "description": "Query a local index of 228K+ VOC finding-aid descriptions (OBP indexes + Generale Missiven). Downloaded once on first use, then cached on-device."
     },
     {
       "name": "globalise_view_document_ui",
@@ -90,10 +92,32 @@
   "tools_generated": false,
   "prompts_generated": false,
   "user_config": {
+    "archival_db_url": {
+      "type": "string",
+      "title": "Index download URL",
+      "description": "The finding-aid index is downloaded from this URL the first time archival search is used: about 26 MB compressed, expanding to about 112 MB on disk, then cached locally so later searches reuse it. Defaults to the project's hosted server; override only to self-host or mirror.",
+      "default": "https://globalise-mcp-production.up.railway.app/archival-index.sqlite.gz",
+      "required": false
+    },
+    "archival_db_token": {
+      "type": "string",
+      "title": "Index download token",
+      "description": "Optional Bearer token sent with the index download request. Only needed when the download URL requires authentication (e.g. a private GitHub release asset via the API endpoint https://api.github.com/repos/OWNER/REPO/releases/assets/ASSET_ID). Leave empty for public URLs.",
+      "default": "",
+      "sensitive": true,
+      "required": false
+    },
+    "data_directory": {
+      "type": "string",
+      "title": "Data directory",
+      "description": "Writable folder where the downloaded index is cached. Created if it does not exist.",
+      "default": "${HOME}/.globalise-mcp",
+      "required": false
+    },
     "debug_logging": {
       "type": "boolean",
       "title": "Debug logging",
-      "description": "Write per-tool diagnostic lines to the server's stderr log. Leave off for normal use.",
+      "description": "Write per-tool diagnostic lines (including the download progress) to the server's stderr log.",
       "default": false,
       "required": false
     },
