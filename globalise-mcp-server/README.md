@@ -16,48 +16,30 @@ flowchart TD
     B1 --> C["src/index.ts<br/>createServer + register tools"]
     B2 --> C
 
-    C --> T1["globalise_search_transcriptions"]
-    C --> T2["globalise_retrieve_document"]
-    C --> T3["globalise_navigate"]
-    C --> T4["globalise_find_archival_documents"]
-    C --> T5["globalise_lookup_commodity"]
-    C --> T6["globalise_lookup_measure"]
-    C --> T7["globalise_view_document_ui"]
-    C --> T8["globalise_inspect_page_image"]
-    C --> T9["globalise_navigate_viewer"]
-    C --> T10["globalise_poll_viewer_commands"]
+    C --> G1["Transcription tools (4)<br/>search · retrieve · navigate ·<br/>inspect_page_image"]
+    C --> G2["Finding-aid & glossary tools (3)<br/>find_archival_documents ·<br/>lookup_commodity · lookup_measure"]
+    C --> G3["Viewer tools (3)<br/>view_document_ui · navigate_viewer ·<br/>poll_viewer_commands"]
 
-    T1 --> GC["api-client<br/>cache, error mapping"]
-    T2 --> GC
-    T3 --> GC
-    T7 --> GC
-    T8 --> GC
+    G1 --> GC["api-client<br/>cache, error mapping"]
+    G3 --> GC
     GC -. "fetch" .-> GLO["Gloccoli search &<br/>retrieval API"]
 
-    T4 --> FTS["FTS5 query sanitizer"]
-    T5 --> FTS
-    T6 --> FTS
+    G2 --> FTS["FTS5 query sanitizer"]
     FTS --> DBU["database.ts<br/>node:sqlite, read-only"]
     DBU --> ARC[("archival-index.sqlite<br/>TANAP finding aids, ~112 MB")]
     DBU --> REF[("reference.sqlite<br/>commodities + measures")]
 
-    T8 --> IM["iiif utils<br/>region math, dimension parser"]
+    G1 --> IM["iiif utils<br/>region math, dimension parser"]
     IM -. "fetch crop" .-> IIIF["National Archives<br/>IIIF image service"]
 
-    T7 --> UI["ui://globalise/document-viewer.html<br/>single-file Vite SPA (OpenSeadragon)"]
+    G3 --> UI["ui://globalise/document-viewer.html<br/>single-file Vite SPA (OpenSeadragon)"]
     UI --> V["Viewer iframe<br/>rendered by the host"]
     V -. "deep-zoom tiles" .-> IIIF
-    V --> T10
-    T9 --> VS["viewer-session<br/>command queue"]
-    VS --> T10
+    V -- "poll" --> G3
+    G3 <--> VS["viewer-session<br/>command queue"]
 
-    T1 --> O["response-size trimmer →<br/>content + structuredContent"]
-    T2 --> O
-    T3 --> O
-    T4 --> O
-    T5 --> O
-    T6 --> O
-    T8 --> O
+    G1 --> O["response-size trimmer →<br/>content + structuredContent"]
+    G2 --> O
     O --> A
 
     classDef client fill:#eef2ff,stroke:#4f46e5,color:#111827;
@@ -70,7 +52,7 @@ flowchart TD
 
     class A,B1,B2,V client;
     class C server;
-    class T1,T2,T3,T4,T5,T6,T7,T8,T9,T10 tools;
+    class G1,G2,G3 tools;
     class VS,O,UI wrapper;
     class GC,IM api;
     class FTS,DBU,ARC,REF data;
