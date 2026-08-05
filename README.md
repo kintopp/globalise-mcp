@@ -1,6 +1,6 @@
 # Globalise MCP
 
-A Model Context Protocol (MCP) server and [API documentation](./globalise-transcriptions-api/) for accessing transcriptions of 17-18th century Dutch East India Company (VOC) records hosted by the [GLOBALISE project](https://globalise.huygens.knaw.nl). Beyond offering natural language search and retrieval of the corpus, the Globalise MCP draws on archival finding aids and glossaries of VOC commodities and historical weights and measures to allow an AI-assistant to offer richer, more contextualised answers to queries. Users can view and interact with page scans and transcriptions from the corpus and direct the AI-Assistant to navigate and analyse them.
+A Model Context Protocol (MCP) server and [API documentation](./globalise-transcriptions-api/) for accessing transcriptions of 17–18th century Dutch East India Company (VOC) records hosted by the [GLOBALISE project](https://globalise.huygens.knaw.nl). Beyond offering natural language search and retrieval of the corpus, the Globalise MCP draws on archival finding aids and glossaries of VOC commodities and historical weights and measures to allow an AI-assistant to offer richer, more contextualised answers to queries. Users can view and interact with page scans and transcriptions from the corpus and direct the AI-assistant to navigate and analyse them.
 
 ### About GLOBALISE
 
@@ -8,59 +8,52 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 
 ### Installation
 
-The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector – additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
+The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector — additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
 
 ```
 https://globalise-mcp-production.up.railway.app/mcp
 ```
 
-Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [instructions](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions. 
+Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions.
 
-You can also use Globalise MCP server with many other desktop and web-based MCP clients such as OpenAI's ChatGPT or Mistral's LeChat and other open-source alternatives. Since the capabilities, conditions of use, and installation instructions of these applications all differ please consult their documentation for further details.    
+You can also use Globalise MCP server with many other desktop and web-based MCP clients such as OpenAI's ChatGPT or Mistral's LeChat and other open-source alternatives. Since the capabilities, conditions of use, and installation instructions of these applications all differ, please consult their documentation for further details.
 
-Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is with a Claude Desktop [extensions](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop). Download this project's ~5MB `.mcpb` extension and then navigate to _Settings_ → _Extensions_ in Claude Desktop to add it. This will install the MCP server and download a small ~110MB database with the project's finding aids and historical glossaries. To install the Globalise MCP server manually please consult the [technical guidelines](./globalise-mcp-server/README.md). 
+Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is with a Claude Desktop [extension](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop). Download this project's ~5MB `.mcpb` extension and then navigate to _Settings_ → _Extensions_ in Claude Desktop to add it. This will install the MCP server and download a small ~110MB database with the project's finding aids and historical glossaries. To install the Globalise MCP server manually, please consult the [technical guidelines](./globalise-mcp-server/README.md).
 
-### Sample Research Queries
+### Features
 
-<to be added>
-
-### GLOBALISE MCP Server
-
-**Features:**
 - Search transcriptions (full-text queries with inventory/language filters and aggregations)
 - Retrieve documents (metadata, annotations, and IIIF image URLs)
 - Navigate between pages within an inventory
 - Search archival finding aids (228K+ VOC document indexes)
-- Look up VOC commodities and weights & measures glossaries (historical labels, definitions, period spellings and conversions)
-- View a page image alongside its transcription inline in the char and direct the AI-assistant to navigate and analyse them
-- SKILL file (provides the AI-assistant with best practices for searching and retrieving data with the Globalise MCP server)
-- CLI client (a command-line interface to the MCP server's tools and data)
+- Look up VOC commodities and weights & measures glossaries (labels, definitions, spellings and conversions)
+- View page images alongside their transcriptions and direct the AI-assistant to navigate and analyse them for you
+- SKILL file (provides the AI-assistant with best practices for using the Globalise MCP server)
+- [CLI client](./globalise-mcp-server/README.md#cli) (a command-line interface to the MCP server's tools and data)
 
 #### MCP Server Tools
 
-Most of the tools listed here are designed to reproduce functionality provided by the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/). A few tools, such as `globalise_inspect_page_image`, `globalise_navigate_viewer`, `globalise_lookup_commodity` and `globalise_lookup_measure` offer additional features not available in the GLOBALISE Transcriptions Viewer.
+Most of the tools listed below were designed to reproduce functionality provided by the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/). A few tools, such as `globalise_inspect_page_image`, `globalise_navigate_viewer`, `globalise_lookup_commodity` and `globalise_lookup_measure` offer additional features not available there.
 
-##### Tools:
+- **`globalise_search_transcriptions`** — Searches the full text of approximately 4.78 million indexed transcription pages for a word or phrase, much like a regular keyword search, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number or language and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching. This also helps address historical variants.
 
-**`globalise_search_transcriptions`** — Searches the full text of approximately 4.78 million indexed transcription pages for a word or phrase, much like a regular keyword search, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number or language and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching. This also helps address historical variants.
+- **`globalise_retrieve_document`** — Fetches a single page using its identifier (for example `NL-HaNA_1.04.02_9966_0106`) and returns the complete transcription line by line together with its metadata: languages, dates, and rights statement. It also reports the identifiers of the preceding and following pages and provides links to the GLOBALISE transcription viewer and the original scan held by the Dutch National Archives.
 
-**`globalise_retrieve_document`** — Fetches a single page using its identifier (for example `NL-HaNA_1.04.02_9966_0106`) and returns the complete transcription line by line together with its metadata: languages, dates, and rights statement. It also reports the identifiers of the preceding and following pages and provides links to the GLOBALISE transcription viewer and the original scan held by the Dutch National Archives.
+- **`globalise_navigate`** — Moves one page forward or backward from a given page, so you can read through a volume in sequence instead of jumping between scattered search results. It returns the neighbouring page in full — transcription, metadata, and links — and tells you when you have reached the beginning or end of the run.
 
-**`globalise_navigate`** — Moves one page forward or backward from a given page, so you can read through a volume in sequence instead of jumping between scattered search results. It returns the neighbouring page in full — transcription, metadata, and links — and tells you when you have reached the beginning or end of the run.
+- **`globalise_find_archival_documents`** — Searches a [local TANAP index](#finding-aids) of finding-aid entries (the catalogue level that sits above the page transcriptions) so the right inventories can be located before reading any pages. It covers two bodies of material: the OBP digitised indexes (some 227,000 entries recording, for each set of papers, the VOC settlement it came from, the year, and the inventory and folio) and the roughly 950 Generale Missiven, the governors-general's official dispatches from Batavia to the Dutch Republic, many of which link to their scholarly published edition (the RGP series) at the Huygens Institute.
 
-**`globalise_find_archival_documents`** — Searches a local TANAP index of finding-aid entries (the catalogue level that sits above the page transcriptions) so the right inventories can be located before reading any pages. It covers two bodies of material: the OBP digitised indexes (some 227,000 entries recording, for each set of papers, the VOC settlement it came from, the year, and the inventory and folio) and the roughly 950 Generale Missiven, the governors-general's official dispatches from Batavia to the Dutch Republic, many of which link to their scholarly published edition (the RGP series) at the Huygens Institute.
+- **`globalise_lookup_commodity`** — Looks up a trade good in a [local glossary of ~3,500 VOC commodities](#historical-glossaries), returning the historical term used (e.g. *mace* resolves to *foelie*), an English label, and a provenance and confidence-labelled definition. It serves as the bridge between a modern vocabulary and the words to search for in the historical transcriptions; some entries also list period spelling variants, and every result can return a link to the concept's page in the [official GLOBALISE commodities thesaurus](https://thesaurus.globalise.huygens.knaw.nl/commodities/en/).
 
-**`globalise_lookup_commodity`** — Looks up a trade good in a local glossary of about 3,500 VOC commodities, returning the historical term used (e.g. *mace* resolves to *foelie* and *coffee* to *koffie*), an English label, and a provenance and confidence-labelled definition. It serves as the bridge between a modern vocabulary and the words to search for in the historical transcriptions; some entries also list period spelling variants, and every result can return a link to the concept's page in the official GLOBALISE commodities thesaurus.
+- **`globalise_lookup_measure`** — Looks up a VOC unit of weight, volume, length, or area in a [historical glossary](#historical-glossaries) drawn from a 1764–1771 reference work and returns its category, its period spelling variants, and the conversion ratios recorded for it. It is deliberately not a conversion calculator: early-modern measures were unstable and each ratio is tied to the particular place and commodity it was recorded for (given in a context note).
 
-**`globalise_lookup_measure`** — Looks up a historical VOC unit of weight, volume, length, or area drawn from a 1764–1771 reference work and returns its category, its period spelling variants, and the conversion ratios recorded for it. It is deliberately not a conversion calculator: early-modern measures were unstable and each ratio is tied to the particular place and commodity it was recorded for (given in a context note).
+- **`globalise_view_document_ui`** — Opens a page in an interactive viewer that sets the zoomable, high-resolution scan of the original manuscript beside its line-numbered transcription, letting you check the machine reading against the original text. Search terms can be highlighted, and selecting a passage in the transcription is a natural way to ask the assistant for a modern rendering of the early-modern Dutch.
 
-**`globalise_view_document_ui`** — Opens a page in an interactive viewer that sets the zoomable, high-resolution scan of the original manuscript beside its line-numbered transcription, letting you check the machine reading against the original text. Search terms can be highlighted, and selecting a passage in the transcription is a natural way to ask the assistant for a modern rendering of the early-modern Dutch.
+- **`globalise_inspect_page_image`** — Fetches a page scan, or a region of it, as an image for the AI assistant itself to look at. In the viewer, press `i` (or the ☐ button) and drag a box over the scan: the assistant receives the coordinates, retrieves that crop of the original image, and can re-transcribe or describe exactly what you marked. This can serve as a second opinion on the machine transcription for garbled names, numerals, marginalia, or non-Latin scripts. The assistant can also zoom into a page by itself when you ask about a specific detail.
 
-**`globalise_inspect_page_image`** — Fetches a page scan, or a region of it, as an image for the AI assistant itself to look at. In the viewer, press `i` (or the ☐ button) and drag a box over the scan: the assistant receives the coordinates, retrieves that crop of the original image, and can re-transcribe or describe exactly what you marked. This can serve as a second opinion on the machine transcription for garbled names, numerals, marginalia, or non-Latin scripts. The assistant can also zoom into a page by itself when you ask about a specific detail.
+- **`globalise_navigate_viewer`** — Lets the AI assistant steer an open viewer: for example to zoom it to a region to direct your attention to a detail. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match. A companion internal tool, `globalise_poll_viewer_commands`, is the viewer's own channel for passing the navigation commands to the open page.
 
-**`globalise_navigate_viewer`** — Lets the AI assistant steer an open viewer: for example to zoom it to a region to direct your attention to a detail. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match. A companion internal tool, `globalise_poll_viewer_commands`, is the viewer's own channel for passing the navigation commands to the open page.
-
-### Supporting Datasets
+### Historical Finding Aids and Glossaries
 
 #### Finding aids
 
@@ -86,9 +79,9 @@ Two reference vocabularies, in a small, local SQLite database, help translate be
 
 **Editorial methodology:**
 
-The GLOBALISE *commodities thesaurus* needed the most work, because the published v1 release was explicitly unfinished: of its 3,787 concepts, 2,294 — some 61% — were marked "NOT YET CLASSIFIED", carrying neither a definition nor an English label, and the datasheet invited users to help fill the gap. Sixty-six umbrella categories (*Food and live animals* and the like) were set aside as hierarchy rather than trade goods; forty-five entries were dropped as non-commodities, empty placeholders, unverifiable terms, or true duplicates; and five homonyms were disambiguated with qualifiers (*Aarde (bodem)* versus *Aarde (pigment)*). The remaining ~3,500 concepts were then given a definition apiece — coverage rose from roughly 39% to 100%, and English labels from roughly 39% to 99.5% — drawn from a deliberate order of preference: the GLOBALISE project's own definitions first (543), then the *Woordenboek der Nederlandsche Taal* (517), the Getty Art & Architecture Thesaurus (380), and the Huygens *VOC-Glossarium* (108), with the remaining ~1,900 written by an AI model prompted with evidence from the corpus itself (some 354,000 passages retrieved for 1,759 terms). Because that last group is the largest, every entry records where its definition came from and how much to trust it — about 45% *high* confidence, 24% *medium*, and 31% *low* or *medium-low*. Two subsequent rounds of correction were then folded in: 49 Getty definitions had matched a Dutch word to the wrong sense (e.g. *comptoir* as a home office rather than a trading post, *harp* as the instrument rather than a pepper-sieve, *kiel* as a smock rather than a ship's keel) and were rewritten against the corpus, and three *ruinas* entries were reclassified from rhubarb to madder. 
+The GLOBALISE *commodities thesaurus* needed the most work, because the published v1 release was explicitly unfinished: of its 3,787 concepts, 2,294 — some 61% — were marked "NOT YET CLASSIFIED", carrying neither a definition nor an English label, and the datasheet invited users to help fill the gap. Sixty-six umbrella categories (*Food and live animals* and the like) were set aside as hierarchy rather than trade goods; forty-five entries were dropped as non-commodities, empty placeholders, unverifiable terms, or true duplicates; and five homonyms were disambiguated with qualifiers (*Aarde (bodem)* versus *Aarde (pigment)*). The remaining ~3,500 concepts were then given a definition apiece — coverage rose from roughly 39% to 100%, and English labels from roughly 39% to 99.5% — drawn from a deliberate order of preference: the GLOBALISE project's own definitions first (543), then the *Woordenboek der Nederlandsche Taal* (517), the Getty Art & Architecture Thesaurus (380), and the Huygens *VOC-Glossarium* (108), with the remaining ~1,900 written by an AI model prompted with evidence from the corpus itself (some 354,000 passages retrieved for 1,759 terms). Because that last group is the largest, every entry records where its definition came from and how much to trust it — about 45% *high* confidence, 24% *medium*, and 31% *low* or *medium-low*. Two subsequent rounds of correction were then folded in: 49 Getty definitions had matched a Dutch word to the wrong sense (e.g. *comptoir* as a home office rather than a trading post, *harp* as the instrument rather than a pepper-sieve, *kiel* as a smock rather than a ship's keel) and were rewritten against the corpus, and three *ruinas* entries were reclassified from rhubarb to madder.
 
-The GLOBALISE *Weights and Measures glossary*, by contrast, was only restructured: the Dataverse release is three separate spreadsheets — 213 unit definitions, some 400 spelling labels, and 731 conversions — which were merged into a single lookup structure keyed by unit, with the labels lowercased and de-duplicated into 385 search variants. Its content is untouched, down to keeping twenty-two circular `1 X = 1 X` conversions and a handful of duplicate rows, which are incomplete period attestations rather than mistakes. 
+The GLOBALISE *Weights and Measures glossary*, by contrast, was only restructured: the Dataverse release is three separate spreadsheets — 213 unit definitions, some 400 spelling labels, and 731 conversions — which were merged into a single lookup structure keyed by unit, with the labels lowercased and de-duplicated into 385 search variants. Its content is untouched, down to keeping twenty-two circular `1 X = 1 X` conversions and a handful of duplicate rows, which are incomplete period attestations rather than mistakes.
 
 Local:
 - GLOBALISE Commodities ([commodities.tsv](./globalise-mcp-server/data/sources/commodities.tsv))
@@ -100,26 +93,9 @@ Sources:
 
 ### SKILL file
 
-A skill file (SKILL.md, often combined with other resources into a zip archive with a  .skill suffix) gives an AI assistant detailed guidance in natural language on how to use an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Making use of a skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses. At present, the Globalise skill offers fairly generic guidance; adding specific collection and domain expertise would make it substantially better.
+A `skill` gives an AI assistant [detailed guidance](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) in natural language on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Making use of a skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses. The project's skill file is available as [`globalise-voc-research.skill`](./globalise-mcp-server/skills/globalise-voc-research.skill) (source: [`SKILL.md`](./globalise-mcp-server/skills/globalise-voc-research/SKILL.md)).
 
-The project's skill is available as [`globalise-voc-research.skill`](./globalise-mcp-server/skills/globalise-voc-research.skill) (source: [`SKILL.md`](./globalise-mcp-server/skills/globalise-voc-research/SKILL.md)).
-
-### Repository Contents
-
-#### [`globalise-mcp-server/`](./globalise-mcp-server/)
-
-```
-src/
-├── index.ts                 # Entry point, tool + resource registration
-├── tools/                   # Tool implementations (search, document, viewer, archival-index)
-├── transports/http-server.ts  # Streamable HTTP transport
-└── utils/                   # API client, cache, SQLite, IIIF, types
-apps/
-└── document-viewer/         # Interactive viewer (Vite SPA, bundled at build)
-scripts/
-└── cli.mjs                  # Headless MCP-client CLI (glob-mcp bin); test-cli.ts smoke-tests it
-```
-#### [`globalise-transcriptions-api/`](./globalise-transcriptions-api/)
+### [API Documentation](./globalise-transcriptions-api/)
 
 - [API Reference](./globalise-transcriptions-api/API_REFERENCE.md) - Endpoints, parameters, and examples
 - [Query Syntax](./globalise-transcriptions-api/QUERY_SYNTAX.md) - Boolean operators, wildcards, fuzzy matching
@@ -162,4 +138,4 @@ A machine-readable [`CITATION.cff`](./CITATION.cff) for the GLOBALISE MCP server
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. The GLOBALISE transcriptions themselves are licensed under [CC0](https://creativecommons.org/publicdomain/zero/1.0/) (Creative Commons Zero).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. The GLOBALISE transcriptions, metadata, and page images are licensed [CC0](https://creativecommons.org/publicdomain/zero/1.0/) (Creative Commons Zero).
