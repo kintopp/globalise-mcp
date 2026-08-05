@@ -88,19 +88,6 @@ See [Query Syntax](./QUERY_SYNTAX.md#punctuation-and-special-characters) for det
 | [Error Reference](./ERROR_REFERENCE.md) | HTTP status codes and error handling |
 | [OpenAPI Spec](./openapi.yaml) | Machine-readable API specification |
 
-## MCP Server
-
-An MCP (Model Context Protocol) server is available for AI assistant integration. See the [`globalise-mcp-server/`](../globalise-mcp-server/) directory for installation and usage instructions.
-
-**Available Tools:**
-- `globalise_find_archival_documents` - Search local archival finding aids (inventory-level)
-- `globalise_search_transcriptions` - Full-text search with filters
-- `globalise_retrieve_document` - Get document details and transcription
-- `globalise_navigate` - Navigate between pages
-- `globalise_lookup_commodity` - Resolve a trade good to its Dutch label, definition, and period spelling variants
-- `globalise_lookup_measure` - Look up a VOC weight/measure unit — type, spelling variants, and period conversion ratios
-- `globalise_view_document_ui` - Open a page in the interactive viewer (MCP Apps UI)
-
 ## Document URN Structure
 
 Documents are identified by URNs following this pattern:
