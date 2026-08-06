@@ -5,7 +5,7 @@
   "display_name": "Globalise MCP",
   "version": "0.9.0",
   "description": "A Model Context Protocol (MCP) server for accessing a corpus of c. 4.8M machine-generated transcriptions of 17-18th century Dutch East India Company (VOC) records hosted by the GLOBALISE project at the Royal Netherlands Academy of Arts and Sciences (KNAW).",
-  "long_description": "**Features:**  \n• Search transcriptions (full-text queries with inventory/language filters and aggregations)  \n• Retrieve documents (metadata, annotations, and IIIF image URLs)  \n• Navigate between pages within an inventory  \n• Search archival finding aids (228K+ VOC document indexes)  \n• Look up VOC commodities and weights & measures (historical labels, definitions, period spellings and conversions)  \n• View a page image alongside its transcription inline in the chat  \n• Direct the AI-assistant to navigate and analyse a page image  \n• SKILL file (provides the AI-assistant with best practices for searching and retrieving data)  \n• CLI client (a command-line interface to the MCP server's tools and data)",
+  "long_description": "**Features:**  \n• Search the full text of c. 4.78 million machine-transcribed pages from the *OBP* for a word or phrase, narrow the results by inventory number or language, and combine terms with boolean operators, wildcards, and fuzzy matching to catch historical spellings.  \n• Retrieve any page by its identifier to read the complete transcription line by line, together with its languages, dates, rights statement, and links to the original scan at the Dutch National Archives.  \n• Move page by page through an inventory to follow a volume in sequence instead of jumping between scattered search results.  \n• Search more than 228,000 *TANAP* finding-aid entries — the catalogue layer above the transcriptions — to locate the right inventories before reading any pages, and to reach the published scholarly edition of the *Generale Missiven* in the RGP series at the Huygens Institute.  \n• Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.  \n• View a page scan beside its line-numbered transcription in an interactive viewer, and ask the AI assistant to zoom in on a detail or examine the image for you.",
   "author": {
     "name": "Arno Bosse",
     "url": "https://github.com/kintopp"
@@ -15,7 +15,7 @@
     "url": "https://github.com/kintopp/globalise-mcp"
   },
   "homepage": "https://transcriptions.globalise.huygens.knaw.nl",
-  "documentation": "https://github.com/kintopp/globalise-mcp/blob/main/globalise-mcp-server/docs/mcpb.md",
+  "documentation": "https://github.com/kintopp/globalise-mcp/blob/main/globalise-mcp-server/docs/bundle-readme.md",
   "support": "https://github.com/kintopp/globalise-mcp/issues",
   "license": "MIT",
   "keywords": [
@@ -40,8 +40,7 @@
       "env": {
         "TRANSPORT": "stdio",
         "ARCHIVAL_DB_PATH": "${user_config.data_directory}/archival-index.sqlite",
-        "ARCHIVAL_DB_URL": "${user_config.archival_db_url}",
-        "ARCHIVAL_DB_TOKEN": "${user_config.archival_db_token}",
+        "ARCHIVAL_DB_URL": "https://globalise-mcp-production.up.railway.app/archival-index.sqlite.gz",
         "STRUCTURED_CONTENT": "${user_config.structured_content}",
         "DEBUG": "${user_config.debug_logging}"
       }
@@ -92,21 +91,6 @@
   "tools_generated": false,
   "prompts_generated": false,
   "user_config": {
-    "archival_db_url": {
-      "type": "string",
-      "title": "Index download URL",
-      "description": "The finding-aid index is downloaded from this URL the first time archival search is used: about 26 MB compressed, expanding to about 112 MB on disk, then cached locally so later searches reuse it. Defaults to the project's hosted server; override only to self-host or mirror.",
-      "default": "https://globalise-mcp-production.up.railway.app/archival-index.sqlite.gz",
-      "required": false
-    },
-    "archival_db_token": {
-      "type": "string",
-      "title": "Index download token",
-      "description": "Optional Bearer token sent with the index download request. Only needed when the download URL requires authentication (e.g. a private GitHub release asset via the API endpoint https://api.github.com/repos/OWNER/REPO/releases/assets/ASSET_ID). Leave empty for public URLs.",
-      "default": "",
-      "sensitive": true,
-      "required": false
-    },
     "data_directory": {
       "type": "string",
       "title": "Data directory",

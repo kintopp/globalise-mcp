@@ -1,5 +1,7 @@
 # Excluded directories
 offline/
+plans/
+experiments/
 
 # Local development notes
 CLAUDE.md
