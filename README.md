@@ -15,15 +15,15 @@ The best way to get started is with [Claude Desktop](https://claude.com/download
 ```
 https://globalise-mcp-production.up.railway.app/mcp
 ```
-Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions. Many other desktop and web-based clients such as OpenAI's ChatGPT or Mistral's LeChat and open-source products support custom MCP servers. Please consult their documentation for more information.
+Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions. Many other desktop and web-based clients such as OpenAI's ChatGPT or Mistral's LeChat and open-source applications support custom MCP servers. Please consult their documentation for more information.
 
-Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is with a Claude Desktop [extension](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop). Download this project's ~5MB `.mcpb` extension and then navigate to _Settings_ → _Extensions_ in Claude Desktop to add it. This will install the MCP server and download a small ~110MB database with the project's finding aids and historical glossaries. To install the Globalise MCP server manually, please consult the [technical guidelines](./globalise-mcp-server/README.md).
+Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is with a Claude Desktop [extension](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop). Download [this project's ~5MB `.mcpb` extension](https://github.com/kintopp/globalise-mcp/releases/latest) and then double-click it to install it with Claude Desktop. This will download a small ~110MB database with the project's finding aids and historical glossaries. To install the Globalise MCP server manually, please consult the [technical notes](./globalise-mcp-server/README.md).
 
 ### SKILL file
 
 A `skill` gives an AI assistant detailed guidance on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Skills were [originally developed by Anthropic](https://support.claude.com/en/articles/12512176-what-are-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home). Making use of the Globalise MCP skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
 
-Download: [`globalise-voc-research.skill`](./globalise-mcp-server/skills/globalise-voc-research.skill). The downloaded skill file can be installed in Claude by following [these instructions](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills).
+Download: [`globalise-voc-research.skill`](https://github.com/kintopp/globalise-mcp/releases/latest). The downloaded skill file can be installed in Claude by following [these instructions](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills). Else, please consult the documentation of your MCP client to learn how to install or make use of it there.
 
 ### Features
 
@@ -33,7 +33,7 @@ Download: [`globalise-voc-research.skill`](./globalise-mcp-server/skills/globali
 - Search more than 228,000 *TANAP* finding-aid entries — the catalogue layer above the transcriptions — to locate the right inventories before reading any pages, and to reach the published scholarly edition of the *Generale Missiven* in the RGP series at the Huygens Institute.
 - Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.
 - View a page scan beside its line-numbered transcription in an interactive viewer, and ask the AI assistant to zoom in on a detail or examine the image for you.
-- Run searches and lookups from the command line with the bundled CLI client, which outputs JSON for piping into tools like `jq`.
+- Run searches and lookups from the command line with the [bundled CLI client](./globalise-mcp-server/README.md), which outputs JSON for piping into tools like `jq`.
 
 #### MCP Server Tools
 

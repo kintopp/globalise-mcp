@@ -98,8 +98,6 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 https://globalise-mcp-production.up.railway.app/mcp
 ```
-At present (July, 2026) it is possible to add one custom MCP server to Claude at no charge (additional servers require a subscription). Adding a hosted MCP server to ChatGPT requires the 'developer mode' which in turn is only possible via a subscription. Google has announced future support for hosted MCP servers in Gemini Desktop without specifying a timeline. Free access to a custom remote MCP server is possible via Mistral's LeChat web application. 
-
 ## CLI
 
 `scripts/cli.mjs` (`glob-mcp`) is a headless MCP **client** over this server's stateless tools. A CLI

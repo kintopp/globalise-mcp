@@ -74,8 +74,7 @@ directory** on first use, not in the install tree.
 "env": {
   "TRANSPORT": "stdio",
   "ARCHIVAL_DB_PATH": "${user_config.data_directory}/archival-index.sqlite",
-  "ARCHIVAL_DB_URL": "${user_config.archival_db_url}",
-  "ARCHIVAL_DB_TOKEN": "${user_config.archival_db_token}",
+  "ARCHIVAL_DB_URL": "https://globalise-mcp-production.up.railway.app/archival-index.sqlite.gz",
   "STRUCTURED_CONTENT": "${user_config.structured_content}",
   "DEBUG": "${user_config.debug_logging}"
 }
@@ -101,7 +100,7 @@ All commands run from `globalise-mcp-server/`.
 
 ```bash
 # 1. Build + stage + validate + pack  (chains `npm run build` first)
-npm run build:mcpb    # → mcpb-build/globalise-voc-transcriptions-<version>.mcpb
+npm run build:mcpb    # → mcpb-build/globalise-voc-research.mcpb
 #    Rewrites mcpb-build/stage/ (the unpacked tree, kept for inspection).
 
 # 2. (optional) Validate the manifest against the 0.3 schema
@@ -114,9 +113,11 @@ npm run test:mcpb
 #    server for the .gz and verifies the FIRST-RUN DOWNLOAD materializes the
 #    index and answers the query.
 
-# 4. Install: open the .mcpb file with Claude Desktop (macOS/Windows) and
-#    confirm the install dialog. Inspect a built bundle with:
-npx -y @anthropic-ai/mcpb info mcpb-build/globalise-voc-transcriptions-*.mcpb
+# 4. Install: double-click the .mcpb (or right-click → "Open with" → Claude
+#    Desktop) and confirm the install dialog. Dropping it into the Claude
+#    Desktop *window* attaches it to the chat instead of installing it.
+#    Inspect a built bundle with:
+npx -y @anthropic-ai/mcpb info mcpb-build/globalise-voc-research.mcpb
 ```
 
 ### Testing the first-run download in Claude Desktop
@@ -168,9 +169,14 @@ Surfaced by Claude Desktop at install time, all optional:
 |---|---|---|---|
 | `debug_logging` | boolean | `false` | Sets `DEBUG=true` → per-tool diagnostic lines on stderr (incl. download progress) |
 | `structured_content` | boolean | `true` | Sets `STRUCTURED_CONTENT` → include machine-readable `structuredContent` (disable only for hosts that reject it) |
-| `archival_db_url` | string | the Railway deployment's `/archival-index.sqlite.gz` | Sets `ARCHIVAL_DB_URL` → where the index `.gz`/`.sqlite` is fetched on first use |
-| `archival_db_token` | string | *(empty)* | Sets `ARCHIVAL_DB_TOKEN` → optional Bearer token, only needed if the download URL requires auth |
 | `data_directory` | string | `~/.globalise-mcp` | Sets `ARCHIVAL_DB_PATH` → writable folder the downloaded index is cached in |
+
+The download URL is **not** user-configurable: `ARCHIVAL_DB_URL` is pinned to the
+Railway deployment's `/archival-index.sqlite.gz` directly in `mcp_config.env`.
+`database.ts` reads it straight from the environment with no built-in fallback,
+so it has to be set somewhere — exposing it as a `user_config` option only
+invited a broken override. `ARCHIVAL_DB_TOKEN` is still honoured if set in the
+environment, but the bundle no longer surfaces it (the default URL is public).
 
 ## Relationship to the HTTP deployment
 

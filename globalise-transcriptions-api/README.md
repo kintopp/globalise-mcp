@@ -87,6 +87,7 @@ See [Query Syntax](./QUERY_SYNTAX.md#punctuation-and-special-characters) for det
 | [Data Models](./DATA_MODELS.md) | Request/response schemas with TypeScript types |
 | [Error Reference](./ERROR_REFERENCE.md) | HTTP status codes and error handling |
 | [OpenAPI Spec](./openapi.yaml) | Machine-readable API specification |
+| [Methodology](./GLOBALISE_API_Research_Summary.md) | How this API was documented |
 
 ## Document URN Structure
 
@@ -112,16 +113,8 @@ NL-HaNA, VOC, [inv.nr.], [scan nr.], transcription GLOBALISE project
 (https://globalise.huygens.knaw.nl/), March 2024
 ```
 
-**Important:** These are machine-generated transcriptions and may contain errors. They have not been manually verified.
-
 ## Current API Version
 
 - **Index:** `globalise-2024.03.18-test`
 - **Transcription Date:** March 2024
 - **Indexed pages:** `4,784,614` (match-all count verified 2026-08-03)
-
-## Additional Resources
-
-- [GLOBALISE Project](https://globalise.huygens.knaw.nl/) - Main project website
-- [National Archives (Nationaal Archief)](https://www.nationaalarchief.nl/) - Source archives
-- [Research Methodology](./GLOBALISE_API_Research_Summary.md) - How this API was documented
