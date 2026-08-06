@@ -33,7 +33,7 @@ references:
       - name: "Anthropic"
     url: "https://www.anthropic.com"
     notes: "AI coding assistant used in the development of this software"
-  - type: dataset
+  - type: data
     title: "GLOBALISE VOC Transcriptions"
     authors:
       - name: "GLOBALISE Project, Huygens Institute (KNAW)"
@@ -44,3 +44,80 @@ references:
       accessed via the GLOBALISE Transcriptions API. Cite as: NL-HaNA, VOC,
       [inv.nr.], [scan nr.], transcription GLOBALISE project
       (https://globalise.huygens.knaw.nl/), March 2024.
+  - type: data
+    title: "GLOBALISE - Digitized Indexes of the Dutch East India Company OBP (1602-1799)"
+    authors:
+      - family-names: Pepping
+        given-names: Kay
+      - family-names: Smit
+        given-names: Renate
+      - family-names: Kuruppath
+        given-names: Manjusha
+    version: "2"
+    year: 2025
+    publisher:
+      name: "IISH Data Collection"
+    url: "https://hdl.handle.net/10622/LVOQTG"
+    license: CC-BY-4.0
+    notes: >
+      Source of the ~227,500 OBP entries in archival-index.sqlite. Re-used
+      unchanged; restructured only (column subset, numeric coercion, FTS index).
+  - type: data
+    title: "Overzicht van Generale Missiven in het archief van de VOC, 1.04.02"
+    authors:
+      - family-names: Pepping
+        given-names: Kay
+    version: "4"
+    year: 2023
+    publisher:
+      name: "IISH Data Collection"
+    url: "https://hdl.handle.net/10622/BHKMWE"
+    license: CC-BY-SA-4.0
+    notes: >
+      Source of the ~950 Generale Missiven entries in archival-index.sqlite.
+      Re-used unchanged; restructured only (column subset, numeric coercion,
+      FTS index).
+  - type: data
+    title: "GLOBALISE Thesaurus - Commodities"
+    authors:
+      - family-names: Pepping
+        given-names: K.
+      - family-names: Vellinga
+        given-names: H.
+      - family-names: Kuruppath
+        given-names: M.
+      - family-names: Van Wissen
+        given-names: L.
+      - family-names: Van Rossum
+        given-names: M.
+    version: "1"
+    year: 2023
+    publisher:
+      name: "IISH Data Collection"
+    url: "https://hdl.handle.net/10622/YAWDOV"
+    license: CC-BY-SA-4.0
+    notes: >
+      Basis of the commodities glossary in reference.sqlite. SUBSTANTIALLY
+      MODIFIED: definitions and English labels added (over half AI-generated and
+      labelled as such), 45 entries removed, 66 umbrella categories set aside,
+      5 homonyms disambiguated, both classifications dropped. The derivative is
+      redistributed under CC-BY-SA-4.0 and is not an official GLOBALISE dataset.
+  - type: data
+    title: "GLOBALISE - Weights and Measures in the 18th-Century Indian Ocean World"
+    authors:
+      - family-names: Vellinga
+        given-names: Henrike
+      - family-names: Nijman
+        given-names: Brecht
+      - family-names: Kuruppath
+        given-names: Manjusha
+    version: "1"
+    year: 2024
+    publisher:
+      name: "IISH Data Collection"
+    url: "https://hdl.handle.net/10622/MDNVH5"
+    license: CC-BY-SA-4.0
+    notes: >
+      Basis of the weights-&-measures glossary in reference.sqlite. Content
+      untouched; the three source spreadsheets were merged into a single
+      unit-keyed lookup with lowercased, de-duplicated spelling variants.
