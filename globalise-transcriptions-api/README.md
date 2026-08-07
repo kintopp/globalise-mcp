@@ -111,9 +111,3 @@ urn:globalise:NL-HaNA_{archive}_{inventory}_{scan}
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](../LICENSE) file for details. **The MIT License covers the source code only**; the bundled and derived datasets carry their own terms.
-
-- GLOBALISE transcriptions, document metadata, and National Archives page images: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Creative Commons Zero).
-- Archival finding-aid index (`archival-index.sqlite`), derived from [GLOBALISE — Digitized Indexes of the Dutch East India Company OBP (1602–1799)](https://hdl.handle.net/10622/LVOQTG) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) and [Overzicht van Generale Missiven in het archief van de VOC, 1.04.02](https://hdl.handle.net/10622/BHKMWE) ([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.en)).
-- Commodities and weights-&-measures glossaries (`reference.sqlite`), derived from the [GLOBALISE Thesaurus — Commodities](https://hdl.handle.net/10622/YAWDOV) and [GLOBALISE — Weights and Measures in the 18th-Century Indian Ocean World](https://hdl.handle.net/10622/MDNVH5), both [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.en).
-
-The derived databases and the modified source files under [`data/sources/`](../globalise-mcp-server/data/sources/) are redistributed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.en). The glossaries have been substantially revised and are not official GLOBALISE datasets; the [repository README](../README.md#historical-finding-aids-and-glossaries) documents the attribution and the changes made.
