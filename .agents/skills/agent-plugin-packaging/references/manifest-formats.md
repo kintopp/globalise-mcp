@@ -9,8 +9,8 @@ published agent-plugins.org 1.0.0 schemas and `openai/plugins` on 2026-08-06.
 <plugin-root>/
 ├── plugin.json                  # agent-plugins.org: identity
 ├── mcp.json                     # agent-plugins.org: runtime wiring
-├── .codex-plugin/plugin.json    # Codex-native: identity + UI
-├── .mcp.json                    # Codex-native: runtime wiring
+├── .codex-plugin/plugin.json    # shim: identity + UI
+├── .mcp.json                    # shim: runtime wiring
 ├── skills/<skill-name>/
 │   ├── SKILL.md
 │   └── references/*.md          # copy recursively
@@ -77,8 +77,9 @@ Constraints that bite:
 
 Transports: `stdio`, `streamable-http`, `sse`.
 
-**Do not declare both a stdio and a remote entry in one file.** `mcpServers` is
-a map and a client will start every entry, duplicating your whole tool surface.
+**Declare exactly one server entry per file.** `mcpServers` is a map and a
+client starts every entry, so a stdio and a remote entry side by side duplicate
+your whole tool surface.
 
 **Prefer `streamable-http` for v1.** Zero install, no build step, works on any
 conformant client. The costs are real but bounded: all traffic lands on your
@@ -90,7 +91,7 @@ The alternative — `node ${PLUGIN_ROOT}/dist/index.js` — means shipping a
 prebuilt tree, and the spec defines no build hook, so you would be re-solving
 whatever your existing bundle packaging already solves.
 
-## `.codex-plugin/plugin.json` — Codex-native
+## `.codex-plugin/plugin.json` — the shim
 
 Same identity fields (no `$schema`), plus three keys the standard forbids:
 
@@ -112,12 +113,12 @@ Same identity fields (no `$schema`), plus three keys the standard forbids:
 
 `interface` is the only hand-authored content in the package — category,
 capabilities, sample prompts have no source elsewhere. **`category` is drawn
-from a fixed set.** An invalid value does not error; the plugin silently never
-appears. Confirm the exact string against a real marketplace
-(`openai/plugins` at `.agents/plugins/marketplace.json`) rather than guessing a
-plausible one.
+from a fixed set.** An invalid value does not error — the plugin is simply
+absent, the canonical **silent failure**. Confirm the exact string against a
+real marketplace (`openai/plugins` at `.agents/plugins/marketplace.json`) rather
+than guessing a plausible one.
 
-## `.mcp.json` — Codex-native
+## `.mcp.json` — the shim
 
 ```json
 { "mcpServers": { "your-server": { "type": "http", "url": "https://…/mcp" } } }

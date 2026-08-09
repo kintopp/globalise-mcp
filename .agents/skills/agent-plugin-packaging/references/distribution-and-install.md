@@ -110,9 +110,6 @@ Advanced → Developer mode → Create, paste the endpoint URL, authentication a
 appropriate. The user gets the tools and **not** the skill. Requires a paid
 tier; workspace admins can disable it.
 
-**There is no single double-clickable artifact carrying both.** When asked for a
-`.mcpb` equivalent, say this plainly and offer route 3.
-
 ## The version cache
 
 Installs land in `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/` and
