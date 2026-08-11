@@ -18,7 +18,7 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 - Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.
 - Run searches and lookups from the command line with the [bundled CLI client](./globalise-mcp-server/README.md), which outputs JSON for piping into tools like `jq`.
 
-<p align="center"><img src="docs/canton.jpg" alt="NL-HaNA_1.04.02_4384_0199" width="600"></p>
+<p align="center"><img src="docs/canton.jpg" alt="The Globalise viewer showing page NL-HaNA_1.04.02_4384_0199 beside its line-numbered transcription" width="600"></p>
 
 ### Installation
 
