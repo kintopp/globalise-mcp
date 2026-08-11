@@ -8,6 +8,17 @@ A Model Context Protocol (MCP) server and [API documentation](./globalise-transc
 
 The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [making accessible](https://transcriptions.globalise.huygens.knaw.nl/) the archives of the Dutch East India Company (VOC). The corpus focuses on the [_Overgekomen Brieven en Papieren_](https://www.nationaalarchief.nl/onderzoeken/archief/1.04.02) which were sent from the VOC's Asian headquarters in Batavia to the Dutch Republic in the seventeenth and eighteenth centuries and are now held by the [Dutch National Archives](https://www.nationaalarchief.nl). The transcriptions were machine-generated using an open-source [Handwritten Text Recognition (HTR) toolkit](https://github.com/knaw-huc/loghi) and are freely available under a Creative Commons [CC0 license](https://creativecommons.org/publicdomain/zero/1.0) together with their metadata and page scans.
 
+### Features
+
+- Search the full text of c. 4.78 million machine-transcribed pages from the *OBP* for a word or phrase, narrow the results by inventory number or language, and combine terms with boolean operators, wildcards, and fuzzy matching to catch historical spellings.
+- Retrieve any page by its identifier to read the complete transcription line by line, together with its languages, dates, rights statement, and links to the original scan at the Dutch National Archives.
+- Move page by page through an inventory to follow a volume in sequence instead of jumping between scattered search results.
+<p align="center"><img src=".docs/canton.jpg" alt="NL-HaNA_1.04.02_4384_0199 with a portion of Chinese text highlighted" width="600"></p>
+- View a page scan beside its line-numbered transcription in an interactive viewer, and ask the AI assistant to zoom in on a detail or examine the image for you.
+- Search more than 228,000 *TANAP* finding-aid entries — the catalogue layer above the transcriptions — to locate the right inventories before reading any pages, and to reach the published scholarly edition of the *Generale Missiven* in the RGP series at the Huygens Institute.
+- Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.
+- Run searches and lookups from the command line with the [bundled CLI client](./globalise-mcp-server/README.md), which outputs JSON for piping into tools like `jq`.
+
 ### Installation
 
 The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector — additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
@@ -24,17 +35,6 @@ Alternatively, you can install the Globalise MCP server *locally* on your own co
 A `skill` gives an AI assistant detailed guidance on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Skills were [originally developed by Anthropic](https://support.claude.com/en/articles/12512176-what-are-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home). Making use of the Globalise MCP skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
 
 Download: [`globalise-voc-research.skill`](https://github.com/kintopp/globalise-mcp/releases/latest). The downloaded skill file can be installed in Claude by following [these instructions](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills). Else, please consult the documentation of your MCP client to learn how to install or make use of it there.
-
-### Features
-
-- Search the full text of c. 4.78 million machine-transcribed pages from the *OBP* for a word or phrase, narrow the results by inventory number or language, and combine terms with boolean operators, wildcards, and fuzzy matching to catch historical spellings.
-- Retrieve any page by its identifier to read the complete transcription line by line, together with its languages, dates, rights statement, and links to the original scan at the Dutch National Archives.
-- Move page by page through an inventory to follow a volume in sequence instead of jumping between scattered search results.
-<p align="center"><img src=".globalise-mcp-server/docs/canton.jpg" alt="NL-HaNA_1.04.02_4384_0199 with a portion of Chinese text highlighted" width="600"></p>
-- View a page scan beside its line-numbered transcription in an interactive viewer, and ask the AI assistant to zoom in on a detail or examine the image for you.
-- Search more than 228,000 *TANAP* finding-aid entries — the catalogue layer above the transcriptions — to locate the right inventories before reading any pages, and to reach the published scholarly edition of the *Generale Missiven* in the RGP series at the Huygens Institute.
-- Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.
-- Run searches and lookups from the command line with the [bundled CLI client](./globalise-mcp-server/README.md), which outputs JSON for piping into tools like `jq`.
 
 #### MCP Server Tools
 
@@ -97,7 +97,6 @@ Local:
 Sources:
 - [GLOBALISE Thesaurus — Commodities](https://hdl.handle.net/10622/YAWDOV) — IISG Dataverse
 - [GLOBALISE — Weights and Measures in the 18th-Century Indian Ocean World](https://hdl.handle.net/10622/MDNVH5) — IISG Dataverse
-
 
 ### API Documentation
 
