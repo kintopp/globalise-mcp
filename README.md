@@ -13,11 +13,12 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 - Search the full text of c. 4.78 million machine-transcribed pages from the *OBP* for a word or phrase, narrow the results by inventory number or language, and combine terms with boolean operators, wildcards, and fuzzy matching to catch historical spellings.
 - Retrieve any page by its identifier to read the complete transcription line by line, together with its languages, dates, rights statement, and links to the original scan at the Dutch National Archives.
 - Move page by page through an inventory to follow a volume in sequence instead of jumping between scattered search results.
-<p align="center"><img src="docs/canton.jpg" alt="NL-HaNA_1.04.02_4384_0199 with a portion of Chinese text highlighted" width="600"></p>
 - View a page scan beside its line-numbered transcription in an interactive viewer, and ask the AI assistant to zoom in on a detail or examine the image for you.
 - Search more than 228,000 *TANAP* finding-aid entries — the catalogue layer above the transcriptions — to locate the right inventories before reading any pages, and to reach the published scholarly edition of the *Generale Missiven* in the RGP series at the Huygens Institute.
 - Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.
 - Run searches and lookups from the command line with the [bundled CLI client](./globalise-mcp-server/README.md), which outputs JSON for piping into tools like `jq`.
+
+<p align="center"><img src="docs/canton.jpg" alt="NL-HaNA_1.04.02_4384_0199" width="600"></p>
 
 ### Installation
 
