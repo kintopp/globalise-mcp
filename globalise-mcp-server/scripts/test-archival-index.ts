@@ -9,6 +9,8 @@
  *   5. unfiltered aggregations are cached per connection and stable (R14)
  *   6. RGP published-edition links — Retroboeken offset, GitHub per-page/full-volume
  *      URLs, multi-page and volume-only rows, null for unpublished missives
+ *   7. per-connection statement cache rebuilds after a DB reopen
+ *   8. GM rows the source marks deleted are excluded from the build
  *
  * Plain Node script (no framework). Imports the tool directly from src via
  * tsx — no build needed, but the local SQLite database must exist.
@@ -252,6 +254,37 @@ async function main() {
   check(
     JSON.stringify(after.aggregations) === JSON.stringify(before.aggregations),
     'aggregations identical after reopen (state rebuilt on the fresh handle, not stale)',
+  );
+
+  console.log('8. GM rows the source marks deleted are excluded (DATA_VERSION 2)');
+  // The source keeps deleted duplicates as blanked-out rows. They matched no FTS
+  // query, so every other GM test here was blind to them — while date_numeric
+  // sorts nulls first, which put all four at the head of *any* GM listing.
+  // Assert on the unfiltered listing, the one path the suite never took.
+  const gmHead = await call({ source: 'gm', size: 10, includeAggregations: false });
+  const gmHeadRows = gmHead.results.filter(isGm);
+  check(
+    gmHeadRows.length === 10 && gmHeadRows.every((r) => r.description.trim() !== ''),
+    'first page of an unfiltered GM listing has no blank-description rows',
+  );
+  check(
+    gmHeadRows.every((r) => r.inventoryNumber.trim() !== ''),
+    'first page of an unfiltered GM listing has no blank-inventoryNumber rows',
+  );
+  check(
+    gmHead.databaseInfo.gmTotal === 946,
+    `gmTotal excludes the 4 deleted entries (expected 946, got ${gmHead.databaseInfo.gmTotal})`,
+  );
+
+  // The reported symptom: the documented chamber+year pattern used to open on
+  // four empty records, because the year filter is deliberately null-tolerant.
+  const gmDecade = await call({
+    source: 'gm', chamber: 'Amsterdam', yearFrom: 1680, yearTo: 1689,
+    size: 6, includeAggregations: false,
+  });
+  check(
+    gmDecade.results.filter(isGm).every((r) => r.description.trim() !== ''),
+    'chamber+year query returns no blank stub rows',
   );
 
   closeDatabase();

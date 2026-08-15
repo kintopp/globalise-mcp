@@ -34,7 +34,9 @@ const GM_CSV = join(SOURCES_DIR, 'generale-missiven.csv');
 // the server's semver and of reference.sqlite's counter — bump it only when a
 // rebuild changes the shipped finding-aid bytes (new source release, schema
 // change, corrected rows). 1 = the OBP v2 (2025) + Generale Missiven build.
-const DATA_VERSION = 1;
+// 2 = the same sources with the GM rows the source marks deleted excluded
+// (see DELETED_ENTRY_RE).
+const DATA_VERSION = 2;
 
 // Batch size for inserts
 const BATCH_SIZE = 5000;
@@ -126,9 +128,23 @@ async function parseObpCsv(): Promise<ObpRow[]> {
   });
 }
 
+/**
+ * The GM source keeps deleted entries as blanked-out rows, recording the reason
+ * in its manual-check column ("Dit betrof een missive die al elders in de lijst
+ * geregistreerd was, en daarom is verwijderd" — a duplicate already registered
+ * elsewhere). Only the ID and chamber survive on such a row.
+ *
+ * Ingesting them put four empty records at the head of *every* GM listing —
+ * date_numeric is null, and SQLite sorts nulls first — and inflated the reported
+ * gmTotal from 946 to 950. They were invisible to the test suite because an
+ * empty description matches no FTS query, and every GM test went through FTS.
+ */
+const DELETED_ENTRY_RE = /verwijderd/i;
+
 async function parseGmCsv(): Promise<GmRow[]> {
   console.log('Parsing Generale Missiven CSV...');
   const rows: GmRow[] = [];
+  let skippedDeleted = 0;
 
   return new Promise((resolve, reject) => {
     const parser = parse({
@@ -141,6 +157,14 @@ async function parseGmCsv(): Promise<GmRow[]> {
     createReadStream(GM_CSV)
       .pipe(parser)
       .on('data', (record: Record<string, string>) => {
+        // Require the blank inventory number too, so a row that merely *mentions*
+        // a correction in the note column is never dropped for its wording.
+        const problem = record['Problemen gevonden tijdens handmatige check:'] ?? '';
+        if (DELETED_ENTRY_RE.test(problem) && !record['Inv.nr. Nationaal Archief (1.04.02)']?.trim()) {
+          skippedDeleted++;
+          return;
+        }
+
         const htrVal = record['HTR van IJsberg beschikbaar?'];
         const htrAvailable = htrVal?.toUpperCase() === 'TRUE' ? 1 : 0;
 
@@ -166,7 +190,7 @@ async function parseGmCsv(): Promise<GmRow[]> {
         });
       })
       .on('end', () => {
-        console.log(`  Parsed ${rows.length} GM rows`);
+        console.log(`  Parsed ${rows.length} GM rows (skipped ${skippedDeleted} marked deleted in the source)`);
         resolve(rows);
       })
       .on('error', reject);
