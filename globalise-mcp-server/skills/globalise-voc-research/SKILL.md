@@ -28,7 +28,7 @@ Document IDs look like `NL-HaNA_1.04.02_9966_0106` = `{archive}_{inventory}_{sca
 Any page opens in the web viewer at
 `https://transcriptions.globalise.huygens.knaw.nl/detail/urn:globalise:{id}`.
 
-## The ten tools
+## The tools
 
 | Tool | Use it to… | Backed by |
 |------|-----------|-----------|
@@ -42,7 +42,7 @@ Any page opens in the web viewer at
 | `globalise_inspect_page_image` | **Look at the page yourself.** Fetch a page scan or region as an image and read it — re-transcribe a user-highlighted passage (a "[Highlight: region pct:…]" message) as a second opinion on the HTR, or zoom into a detail on request. When a viewer is open for the page it also auto-zooms there. | Live IIIF image API |
 | `globalise_navigate_viewer` | **Steer the open viewer.** Zoom/pan it to a region to direct the user's attention. Needs the `viewUUID` from `globalise_view_document_ui`. | In-memory session queue |
 
-> Internal: `globalise_poll_viewer_commands` is the viewer iframe's own command-polling channel (app-only, hidden from the agent tool list) — you never call it directly.
+> Internal: `globalise_poll_viewer_commands` is the viewer iframe's own command-polling channel — you never call it directly. It is marked app-only, but whether a host hides it is up to the host, so the tool count you see may be one higher than the table above. Don't use a tool count to identify which server you are connected to; test for a specific tool by name instead.
 
 ### Loading the tools
 
@@ -51,9 +51,13 @@ tool search — not per task. Generic queries like `search transcriptions` retur
 other archive servers' tools instead, and the exact function name does not help:
 tool search matches descriptions, not identifiers.
 
-- Best: exact selection by name (`select:name1,name2`) with the ten names above.
-- Otherwise: search `GLOBALISE VOC Dutch East India Company transcriptions`,
-  limit **15** — the usual default of 5 cannot return a ten-tool server.
+- Best: exact selection by name (`select:name1,name2`) with the names in the
+  table above. No limit is needed — you are naming them.
+- Only if that is unavailable: keyword search
+  `GLOBALISE VOC Dutch East India Company transcriptions`, limit **15** — the
+  usual default of 5 cannot return a whole server's tool set, and the extra
+  slots are deliberate headroom for fuzzy ranking (expect other archive
+  servers' tools to fill them; that is fine).
 
 A search that misses a tool never means it is unavailable. Re-search it by its
 distinctive terms (Generale Missiven, thesaurus, bahar, IIIF viewer), not by name.
@@ -109,7 +113,7 @@ pre-empt a specific class of silent wrong answer.
 | `references/transcription-search.md` | any non-trivial `search_transcriptions` query | Elasticsearch operators, `space = OR`, fuzzy matching, the tokenizer, totals, sorting, `fragmentSize` |
 | `references/glossaries.md` | a trade good or a historical unit comes up | `lookup_commodity` recall workflow and definition provenance; `lookup_measure` and why it is not a converter |
 
-The rest of this file: [the tools](#the-ten-tools) · [loading them](#loading-the-tools) ·
+The rest of this file: [the tools](#the-tools) · [loading them](#loading-the-tools) ·
 [canonical workflow](#the-canonical-workflow) · [HTR caveats](#htr-transcription-caveats-data-quality) ·
 [sensitive content](#colonial-era-language-and-sensitive-content) · [worked patterns](#worked-patterns) ·
 [size-capped responses](#when-a-response-is-size-capped) · [operational notes](#operational-notes) ·
@@ -132,6 +136,17 @@ The HTR model was trained on **Latin script only** — which shapes what's trust
   transcription of enciphered text is unreadable without the key.
   - Codes are ISO 639-3 (`nld` dominates at ~754K pages; `por`, `fra`, `deu`,
     `lat`, `eng`, `spa` are fairly well represented).
+  - The language aggregation only counts pages that carry transcribed text, so it
+    can **sum to less than the page total** — blank pages (`tokenCount` 0) have no
+    language at all. In inventory 9966: 495 pages, 468 `nld` + 4 `unknown` = 472,
+    and the missing 23 are blank. That gap is blank pages, not a classification
+    gap; `"unknown"` is its own, counted category.
+- **A scan is often two pages.** Many inventories are photographed as **two-page
+  openings** rather than single pages (9966 and 4293 are; 1543, 7535, 1189, 1352
+  are not). Line order follows the layout analysis, so on an opening both halves
+  and their marginal columns **interleave** — consecutive lines are not
+  necessarily consecutive text. Use `inspect_page_image` or the viewer to
+  establish reading order before quoting a passage as continuous.
 
 ## Colonial-era language and sensitive content
 
@@ -149,7 +164,7 @@ skew toward European subjects.
 ## Worked patterns
 
 - **"Cinnamon from Ceylon."** → `find_archival_documents(query="kaneel", settlement="Ceylon", includeAggregations=true)` — *not* `query="kaneel AND Ceylon"` (→ 0, period-spelling trap).
-- **"Languages in inventory 7535?"** → `search_transcriptions(query="*", inventoryNumber="7535", size=1)`, read the language aggregation.
+- **"Languages in inventory 7535?"** → `search_transcriptions(query="*", inventoryNumber="7535", size=1)`, read the language aggregation (it counts only pages with text, so it can sum below the page total — the remainder is blank pages).
 - **"Amsterdam, tolerant of spelling/OCR noise."** → `search_transcriptions(query="amsterdam~1")` — fuzzy, which `find_archival_documents` (FTS5) has no operator for.
 - **"Transcriptions for a trade good, catching period spellings."** → `lookup_commodity(query="<good>")` for the Dutch label (+ any `altLabels`); most goods have none, so reconstruct the period spelling and fuzz it → `search_transcriptions` (coffee: modern `koffie` 119 pages vs period form ~25,000).
 - **"Show page NL-HaNA_1.04.02_9966_0106 with 'Batavia' highlighted."** → `view_document_ui(documentId="NL-HaNA_1.04.02_9966_0106", highlightTerms=["Batavia"])`.
