@@ -45,6 +45,12 @@ querying them. There's no reliable way to match a literal `*` or `?`.
 languages**, which post-filters a capped 500-hit candidate window and adds a
 `note`. When you see `"gte"` or a note, treat the count as a lower bound.
 
+**No `topInventoryNumbers` facet under an `inventoryNumber` filter.** When that
+filter is active the response omits the `topInventoryNumbers` aggregation and
+says so in its `note` — the upstream facet for a filtered field ignores its own
+filter and would show unfiltered corpus counts. Expect only the `languages`
+facet on filtered-inventory calls; the facet's absence is deliberate, not a gap.
+
 **Sorting — this tool *does* have it** (unlike `find_archival_documents`). `sortBy`
 takes `_score` (relevance, the default), `document` (page ID), or `invNr` (inventory);
 `sortOrder` is `asc`/`desc` (default `desc`). Relevance order suits most queries — reach

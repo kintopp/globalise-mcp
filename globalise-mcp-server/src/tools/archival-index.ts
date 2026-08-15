@@ -29,7 +29,7 @@ export const findArchivalDocumentsInputSchema = z.object({
   chamber: z.string().optional()
     .describe('Filter by VOC chamber (GM only). Values: "Amsterdam", "Zeeland"'),
   htrAvailable: z.boolean().optional()
-    .describe('Filter on the IJsberg sub-project flag (GM only). NOT a reliable "has transcriptions" flag: it effectively marks chamber=Zeeland (all 70 Zeeland letters true, all 880 Amsterdam false), yet many Amsterdam inventories ARE transcribed in GLOBALISE. To find letters you can actually read, take the inventoryNumber and probe globalise_search_transcriptions(query="*", size=1) instead of filtering on this.'),
+    .describe('Filter on the IJsberg sub-project flag (GM only). NOT a reliable "has transcriptions" flag: it effectively marks chamber=Zeeland (all 70 Zeeland letters true, all 876 Amsterdam false), yet many Amsterdam inventories ARE transcribed in GLOBALISE. To find letters you can actually read, take the inventoryNumber and probe globalise_search_transcriptions(query="*", size=1) instead of filtering on this.'),
   from: z.number().int().min(0).default(0)
     .describe('Pagination offset (default: 0)'),
   size: z.number().int().min(1).max(500).default(25)
@@ -338,6 +338,26 @@ function buildPublishedEdition(
 }
 
 /**
+ * Normalize a GM scan URL's trailing scan number to the canonical 4-digit form.
+ *
+ * The source CSV carries the URLs verbatim, and a batch of rows has unpadded
+ * (or blank) scan tails — the Nationaal Archief viewer answers those with
+ * HTTP 200 but silently opens scan 1 instead of the requested scan. The URL
+ * cannot be rebuilt from inventory_number + scan number: some rows point to
+ * lettered part-inventories (1179B, 1457A) that only the URL records. So keep
+ * the stored URL and fix only the tail, using the scan-number column when the
+ * tail is blank.
+ */
+function normalizeScanUrl(url: string | null, scan: number | null): string | null {
+  if (!url) return url;
+  const match = url.match(/^(.*_)(\d*)$/);
+  if (!match) return url;
+  const digits = match[2] !== '' ? match[2] : scan != null ? String(scan) : '';
+  if (digits === '') return url;
+  return match[1] + digits.padStart(4, '0');
+}
+
+/**
  * Map a GM database row to the output format.
  */
 function mapGmRow(row: GmDbRow) {
@@ -357,8 +377,8 @@ function mapGmRow(row: GmDbRow) {
     yearLatest: row.year_latest,
     dateDisplay: row.date_display,
     dateNumeric: row.date_numeric,
-    scanUrlFirst: row.scan_url_first,
-    scanUrlLast: row.scan_url_last,
+    scanUrlFirst: normalizeScanUrl(row.scan_url_first, row.scan_start),
+    scanUrlLast: normalizeScanUrl(row.scan_url_last, row.scan_end),
     htrAvailable: row.htr_available === 1,
     rgpVolume: row.rgp_volume,
     rgpPage: row.rgp_page,

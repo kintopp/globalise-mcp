@@ -287,6 +287,20 @@ async function main() {
     'chamber+year query returns no blank stub rows',
   );
 
+  console.log('9. GM scan URLs are normalized to a 4-digit scan tail');
+  // The source CSV carries some URLs with unpadded or blank scan numbers; the
+  // NA viewer answers those with 200 but silently opens scan 1. mapGmRow pads
+  // the tail at serialisation (it can't rebuild the whole URL — some rows point
+  // to lettered part-inventories like 1457A that only the URL records).
+  const gmPage1 = await call({ source: 'gm', size: 500, includeAggregations: false });
+  const gmPage2 = await call({ source: 'gm', size: 500, from: 500, includeAggregations: false });
+  const allGmRows = [...gmPage1.results, ...gmPage2.results].filter(isGm);
+  check(allGmRows.length === gmPage1.databaseInfo.gmTotal, 'paged through every GM row');
+  const badTails = allGmRows.flatMap((r) =>
+    [r.scanUrlFirst, r.scanUrlLast].filter((u): u is string => u !== null && !/_\d{4,}$/.test(u)),
+  );
+  check(badTails.length === 0, `every non-null scan URL ends in a 4+-digit scan number (bad: ${badTails.slice(0, 3).join(', ') || 'none'})`);
+
   closeDatabase();
 
   finish('Archival-index tests');

@@ -34,6 +34,10 @@ or chamber (GM) — cheap and useful for "what's in here?" questions.
 > When you list or **count** across `source=all`, dedup on `inventory_number` +
 > `folio` and keep the **GM** row (it adds `chamber`, dates, scan URLs, RGP refs).
 > Query a single `source` when you don't need both field sets.
+>
+> A few letters are also duplicated *within* `source=gm` (14 pairs share an
+> `idTanap` but can disagree on scan range); when deduping on `idTanap`, keep
+> the row that carries `publishedEdition` so the RGP links survive.
 
 > ⚠️ **OBP indexes only *some* inventories — an empty result isn't proof of
 > absence.** It was built from TANAP + typoscript sources covering a
@@ -48,7 +52,7 @@ or chamber (GM) — cheap and useful for "what's in here?" questions.
 
 > ⚠️ **`htrAvailable` is not a reliable "has transcriptions" flag.** It mirrors
 > one sub-project (IJsberg), so empirically *all 70* Zeeland letters are `true`
-> and *all 880* Amsterdam letters are `false` — `htrAvailable=true` is really just
+> and *all 876* Amsterdam letters are `false` — `htrAvailable=true` is really just
 > "chamber = Zeeland." Yet plenty of those `false` Amsterdam inventories *are*
 > transcribed in GLOBALISE (inv 1056 → 550 pages, inv 1058 → 418). To find letters
 > you can actually read, take the inventory number and probe
