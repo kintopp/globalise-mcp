@@ -159,7 +159,7 @@ function structuredPayload(result: unknown): Pick<CallToolResult, 'structuredCon
  * Corpus-level caveats, stated once per connection instead of duplicated
  * across tool descriptions (R10).
  */
-const SERVER_INSTRUCTIONS = `GLOBALISE serves machine transcriptions (HTR) of ~4.8M pages of Dutch East India Company (VOC) records, 17th-18th century, mostly early-modern Dutch. Document IDs look like NL-HaNA_1.04.02_9966_0106 ({archive}_{inventory}_{scan}); any page can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}.
+const SERVER_INSTRUCTIONS = `GLOBALISE serves machine transcriptions (HTR) of ~4.8M pages of Dutch East India Company (VOC) records, 17th-18th century, mostly early-modern Dutch. Document IDs look like NL-HaNA_1.04.02_9966_0106 ({archive}_{inventory}_{scan}); any page can be opened in the web viewer at ${VIEWER_URL_PREFIX}urn:globalise:{id} — the viewer route needs the URN prefix, so a bare ID yields a dead link.
 
 Corpus caveats that apply to every tool:
 - Language metadata: "unknown" means not yet classified, not unidentifiable. The code "art" ("Cipher") marks encrypted Dutch text, not an artificial language. The language aggregation counts only pages carrying transcribed text: blank pages (\`tokenCount\` 0) have no language at all, so the facet can sum to less than the page total — that shortfall is blank pages, not a classification gap.
@@ -560,7 +560,7 @@ export function createServer(): McpServer {
       'Languages accept ISO 639-3 codes or English names; matchAll=true requires pages to contain ALL listed languages (bilingual documents) by post-filtering a capped candidate window — totals are then a lower bound, see the response note. ' +
       'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +
       'For statistics only (e.g. the language breakdown of an inventory), use query="*" with size=1. ' +
-      `Each result id can be opened in the web viewer at ${VIEWER_URL_PREFIX}{id}. ` +
+      `Each result carries both id (URN form) and document (bare ID); open a page in the web viewer at ${VIEWER_URL_PREFIX} + the URN-form id. ` +
       'For a known document ID use globalise_retrieve_document. ' +
       'Use fragmentSize to trade snippet length for response size (lower = smaller, default 200).',
     searchToolInputSchema,
