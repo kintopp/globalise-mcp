@@ -31,9 +31,9 @@ Alternatively, you can install the Globalise MCP server *locally* on your own co
 
 ### SKILL file
 
-A `skill` gives an AI assistant detailed guidance on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Skills were [originally developed by Anthropic](https://support.claude.com/en/articles/12512176-what-are-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home). Making use of the Globalise MCP skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
+A `skill` gives an AI assistant detailed guidance on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Skills were [originally developed by Anthropic](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home). Making use of the Globalise MCP skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
 
-Download: [`globalise-voc-research.skill`](https://github.com/kintopp/globalise-mcp/releases/latest). The downloaded skill file can be installed in Claude by following [these instructions](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills). Else, please consult the documentation of your MCP client to learn how to install or make use of it there.
+Download: [`globalise-voc-research.skill`](https://github.com/kintopp/globalise-mcp/releases/latest). The downloaded skill file can be installed in Claude Desktop by double-clicking on the .skill file or else by going to Settings -> Skills -> Add. The latter method also works with claude.ai.  Else, please consult the documentation of your MCP client to learn how to install or make use of it there.
 
 #### MCP Server Tools
 
