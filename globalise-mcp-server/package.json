@@ -26,7 +26,7 @@
     "cli": "node scripts/cli.mjs",
     "test:cli": "npx tsx scripts/test-cli.ts",
     "inspector": "npm run build && npx @modelcontextprotocol/inspector dist/index.js",
-    "test": "npm run test:fts && npm run test:api-client && npm run test:cache && npm run test:document-id && npm run test:iiif-region && npm run test:image-dimensions && npm run test:archival-download && npm run test:viewer-session && npm run test:archival && npm run test:commodities && npm run test:commodities-quoting && npm run test:measures && npm run test:version-sync && npm run test:viewer-typecheck && npm run test:viewer-build && npm run test:viewer-protocol && npm run test:viewer-render && npm run test:cli-typecheck && npm run test:response-size && npm run test:smoke && npm run test:http-shutdown",
+    "test": "npm run test:fts && npm run test:api-client && npm run test:cache && npm run test:document-id && npm run test:iiif-region && npm run test:vision-sizing && npm run test:image-dimensions && npm run test:archival-download && npm run test:viewer-session && npm run test:archival && npm run test:commodities && npm run test:commodities-quoting && npm run test:measures && npm run test:version-sync && npm run test:viewer-typecheck && npm run test:viewer-build && npm run test:viewer-protocol && npm run test:viewer-render && npm run test:cli-typecheck && npm run test:response-size && npm run test:smoke && npm run test:http-shutdown",
     "test:live": "npx tsx scripts/test-live-api.ts",
     "test:http-shutdown": "npx tsx scripts/test-http-shutdown.ts",
     "test:smoke": "npx tsx scripts/smoke-test.ts",
@@ -48,7 +48,8 @@
     "test:viewer-build": "npx tsx scripts/test-viewer-build.ts",
     "test:viewer-protocol": "npx tsx scripts/test-viewer-protocol.ts",
     "test:viewer-render": "npx tsx scripts/test-viewer-render.ts",
-    "test:response-size": "npx tsx scripts/test-response-size.ts"
+    "test:response-size": "npx tsx scripts/test-response-size.ts",
+    "test:vision-sizing": "npx tsx scripts/test-vision-sizing.ts"
   },
   "keywords": [
     "mcp",

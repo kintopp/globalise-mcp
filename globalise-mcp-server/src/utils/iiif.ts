@@ -163,30 +163,54 @@ export function infoJsonUrlFromImageUrl(imageUrl: string): string | null {
   return m ? `${m[1]}/info.json` : null;
 }
 
+/** Pixel extent of an inspected region, as `regionPixelDims` computes it. */
+export interface RegionPixelDims {
+  width: number;
+  height: number;
+}
+
 /**
- * Never-upscale clamp (rijksmuseum policy, `src/registration/tools/viewer.ts`
- * there): `effectiveSize = min(size, regionWidthPx)`, where a `pct:` region's
- * pixel width subtracts 3px to absorb IIIF server-side rounding. `full` (and
- * unknown dimensions) keep `size` clamped to the full image width; `square`
- * clamps to the smaller of width/height.
+ * Pixel extent of a region, in full-image pixels. Accepts unnormalized input
+ * (`crop_pixels:` need not be stripped first) so callers can't get the order
+ * wrong, and returns null only when the region's size genuinely can't be known
+ * (`full` / `square` / `pct:` without native dimensions).
+ *
+ * Two consumers with opposite failure directions share this, so the rounding
+ * is deliberate on each axis:
+ *
+ * - **Width** carries the historic 3px IIIF rounding margin on `pct:` regions
+ *   (the server can deliver a couple of pixels fewer than the exact
+ *   computation). It feeds the never-upscale clamp, where asking for more
+ *   pixels than exist is the failure.
+ * - **Height** is left unfudged, so the derived aspect ratio errs *tall*. It
+ *   feeds `maxInspectWidth`, where under-predicting the delivered height is
+ *   the failure — the same safety direction as its own `ceil()`.
  */
-export function computeEffectiveSize(region: string, size: number, imgW?: number, imgH?: number): number {
-  let effectiveSize = size;
-  if (imgW) {
-    let regionWidth = imgW;
-    const pctMatch = region.match(/^pct:([0-9.]+),([0-9.]+),([0-9.]+),([0-9.]+)$/);
-    const pxMatch = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
-    if (pctMatch) {
-      regionWidth = Math.max(1, Math.floor(imgW * parseFloat(pctMatch[3]) / 100) - 3);
-    } else if (pxMatch) {
-      regionWidth = parseInt(pxMatch[3], 10);
-    } else if (region === 'square') {
-      regionWidth = Math.min(imgW, imgH ?? imgW);
-    }
-    // region === 'full' keeps regionWidth = imgW
-    if (effectiveSize > regionWidth) effectiveSize = regionWidth;
+export function regionPixelDims(region: string, imgW?: number, imgH?: number): RegionPixelDims | null {
+  // Explicit pixel regions carry their own extent — native dims not needed.
+  const cp = parseCropPixelsRegion(region);
+  const px = cp ?? (() => {
+    const m = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
+    return m ? [+m[1], +m[2], +m[3], +m[4]] as [number, number, number, number] : null;
+  })();
+  if (px) return { width: px[2], height: px[3] };
+
+  if (!imgW || !imgH) return null;
+
+  if (region === 'square') {
+    const side = Math.min(imgW, imgH);
+    return { width: side, height: side };
   }
-  return effectiveSize;
+
+  const pct = parsePctRegion(region);
+  if (pct) {
+    return {
+      width: Math.max(1, Math.floor(imgW * pct[2] / 100) - 3),
+      height: Math.max(1, Math.floor(imgH * pct[3] / 100)),
+    };
+  }
+
+  return { width: imgW, height: imgH };   // 'full'
 }
 
 /**

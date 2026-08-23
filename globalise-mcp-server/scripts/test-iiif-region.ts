@@ -12,9 +12,10 @@ import {
   cropPixelsToIiifPixels,
   checkRegionBounds,
   infoJsonUrlFromImageUrl,
-  computeEffectiveSize,
+  regionPixelDims,
   buildIiifRegionUrl,
 } from '../src/utils/iiif.js';
+import { maxInspectWidth } from '../src/utils/vision-sizing.js';
 import {
   projectToFullImage,
   computeDeliveryState,
@@ -124,32 +125,69 @@ check(checkRegionBounds('0,0,10,10') === null, 'px region without native dims: n
 }
 
 // ---------------------------------------------------------------------------
-// 4. computeEffectiveSize
+// 4. regionPixelDims
+//
+// Replaces the width-only computeEffectiveSize. The width half preserves that
+// function's tested behaviour exactly; the height half is what the vision
+// clamp needs and what the old code never computed.
 // ---------------------------------------------------------------------------
 
-console.log('4. computeEffectiveSize');
+console.log('4. regionPixelDims');
 
 {
-  // pct 10% of 5892 → floor(589.2) - 3 = 586
-  const s = computeEffectiveSize('pct:25,25,10,10', 1568, 5892, 4167);
-  check(s === 586, `pct region clamps 1568 -> 586 (got: ${s})`);
+  // pct width keeps the 3px IIIF rounding margin: floor(5892*.10) - 3 = 586.
+  // The height deliberately does NOT: floor(4167*.10) = 416. Leaving height
+  // unfudged biases the derived aspect ratio tall, which is the safe
+  // direction for maxInspectWidth's ceil().
+  const d = regionPixelDims('pct:25,25,10,10', 5892, 4167);
+  check(d?.width === 586, `pct region width is 586 (got: ${d?.width})`);
+  check(d?.height === 416, `pct region height is 416, unfudged (got: ${d?.height})`);
 }
 {
-  // px region uses the raw width (589), no -3 rounding margin
-  const s = computeEffectiveSize('1473,1041,589,416', 1568, 5892, 4167);
-  check(s === 589, `px region clamps 1568 -> 589 (got: ${s})`);
+  const d = regionPixelDims('1473,1041,589,416', 5892, 4167);
+  check(d?.width === 589 && d?.height === 416, `px region reports its own extent (got: ${d?.width}x${d?.height})`);
 }
 {
-  const s = computeEffectiveSize('full', 1568, 5892, 4167);
-  check(s === 1568, `full region keeps size <= native width (got: ${s})`);
+  // Accepts unnormalized input, so a caller can't get the strip-then-measure
+  // order wrong.
+  const d = regionPixelDims('crop_pixels:1473,1041,589,416');
+  check(d?.width === 589 && d?.height === 416, `crop_pixels: measured without native dims (got: ${d?.width}x${d?.height})`);
 }
 {
-  const s = computeEffectiveSize('pct:25,25,10,10', 1568);
-  check(s === 1568, `unknown dims leave size unchanged (got: ${s})`);
+  const d = regionPixelDims('full', 5892, 4167);
+  check(d?.width === 5892 && d?.height === 4167, `full is the whole image (got: ${d?.width}x${d?.height})`);
 }
 {
-  const s = computeEffectiveSize('square', 1568, 5892, 4167);
-  check(s === 1568, `square region clamps to min(imgW,imgH)=4167, size stays under it (got: ${s})`);
+  const d = regionPixelDims('square', 5892, 4167);
+  check(d?.width === 4167 && d?.height === 4167, `square is min(w,h) on both axes (got: ${d?.width}x${d?.height})`);
+}
+{
+  check(regionPixelDims('pct:25,25,10,10') === null, 'pct without native dims is unknowable → null');
+  check(regionPixelDims('full') === null, 'full without native dims is unknowable → null');
+}
+
+// ---------------------------------------------------------------------------
+// 4b. The two ceilings compose as a min() (the page-image.ts clamp)
+// ---------------------------------------------------------------------------
+
+console.log('4b. never-upscale and vision ceilings compose');
+
+{
+  // A small crop is bounded by its own pixels, not by the vision budget —
+  // this is the "upscaling not supported" branch.
+  const d = regionPixelDims('1473,1041,589,416', 5892, 4167)!;
+  const visionMax = maxInspectWidth(d.width, d.height);
+  check(Math.min(d.width, visionMax) === 589, 'a 589px-wide crop clamps to its own width');
+  check(visionMax > d.width, 'the vision budget is not the binding limit there');
+}
+{
+  // A full portrait leaf is bounded by the vision budget, not its own pixels —
+  // the "downscaled before the model sees it" branch, and the case the old
+  // width-only clamp got wrong.
+  const d = regionPixelDims('full', 3165, 4138)!;
+  const visionMax = maxInspectWidth(d.width, d.height);
+  check(visionMax <= d.width, 'the vision budget binds on a full portrait leaf');
+  check(Math.min(d.width, visionMax) < 1568, `...and clamps below the 1568 default (got: ${Math.min(d.width, visionMax)})`);
 }
 
 // ---------------------------------------------------------------------------
