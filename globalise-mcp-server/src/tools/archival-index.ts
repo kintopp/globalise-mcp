@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { ensureDatabaseFile, getDatabase, isDatabaseAvailable, createConnectionState, type ConnectionState } from '../utils/database.js';
+import { ensureDatabaseFile, getDatabase, isDatabaseAvailable, createConnectionState, type ConnectionState, type ProvisionReport } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
 import { sanitizeFtsQuery, FTS_OPERATORS, FTS_AUTOQUOTE } from '../utils/fts.js';
 
@@ -130,7 +130,7 @@ export const findArchivalDocumentsOutputSchema = z.object({
     gmTotal: z.number(),
     available: z.boolean(),
   }),
-  note: z.string().optional().describe('Caveats about how this result was computed — e.g. a source skipped because a filter does not apply to it, or a size-cap that dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest).'),
+  note: z.string().optional().describe('Caveats about how this result was computed — e.g. a source skipped because a filter does not apply to it, or a size-cap that dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest). May also open with a one-off "first use: downloaded ..." notice reporting the one-time index download this call waited for; that concerns setup, not the results, and will not recur.'),
 });
 
 export type FindArchivalDocumentsInput = z.infer<typeof findArchivalDocumentsInputSchema>;
@@ -495,8 +495,11 @@ export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput
   // Thin-bundle first-run provisioning: download the index now if it isn't on
   // disk yet and a source URL is configured. No-op for the full bundle (the DB
   // is shipped) and for dev without a URL (falls through to available:false).
+  // A non-null report means THIS call waited for the download — noted in the
+  // result below so the one-off delay isn't an unexplained slow first query.
+  let provisioned: ProvisionReport | null = null;
   try {
-    await ensureDatabaseFile();
+    provisioned = await ensureDatabaseFile();
   } catch (error) {
     // A local filesystem failure (cache dir/write/rename) needs different
     // advice than a download failure — pointing someone with an unwritable
@@ -570,6 +573,14 @@ export async function findArchivalDocuments(rawInput: FindArchivalDocumentsInput
   const db = getDatabase();
   const dbState = getDbState(db);
   const notes: string[] = [];
+
+  // Leads the note: it explains the whole call's latency, not this query's
+  // results. Only ever present on the one call that waited for the download.
+  if (provisioned) {
+    const sizeMb = (provisioned.downloadedBytes / 1024 / 1024).toFixed(1);
+    const secs = (provisioned.elapsedMs / 1000).toFixed(1);
+    notes.push(`first use: downloaded the ${sizeMb} MB finding-aid index in ${secs}s — later searches run locally`);
+  }
 
   // Reject or phrase-escape FTS5 queries that SQLite cannot parse. One probe
   // table covers both — FTS5 syntax errors are query-side, not table-side.

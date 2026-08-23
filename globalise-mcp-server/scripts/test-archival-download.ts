@@ -86,18 +86,48 @@ console.log('3. gzip at a non-.gz URL → sniffed by magic bytes + gunzipped');
   // No .gz suffix — the old suffix check would have skipped gunzip and written
   // the compressed bytes as the DB.
   process.env.ARCHIVAL_DB_URL = `http://127.0.0.1:${port}/repos/kintopp/globalise-mcp/releases/assets/999`;
-  const err = await reject(() => ensureDatabaseFile());
+  let report: Awaited<ReturnType<typeof ensureDatabaseFile>> = null;
+  const err = await reject(async () => { report = await ensureDatabaseFile(); });
   check(err === null, `resolves without error (got: ${err?.message})`);
   check(existsSync(target), 'target file written');
   check(existsSync(target) && readFileSync(target).equals(payload), 'gzip sniffed + gunzipped despite non-.gz URL');
+  // The report is what lets find_archival_documents explain the first-run wait
+  // in its `note`; a null here would silently drop that notice.
+  const r = report as { downloadedBytes: number; elapsedMs: number } | null;
+  check(r !== null, 'resolves to a ProvisionReport on the call that downloaded');
+  check(!!r && r.downloadedBytes === gz.length,
+    `report counts compressed bytes (got: ${r?.downloadedBytes} of ${gz.length})`);
+  check(!!r && typeof r.elapsedMs === 'number' && r.elapsedMs >= 0, 'report carries elapsedMs');
   await close(srv);
 }
 
-// 4. Path variable expansion — Claude Desktop passes user_config *defaults*
+// 4. Mid-stream stall (headers + partial body, then silence). Distinct from
+//    case 2, which never responds at all: the message must report how far the
+//    transfer got, so a slow/flaky link reads differently from a dead server.
+console.log('4. mid-stream stall → reject naming bytes received');
+{
+  rmSync(target, { force: true }); // case 3 left an index in place
+  const gz = gzipSync(Buffer.alloc(4 * 1024 * 1024, 7));
+  const srv = createServer((_req, res) => {
+    res.setHeader('content-length', String(gz.length));
+    res.write(gz.subarray(0, Math.floor(gz.length / 3)));
+    // deliberately never end() → the idle timer trips mid-transfer
+  });
+  const port = await listen(srv);
+  process.env.ARCHIVAL_DB_URL = `http://127.0.0.1:${port}/archival-index.sqlite.gz`;
+  const err = await reject(() => ensureDatabaseFile());
+  check(err !== null, 'rejects instead of hanging');
+  check(!!err && /stalled at [\d.]+ of [\d.]+ MB after \d+s/.test(err.message),
+    `names bytes received + elapsed (got: ${err?.message})`);
+  check(!existsSync(target), 'no partial file left behind');
+  await close(srv);
+}
+
+// 5. Path variable expansion — Claude Desktop passes user_config *defaults*
 //    through verbatim, so the manifest's literal "${HOME}/.globalise-mcp"
 //    reached fs.mkdir untouched (real-world ENOENT from the 2026-08-03 thin
 //    bundle test). expandPathVars must resolve it in code.
-console.log('4. expandPathVars resolves host-unexpanded variables');
+console.log('5. expandPathVars resolves host-unexpanded variables');
 {
   const { homedir } = await import('node:os');
   const home = homedir();
