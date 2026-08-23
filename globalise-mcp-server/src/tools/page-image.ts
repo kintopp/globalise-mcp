@@ -14,7 +14,15 @@ import {
   regionPixelDims, buildIiifRegionUrl, computeDeliveryState,
   type RegionBoundsIssue,
 } from '../utils/iiif.js';
-import { maxInspectWidth, VISION_MAX_EDGE } from '../utils/vision-sizing.js';
+import { maxInspectWidth, VISION_MAX_EDGE, VISION_FALLBACK_WIDTH } from '../utils/vision-sizing.js';
+
+/**
+ * Delivery width when the caller doesn't name one. Kept below VISION_MAX_EDGE:
+ * on this corpus the per-shape ceiling is what actually binds, and asking for
+ * the absolute maximum on every call would enlarge every payload to buy
+ * resolution the HTR benchmark measured as making no difference to accuracy.
+ */
+const DEFAULT_SIZE = 1568;
 import { fetchIiifDims } from '../utils/iiif-info.js';
 import { readImageDimensions } from '../utils/image-dimensions.js';
 import { viewerQueues } from '../utils/viewer-session.js';
@@ -28,13 +36,13 @@ export const inspectPageImageInputSchema = z.object({
       message: "Invalid IIIF region. Use 'full', 'square', 'x,y,w,h' (pixels), 'pct:x,y,w,h' (percentages), or 'crop_pixels:x,y,w,h' (explicit full-image pixels).",
     })
     .describe("IIIF region: 'full' (default), 'square', 'pct:x,y,w,h' (percentage of the full image), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). E.g. 'pct:0,60,40,40' for the bottom-left 40%."),
-  // Deliberately NOT `.default(1568)`: an unspecified size means "fit this
-  // page", and on ~70% of the corpus 1568 is already above what the shape can
-  // deliver intact. With a Zod default the clamp could not tell an ordinary
-  // call from a caller who explicitly over-asked, and the warning would fire
-  // on most calls — which teaches the model to ignore it.
+  // Deliberately NOT `.default(DEFAULT_SIZE)`: an unspecified size means "fit
+  // this page", and on ~70% of the corpus DEFAULT_SIZE is already above what
+  // the shape can deliver intact. With a Zod default the clamp could not tell
+  // an ordinary call from a caller who explicitly over-asked, and the note
+  // would fire on most calls — which teaches the model to ignore it.
   size: z.number().int().min(200).max(VISION_MAX_EDGE).optional()
-    .describe(`Width of the returned image in pixels (200-${VISION_MAX_EDGE}). Omit it to fit the page automatically (up to 1568) — recommended. Whatever you pass is clamped per page shape so the crop is never upscaled and never exceeds what the model accepts intact: a larger size is downscaled before the model sees it, so to read a small hand request a TIGHTER REGION, not a bigger size. Sizes align to multiples of 28 for clean coordinate handling.`),
+    .describe(`Width of the returned image in pixels (200-${VISION_MAX_EDGE}). Omit it to fit the page automatically (up to ${DEFAULT_SIZE}) — recommended. Whatever you pass is clamped per page shape so the crop is never upscaled and never exceeds what the model accepts intact: a larger size is downscaled before the model sees it, so to read a small hand request a TIGHTER REGION, not a bigger size. Sizes align to multiples of 28 for clean coordinate handling.`),
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0)
     .describe('Clockwise rotation in degrees'),
   quality: z.enum(['default', 'gray']).default('default')
@@ -52,7 +60,7 @@ export const inspectPageImageOutputSchema = z.object({
   region: z.string(),
   cropRegion: z.string().optional().describe('The region as sent to the IIIF server (crop_pixels: prefix stripped)'),
   requestedSize: z.number().optional().describe('Effective size after the never-upscale and vision-budget clamps'),
-  warnings: z.array(z.string()).optional().describe('Non-fatal notices — currently the size clamp, when the request exceeded what the region or the model can deliver intact.'),
+  note: z.string().optional().describe('Caveats about how this result was computed — e.g. a requested size clamped down because the region has no more real pixels, or because anything larger would be downscaled before the assistant sees it (a tighter region is then the way to more detail).'),
   nativeWidth: z.number().optional(),
   nativeHeight: z.number().optional(),
   cropPixelWidth: z.number().optional().describe('Actual pixel width of the returned crop (read from the bytes)'),
@@ -80,12 +88,52 @@ export type InspectPageImageResult =
 const fullImageCache = new LRUCache<unknown>(20, 300000);    // 20 crops, 5 min
 
 /**
- * Delivery width when the caller doesn't name one. Kept below VISION_MAX_EDGE:
- * on this corpus the per-shape ceiling is what actually binds, and asking for
- * the absolute maximum on every call would enlarge every payload to buy
- * resolution the HTR benchmark measured as making no difference to accuracy.
+ * How wide a crop to actually fetch, and why it differs from what was asked.
+ *
+ * Two independent ceilings compose as a `min()`: the region's own pixel width
+ * (never upscale) and the largest delivery this *shape* survives without the
+ * model downscaling it. The second needs the region's HEIGHT — tracking only
+ * width was the bug this replaces, and on a corpus of tall leaves and
+ * landscape openings it misfires in opposite directions on the two shapes.
+ *
+ * The reason is worded here, at the clamp, so it cannot drift from the
+ * decision. The two reasons must stay distinguishable: they tell the model
+ * OPPOSITE things about whether a tighter crop would help.
+ *
+ * Exported so the tests drive this composition rather than a copy of it.
  */
-const DEFAULT_SIZE = 1568;
+export function resolveDeliverySize(
+  region: string,
+  requested: number | undefined,
+  imgW?: number,
+  imgH?: number,
+): { size: number; note?: string } {
+  const dims = regionPixelDims(region, imgW, imgH);
+
+  // Shape unknown (info.json failed on a full/square/pct: region). Fall back to
+  // the width that is safe on any shape rather than to DEFAULT_SIZE, which the
+  // corpus survey found breaches the many-image limit on ~70% of pages.
+  if (!dims) {
+    return { size: Math.min(requested ?? DEFAULT_SIZE, VISION_FALLBACK_WIDTH) };
+  }
+
+  const visionMax = maxInspectWidth(dims.width, dims.height);
+  const ceiling = Math.min(dims.width, visionMax);
+  const size = Math.min(requested ?? DEFAULT_SIZE, ceiling);
+
+  // Only an EXPLICIT over-request earns a note. Fitting an unspecified size to
+  // the page is the documented behaviour, not a denied request, and the
+  // delivered size is reported in requestedSize either way.
+  if (requested === undefined || size >= requested) return { size };
+  return {
+    size,
+    note: `size clamped from ${requested}px to ${size}px — ${
+      visionMax === ceiling
+        ? 'anything larger is downscaled before the model sees it; a tighter region gives more detail per patch, a wider size gives nothing'
+        : 'upscaling not supported'
+    }`,
+  };
+}
 
 // NB: annotate the parameter — `strict: true` (noImplicitAny) is on, so a bare
 // `(input)` fails this step's own `tsc --noEmit` gate.
@@ -158,38 +206,8 @@ export async function inspectPageImage(
     ? (cropPixelsToIiifPixels(input.region) ?? input.region)
     : input.region;
 
-  // 7. Two independent ceilings compose as a min(): the region's own pixel
-  //    width (never upscale) and the largest delivery this *shape* survives
-  //    without the model downscaling it (see utils/vision-sizing.ts). The
-  //    second one needs the region's HEIGHT — tracking only width was the bug
-  //    this replaces, and on a corpus of tall leaves and landscape openings it
-  //    misfires in opposite directions on the two shapes.
-  //
-  //    The message is built here, at the clamp, so its reason and its wording
-  //    cannot drift apart. The two reasons must stay distinguishable: they
-  //    tell the model OPPOSITE things about whether a tighter crop would help.
-  const warnings: string[] = [];
-  let effectiveSize = input.size ?? DEFAULT_SIZE;
-  const regionDims = regionPixelDims(iiifRegion, width, height);
-  if (regionDims) {
-    const visionMax = maxInspectWidth(regionDims.width, regionDims.height);
-    const ceiling = Math.min(regionDims.width, visionMax);
-    if (effectiveSize > ceiling) {
-      // Only an EXPLICIT over-request earns a warning. Fitting an unspecified
-      // size to the page is the documented behaviour, not a denied request,
-      // and the delivered size is reported in requestedSize either way.
-      if (input.size !== undefined) {
-        warnings.push(
-          `size clamped from ${input.size}px to ${ceiling}px — ${
-            visionMax <= regionDims.width
-              ? 'anything larger is downscaled before the model sees it; a tighter region gives more detail per patch, a wider size gives nothing'
-              : 'upscaling not supported'
-          }`,
-        );
-      }
-      effectiveSize = ceiling;
-    }
-  }
+  // 7. Clamp the delivery to what this page's shape can carry intact.
+  const { size: effectiveSize, note } = resolveDeliverySize(iiifRegion, input.size, width, height);
 
   // 8. Build the IIIF region URL.
   const fetchUrl = buildIiifRegionUrl(imageUrl, iiifRegion, effectiveSize, input.rotation, input.quality);
@@ -254,7 +272,7 @@ export async function inspectPageImage(
     `— (${regionLabel}, ${effectiveSize}px, ${fetchTimeMs}ms)`,
     // Reuse the string built at the clamp verbatim rather than phrasing the
     // same fact a second time here.
-    ...warnings.map((w) => `| ${w}`),
+    ...(note ? [`| ${note}`] : []),
   ];
   if (width && height) {
     captionParts.push(`| native ${width}×${height}px`);
@@ -287,7 +305,7 @@ export async function inspectPageImage(
     viewUUID: activeViewUUID,
     viewerNavigated: viewerNavigated || undefined,
     viewerZoomQueued: viewerZoomQueued || undefined,
-    ...(warnings.length > 0 ? { warnings } : {}),
+    ...(note ? { note } : {}),
   };
 
   return { ok: true, image, meta, caption };

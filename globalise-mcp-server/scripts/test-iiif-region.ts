@@ -9,13 +9,16 @@ import {
   IIIF_REGION_RE,
   parsePctRegion,
   parseCropPixelsRegion,
+  parsePixelRegion,
+  parseAnyPixelRegion,
   cropPixelsToIiifPixels,
   checkRegionBounds,
   infoJsonUrlFromImageUrl,
   regionPixelDims,
   buildIiifRegionUrl,
 } from '../src/utils/iiif.js';
-import { maxInspectWidth } from '../src/utils/vision-sizing.js';
+import { VISION_FALLBACK_WIDTH } from '../src/utils/vision-sizing.js';
+import { resolveDeliverySize } from '../src/tools/page-image.js';
 import {
   projectToFullImage,
   computeDeliveryState,
@@ -69,6 +72,18 @@ console.log('2. parsePctRegion / parseCropPixelsRegion / cropPixelsToIiifPixels'
 {
   check(cropPixelsToIiifPixels('crop_pixels:1,2,3,4') === '1,2,3,4', 'cropPixelsToIiifPixels strips the prefix');
   check(cropPixelsToIiifPixels('1,2,3,4') === null, 'cropPixelsToIiifPixels(plain pixels) is null');
+}
+
+{
+  // The bare x,y,w,h grammar has one parser, not a copy per caller — both
+  // checkRegionBounds and regionPixelDims go through parseAnyPixelRegion.
+  const p = parsePixelRegion('1,2,3,4');
+  check(!!p && p[0] === 1 && p[3] === 4, 'parsePixelRegion round-trips');
+  check(parsePixelRegion('crop_pixels:1,2,3,4') === null, 'parsePixelRegion(crop_pixels) is null');
+  const a = parseAnyPixelRegion('crop_pixels:1,2,3,4');
+  const b = parseAnyPixelRegion('1,2,3,4');
+  check(!!a && !!b && a.join() === b.join(), 'parseAnyPixelRegion accepts both pixel forms identically');
+  check(parseAnyPixelRegion('pct:1,2,3,4') === null, 'parseAnyPixelRegion(pct) is null');
 }
 
 // ---------------------------------------------------------------------------
@@ -167,27 +182,50 @@ console.log('4. regionPixelDims');
 }
 
 // ---------------------------------------------------------------------------
-// 4b. The two ceilings compose as a min() (the page-image.ts clamp)
+// 4b. resolveDeliverySize — the shipped composition of the two ceilings
 // ---------------------------------------------------------------------------
 
-console.log('4b. never-upscale and vision ceilings compose');
+console.log('4b. resolveDeliverySize');
 
 {
   // A small crop is bounded by its own pixels, not by the vision budget —
-  // this is the "upscaling not supported" branch.
-  const d = regionPixelDims('1473,1041,589,416', 5892, 4167)!;
-  const visionMax = maxInspectWidth(d.width, d.height);
-  check(Math.min(d.width, visionMax) === 589, 'a 589px-wide crop clamps to its own width');
-  check(visionMax > d.width, 'the vision budget is not the binding limit there');
+  // the "upscaling not supported" branch.
+  const r = resolveDeliverySize('1473,1041,589,416', 1988, 5892, 4167);
+  check(r.size === 589, `a 589px-wide crop clamps to its own width (got: ${r.size})`);
+  check(!!r.note?.includes('upscaling not supported'), `note names the upscale reason (got: ${r.note})`);
 }
 {
   // A full portrait leaf is bounded by the vision budget, not its own pixels —
-  // the "downscaled before the model sees it" branch, and the case the old
-  // width-only clamp got wrong.
-  const d = regionPixelDims('full', 3165, 4138)!;
-  const visionMax = maxInspectWidth(d.width, d.height);
-  check(visionMax <= d.width, 'the vision budget binds on a full portrait leaf');
-  check(Math.min(d.width, visionMax) < 1568, `...and clamps below the 1568 default (got: ${Math.min(d.width, visionMax)})`);
+  // the case the old width-only clamp got wrong.
+  const r = resolveDeliverySize('full', 1988, 3165, 4138);
+  check(r.size < 1568, `a portrait leaf clamps below the default (got: ${r.size})`);
+  check(!!r.note?.includes('downscaled before the model sees it'), `note names the vision reason (got: ${r.note})`);
+}
+{
+  // A landscape opening can carry the full cap — the fix is not only a cut.
+  const r = resolveDeliverySize('full', 1988, 7496, 4253);
+  check(r.size === 1988, `a landscape opening keeps the full 1988 (got: ${r.size})`);
+  check(r.note === undefined, 'nothing was denied, so no note');
+}
+{
+  // An unspecified size is fitted to the page silently: nothing was denied,
+  // and on ~70% of the corpus the default is above the deliverable ceiling, so
+  // noting it every time would train the model to ignore notes.
+  const r = resolveDeliverySize('full', undefined, 3165, 4138);
+  check(r.size < 1568, `an omitted size is still fitted to the page (got: ${r.size})`);
+  check(r.note === undefined, 'fitting an omitted size raises no note');
+}
+{
+  // Degraded path: info.json failed, so the shape is unknown. Falling back to
+  // the default would deliver the very size the corpus survey found breaches
+  // the many-image limit on most pages.
+  const r = resolveDeliverySize('full', undefined, undefined, undefined);
+  check(r.size === VISION_FALLBACK_WIDTH, `unknown dims fall back to the any-shape width (got: ${r.size})`);
+  check(r.size < 1568, 'the fallback is below the default, not equal to it');
+}
+{
+  const r = resolveDeliverySize('full', 400, undefined, undefined);
+  check(r.size === 400, `a smaller explicit size survives the fallback (got: ${r.size})`);
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,9 @@
  * 0.90 and 1.20. No single width serves both: the largest constant safe on all
  * 499 is 1220px, which costs 17% linear resolution on leaves and 39% on
  * openings against solving per shape. Hence `maxInspectWidth`.
+ *
+ * These constants are mirrored in `benchmarks/htr-llm/htrbench/shapes.py`,
+ * which regenerates the survey above. Nothing enforces the pair — update both.
  */
 
 /**
@@ -34,6 +37,17 @@
 export const VISION_PATCH = 28;
 export const VISION_MAX_EDGE = 71 * VISION_PATCH;   // 1988
 export const VISION_MAX_TOKENS = 4784;
+
+/**
+ * Delivery width when the page's shape can't be measured — `fetchIiifDims`
+ * degrades to undefined on an info.json failure, and a `full` / `square` /
+ * `pct:` region is then unmeasurable. This is the largest width that survives
+ * *every* page in the corpus sample regardless of shape, so the guarantee
+ * holds on the degraded path too. Softer than a shape-aware fit (−17% on a
+ * leaf, −39% on an opening); the alternative is a request that can poison a
+ * whole conversation.
+ */
+export const VISION_FALLBACK_WIDTH = 1220;
 
 /** Width or height rounded up to the patch grid — what the encoder measures. */
 export function padToPatch(px: number): number {
