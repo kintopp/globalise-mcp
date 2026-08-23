@@ -20,7 +20,7 @@ import { maxInspectWidth, VISION_MAX_EDGE, VISION_FALLBACK_WIDTH } from '../util
  * Delivery width when the caller doesn't name one. Kept below VISION_MAX_EDGE:
  * on this corpus the per-shape ceiling is what actually binds, and asking for
  * the absolute maximum on every call would enlarge every payload to buy
- * resolution the HTR benchmark measured as making no difference to accuracy.
+ * resolution that measured as making no difference to transcription accuracy.
  */
 const DEFAULT_SIZE = 1568;
 import { fetchIiifDims } from '../utils/iiif-info.js';

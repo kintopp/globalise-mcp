@@ -12,8 +12,9 @@
  * 499 is 1220px, which costs 17% linear resolution on leaves and 39% on
  * openings against solving per shape. Hence `maxInspectWidth`.
  *
- * These constants are mirrored in `benchmarks/htr-llm/htrbench/shapes.py`,
- * which regenerates the survey above. Nothing enforces the pair — update both.
+ * Those figures are measured, not derived, and the survey that produced them
+ * does not live in this repo — re-measure before trusting them against a
+ * changed corpus or a different model tier.
  */
 
 /**
