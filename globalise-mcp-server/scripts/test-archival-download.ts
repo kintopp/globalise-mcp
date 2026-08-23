@@ -15,6 +15,7 @@ import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { randomBytes } from 'node:crypto';
 import { check, finish } from './test-utils.js';
 
 // DB_PATH is resolved at module load, so set the target BEFORE importing.
@@ -24,7 +25,7 @@ process.env.ARCHIVAL_DB_PATH = target;
 process.env.ARCHIVAL_DB_TIMEOUT_MS = '700'; // fast idle timeout for the hang test
 delete process.env.ARCHIVAL_DB_TOKEN;
 
-const { ensureDatabaseFile, expandPathVars } = await import('../src/utils/database.js');
+const { ensureDatabaseFile, takeProvisionReport, expandPathVars } = await import('../src/utils/database.js');
 
 const listen = (s: Server): Promise<number> =>
   new Promise((res) => s.listen(0, '127.0.0.1', () => {
@@ -86,18 +87,19 @@ console.log('3. gzip at a non-.gz URL → sniffed by magic bytes + gunzipped');
   // No .gz suffix — the old suffix check would have skipped gunzip and written
   // the compressed bytes as the DB.
   process.env.ARCHIVAL_DB_URL = `http://127.0.0.1:${port}/repos/kintopp/globalise-mcp/releases/assets/999`;
-  let report: Awaited<ReturnType<typeof ensureDatabaseFile>> = null;
-  const err = await reject(async () => { report = await ensureDatabaseFile(); });
+  const err = await reject(() => ensureDatabaseFile());
   check(err === null, `resolves without error (got: ${err?.message})`);
   check(existsSync(target), 'target file written');
   check(existsSync(target) && readFileSync(target).equals(payload), 'gzip sniffed + gunzipped despite non-.gz URL');
   // The report is what lets find_archival_documents explain the first-run wait
-  // in its `note`; a null here would silently drop that notice.
-  const r = report as { downloadedBytes: number; elapsedMs: number } | null;
-  check(r !== null, 'resolves to a ProvisionReport on the call that downloaded');
-  check(!!r && r.downloadedBytes === gz.length,
-    `report counts compressed bytes (got: ${r?.downloadedBytes} of ${gz.length})`);
-  check(!!r && typeof r.elapsedMs === 'number' && r.elapsedMs >= 0, 'report carries elapsedMs');
+  // in its `note`. It is claimed, not returned, so the tool that reports it need
+  // not be the one that triggered the download.
+  const report = takeProvisionReport();
+  check(report !== null, 'a download leaves a claimable ProvisionReport');
+  check(report?.downloadedBytes === gz.length,
+    `report counts compressed bytes (got: ${report?.downloadedBytes} of ${gz.length})`);
+  check(typeof report?.elapsedMs === 'number' && report.elapsedMs >= 0, 'report carries elapsedMs');
+  check(takeProvisionReport() === null, 'claiming clears it, so the notice cannot repeat');
   await close(srv);
 }
 
@@ -107,7 +109,11 @@ console.log('3. gzip at a non-.gz URL → sniffed by magic bytes + gunzipped');
 console.log('4. mid-stream stall → reject naming bytes received');
 {
   rmSync(target, { force: true }); // case 3 left an index in place
-  const gz = gzipSync(Buffer.alloc(4 * 1024 * 1024, 7));
+  // Incompressible, so the bytes on the wire are the bytes the message reports.
+  // A compressible payload shrinks to a few KB and the assertion below can only
+  // ever see "0.0 of 0.0 MB" — which is the dead-server reading it must not
+  // be confused with.
+  const gz = gzipSync(randomBytes(600 * 1024));
   const srv = createServer((_req, res) => {
     res.setHeader('content-length', String(gz.length));
     res.write(gz.subarray(0, Math.floor(gz.length / 3)));
@@ -117,8 +123,10 @@ console.log('4. mid-stream stall → reject naming bytes received');
   process.env.ARCHIVAL_DB_URL = `http://127.0.0.1:${port}/archival-index.sqlite.gz`;
   const err = await reject(() => ensureDatabaseFile());
   check(err !== null, 'rejects instead of hanging');
-  check(!!err && /stalled at [\d.]+ of [\d.]+ MB after \d+s/.test(err.message),
-    `names bytes received + elapsed (got: ${err?.message})`);
+  const stall = err?.message.match(/stalled at ([\d.]+) of ([\d.]+) MB after (\d+)s/);
+  check(!!stall, `names bytes received + elapsed (got: ${err?.message})`);
+  check(!!stall && Number(stall[1]) > 0 && Number(stall[1]) < Number(stall[2]),
+    `reports a partial transfer, not 0.0 (got: ${stall?.[1]} of ${stall?.[2]} MB)`);
   check(!existsSync(target), 'no partial file left behind');
   await close(srv);
 }

@@ -40,11 +40,11 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sizeMb } from './db-build-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, '..');
@@ -74,10 +74,6 @@ interface PackageJson {
 }
 
 const pkg = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf-8')) as PackageJson;
-
-function sizeMb(path: string): string {
-  return `${(statSync(path).size / 1024 / 1024).toFixed(1)} MB`;
-}
 
 /** Run a command, inheriting stdio, and abort the build on a non-zero exit. */
 function run(command: string, args: string[], cwd: string): void {
@@ -219,10 +215,12 @@ This \`.mcpb\` runs the GLOBALISE MCP server locally inside Claude Desktop,
 serving tools over VOC (Dutch East India Company) transcriptions; see
 \`manifest.json\` for the tool list.
 
-- The finding-aid index (~26 MB compressed, ~112 MB on disk) is **downloaded on
-  first use** of globalise_find_archival_documents and cached on-device for
-  later calls. Set the cache location with the "Data directory" option at
-  install time.
+- The finding-aid index (~26 MB compressed, ~112 MB on disk) is **downloaded the
+  first time a tool needs it** — globalise_find_archival_documents, or
+  globalise_view_document_ui, which adds archival context to a page — and cached
+  on-device for later calls. That one-off wait is reported back to you in the
+  next archival search. Set the cache location with the "Data directory" option
+  at install time.
 - The commodities and weights & measures glossaries are bundled and queried
   entirely on-device.
 - Transcription search, page retrieval, and IIIF images are fetched from the

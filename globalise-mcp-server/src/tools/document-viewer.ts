@@ -111,7 +111,7 @@ async function fetchArchivalContext(inventoryNumber: string): Promise<ArchivalCo
       from: 0,
       size: 10,
       includeAggregations: true,
-    });
+    }, { claimProvisionNotice: false });
 
     if (result.total.value === 0) return undefined;
 

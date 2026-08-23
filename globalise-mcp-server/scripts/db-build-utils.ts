@@ -18,9 +18,11 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip, createGzip } from 'node:zlib';
 import type { DatabaseSync } from 'node:sqlite';
+import { formatMb } from '../src/utils/database.js';
 
+/** "111.6 MB" for a file on disk. Also used by the .mcpb build/test scripts. */
 export function sizeMb(path: string): string {
-  return `${(statSync(path).size / 1024 / 1024).toFixed(1)} MB`;
+  return `${formatMb(statSync(path).size)} MB`;
 }
 
 /**

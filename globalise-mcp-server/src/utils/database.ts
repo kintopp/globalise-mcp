@@ -187,52 +187,61 @@ export function getDatabasePath(): string {
 // and everything below is a no-op. The *thin* bundle ships without the DB: it
 // sets ARCHIVAL_DB_URL (the .gz to fetch) and points ARCHIVAL_DB_PATH at a
 // writable cache dir. ensureDatabaseFile() downloads the index once, lazily, on
-// first use of globalise_find_archival_documents — so startup and the other
-// (network-backed) tools never wait on it.
+// first use of the index — so startup never waits on it. Two paths reach it:
+// globalise_find_archival_documents, and globalise_view_document_ui via its
+// archival-context enrichment.
 // ---------------------------------------------------------------------------
 
-/**
- * What a first-run download actually cost, so the calling tool can say so in
- * its result instead of leaving the wait unexplained.
- */
+/** What a first-run download cost, so a tool can explain the wait it caused. */
 export interface ProvisionReport {
   /** Compressed bytes received over the wire. */
   downloadedBytes: number;
   elapsedMs: number;
 }
 
+/**
+ * Set on a successful download, cleared by the first takeProvisionReport().
+ * Process-scoped rather than returned from ensureDatabaseFile(), because the
+ * call that TRIGGERS the download is not always one that can report it — the
+ * document viewer awaits the index too, and has nowhere to put a notice. Held
+ * here, the notice survives until a note-bearing tool claims it.
+ */
+let pendingProvisionReport: ProvisionReport | null = null;
+
+/** Claim the pending first-run download notice, if any. Clears it. */
+export function takeProvisionReport(): ProvisionReport | null {
+  const report = pendingProvisionReport;
+  pendingProvisionReport = null;
+  return report;
+}
+
 /** Shared in-flight download so concurrent tool calls trigger only one fetch. */
-let provisionPromise: Promise<ProvisionReport> | null = null;
+let provisionPromise: Promise<void> | null = null;
 
 /**
  * Ensure the archival index exists at DB_PATH, downloading it once if it is
- * absent and ARCHIVAL_DB_URL is configured. Resolves to null (a no-op) when:
+ * absent and ARCHIVAL_DB_URL is configured. A no-op when:
  *   - the file already exists (full bundle, or already provisioned), or
  *   - no ARCHIVAL_DB_URL is set — the caller then reports
  *     databaseInfo.available:false, preserving the graceful-degradation path.
- * Resolves to a ProvisionReport only on the call that actually waited for a
- * download, so the note it drives appears exactly once.
  * Rejects only when a *configured* download fails, so the tool can surface why.
  */
-export function ensureDatabaseFile(): Promise<ProvisionReport | null> {
-  if (existsSync(DB_PATH)) return Promise.resolve(null);
+export function ensureDatabaseFile(): Promise<void> {
+  if (existsSync(DB_PATH)) return Promise.resolve();
 
   const url = process.env.ARCHIVAL_DB_URL;
-  if (!url) return Promise.resolve(null);
+  if (!url) return Promise.resolve();
 
   if (!provisionPromise) {
-    // Released on BOTH outcomes: the memo dedupes concurrent callers of one
-    // in-flight fetch, it is not a permanent cache. Held past success, a
-    // settled promise kept being handed back after the index was deleted from
-    // the cache dir, so the download never retried and the tool degraded to
-    // "index unavailable" until restart. Callers already awaiting still get the
-    // value; later ones hit the existsSync early-return above.
+    // The memo dedupes concurrent callers of one in-flight fetch; it is not a
+    // permanent cache. Released on BOTH outcomes, or a deleted index never
+    // re-downloads. Callers already awaiting still get the result; later ones
+    // hit the existsSync early-return above. Not `.finally()` — its derived
+    // promise re-rejects with no handler, which is fatal on Node 24.
     const inFlight = downloadArchivalDb(url, DB_PATH);
+    const release = () => { if (provisionPromise === inFlight) provisionPromise = null; };
     provisionPromise = inFlight;
-    inFlight.then(
-      () => { if (provisionPromise === inFlight) provisionPromise = null; },
-      () => { if (provisionPromise === inFlight) provisionPromise = null; },
-    );
+    inFlight.then(release, release);
   }
   return provisionPromise;
 }
@@ -268,12 +277,13 @@ function downloadIdleTimeoutMs(): number {
   return Number.isFinite(v) && v > 0 ? v : 30_000;
 }
 
-/** One decimal MB, for logs and the stall message. */
-function mb(bytes: number): string {
+/** One decimal MB. Shared so the logs, the stall message, and the tool-layer
+ * first-run notice all render a size the same way. */
+export function formatMb(bytes: number): string {
   return (bytes / 1024 / 1024).toFixed(1);
 }
 
-async function downloadArchivalDb(url: string, target: string): Promise<ProvisionReport> {
+async function downloadArchivalDb(url: string, target: string): Promise<void> {
   console.error(`[archival-db] index not present; downloading from ${url} ...`);
 
   const startedAt = Date.now();
@@ -316,7 +326,7 @@ async function downloadArchivalDb(url: string, target: string): Promise<Provisio
 
   // Phase 2 — stream to a private temp file, gunzipping when the URL ends .gz.
   const totalBytes = Number(response.headers.get('content-length')) || 0;
-  const totalMb = totalBytes ? mb(totalBytes) : '';
+  const totalMb = totalBytes ? formatMb(totalBytes) : '';
   const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
 
   // A pass-through that counts bytes, re-arms the idle timer, and logs progress
@@ -330,7 +340,7 @@ async function downloadArchivalDb(url: string, target: string): Promise<Provisio
     if (received >= nextLogAt) {
       nextLogAt += DOWNLOAD_PROGRESS_BYTES;
       const pct = totalBytes ? ` (${Math.round((received / totalBytes) * 100)}%)` : '';
-      console.error(`[archival-db] downloaded ${mb(received)}${totalMb ? ` / ${totalMb}` : ''} MB${pct} ...`);
+      console.error(`[archival-db] downloaded ${formatMb(received)}${totalMb ? ` / ${totalMb}` : ''} MB${pct} ...`);
     }
   });
 
@@ -360,20 +370,20 @@ async function downloadArchivalDb(url: string, target: string): Promise<Provisio
     renameSync(tmp, target);
   } catch (error) {
     if (existsSync(tmp)) unlinkSync(tmp);
-    // Report how far a stall got: "stalled at 12.4 of 25.8 MB after 48s" is a
-    // slow/flaky link, "stalled at 0.0 MB" is a server that accepted the
-    // connection and then sent nothing. The bare timeout text conflated them.
+    // How far a stall got is the diagnosis: "stalled at 12.4 of 25.8 MB after
+    // 48s" is a slow/flaky link, "stalled at 0.0 MB" is a server that accepted
+    // the connection and then sent nothing.
     const elapsedSecs = Math.round((Date.now() - startedAt) / 1000);
     const reason = controller.signal.aborted
-      ? `stalled at ${mb(received)}${totalMb ? ` of ${totalMb}` : ''} MB after ${elapsedSecs}s — no data for ${idleSecs}s`
+      ? `stalled at ${formatMb(received)}${totalMb ? ` of ${totalMb}` : ''} MB after ${elapsedSecs}s — no data for ${idleSecs}s`
       : (error instanceof Error ? error.message : String(error));
     throw new Error(`download from ${url} failed: ${reason}`);
   } finally {
     clearTimeout(idleTimer);
   }
 
-  console.error(`[archival-db] index ready at ${target} (${mb(received)} MB downloaded)`);
-  return { downloadedBytes: received, elapsedMs: Date.now() - startedAt };
+  console.error(`[archival-db] index ready at ${target} (${formatMb(received)} MB downloaded)`);
+  pendingProvisionReport = { downloadedBytes: received, elapsedMs: Date.now() - startedAt };
 }
 
 /**

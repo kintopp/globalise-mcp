@@ -16,16 +16,19 @@ baked in — the server downloads it once, lazily, and caches it on-device:
 
 | | |
 |---|---|
-| `.mcpb` download | **~3.6 MB** |
-| Finding-aid index | **downloaded on first use** of `globalise_find_archival_documents`, then cached |
+| `.mcpb` download | **~4.7 MB** |
+| Finding-aid index | **downloaded on first use of the index**, then cached |
+| What triggers it | `globalise_find_archival_documents`, and `globalise_view_document_ui` (it enriches a page with archival context) |
 | First archival query | one-time ~26 MB fetch + decompress (~112 MB on disk) |
 | Commodities + measures glossaries | bundled, queried on-device |
-| Every other tool | unaffected — public APIs, no wait on the download |
+| Remaining tools | unaffected — public APIs, no wait on the download |
 | Config required | none (the download URL defaults to the project's hosted server) |
 
 The download path lives in `src/utils/database.ts` (`ensureDatabaseFile()`) and
-is triggered **lazily on first DB use**, so startup and the network-backed tools
-never wait on it.
+is triggered **lazily on first DB use**, so startup never waits on it. The wait
+is explained in the result: whichever call paid for it, the next
+`globalise_find_archival_documents` reports the size and duration once in its
+`note` (`takeProvisionReport()`).
 
 > **History.** Until 2026-08-04 this built two bundles: a "full" one that baked
 > the index in (~31 MB download) and a "thin" one that didn't, from

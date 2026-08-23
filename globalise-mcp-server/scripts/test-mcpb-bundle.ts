@@ -30,6 +30,7 @@ import { createReadStream, existsSync, mkdtempSync, readFileSync, rmSync, statSy
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sizeMb } from './db-build-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, '..');
@@ -217,7 +218,7 @@ async function main(): Promise<void> {
     if (!indexIsBundled && downloadTarget) {
       const ok = existsSync(downloadTarget) && statSync(downloadTarget).size > 100 * 1024 * 1024;
       check(ok, 'downloaded index file is on disk',
-        existsSync(downloadTarget) ? `${(statSync(downloadTarget).size / 1024 / 1024).toFixed(1)} MB` : 'missing');
+        existsSync(downloadTarget) ? sizeMb(downloadTarget) : 'missing');
     }
   } finally {
     client.close();
