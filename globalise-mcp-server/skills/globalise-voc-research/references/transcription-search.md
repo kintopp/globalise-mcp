@@ -58,8 +58,8 @@ for `sortBy="document"` or `"invNr"` with `sortOrder="asc"` when you want to wal
 inventory's pages in archival order instead of by score.
 
 **`fragmentSize` trades snippet length for payload size.** Each hit's
-`highlightedFragments` are capped at `fragmentSize` chars (20–500, **default 200**;
-was a fixed 500). Lower it when scanning many hits (large `size`) to shrink the
+`highlightedFragments` are capped at `fragmentSize` chars (20–500, **default 200**).
+Lower it when scanning many hits (large `size`) to shrink the
 response; raise it for more context per match. It multiplies by `size`, so it's the
 cheapest search-payload lever — and the first thing to lower on a size-capped search
 (see "When a response is size-capped" in SKILL.md).

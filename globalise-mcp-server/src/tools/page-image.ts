@@ -42,7 +42,7 @@ export const inspectPageImageInputSchema = z.object({
   // an ordinary call from a caller who explicitly over-asked, and the note
   // would fire on most calls — which teaches the model to ignore it.
   size: z.number().int().min(200).max(VISION_MAX_EDGE).optional()
-    .describe(`Width of the returned image in pixels (200-${VISION_MAX_EDGE}). Omit it to fit the page automatically (up to ${DEFAULT_SIZE}) — recommended. Whatever you pass is clamped per page shape so the crop is never upscaled and never exceeds what the model accepts intact: a larger size is downscaled before the model sees it, so to read a small hand request a TIGHTER REGION, not a bigger size. Sizes align to multiples of 28 for clean coordinate handling.`),
+    .describe(`Width of the returned image in pixels (200-${VISION_MAX_EDGE}). Omit it to fit the page automatically (up to ${DEFAULT_SIZE}) — recommended. Whatever you pass is clamped per page shape so the crop is never upscaled and never exceeds what the model accepts intact: a larger size is downscaled before the model sees it, so to read a small hand request a tighter region, not a bigger size. Sizes align to multiples of 28 for clean coordinate handling.`),
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0)
     .describe('Clockwise rotation in degrees'),
   quality: z.enum(['default', 'gray']).default('default')

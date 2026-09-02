@@ -63,8 +63,7 @@ or chamber (GM) — cheap and useful for "what's in here?" questions.
 ## `find_archival_documents` query syntax (SQLite FTS5)
 
 `find_archival_documents.query` goes straight to SQLite **FTS5** over the `description`
-text. FTS5 is powerful but literal; the traps below are the #1 cause of false-empty
-results. The *other* tool, `search_transcriptions`, runs on a **different engine with
+text. FTS5 is powerful but literal. The *other* tool, `search_transcriptions`, runs on a **different engine with
 opposite defaults** — don't carry these rules over (see
 `references/transcription-search.md`).
 
@@ -94,9 +93,8 @@ period form. They diverge sharply:
   ~208 times. The `settlement` field is the mirror image: **"Ceylon"** on ~24,758
   rows, **"Ceijlon"** on 0.
 - The canonical form isn't reliably the modern exonym, either: `settlement="Malakka"`
-  → **6,967**, but `settlement="Malacca"` → **0** — even though `Malacca` is the
-  example value in the tool's own schema. Ceylon gets the English exonym; Malakka
-  keeps the Dutch one. **Don't guess the spelling** — run once with
+  → **6,967**, but `settlement="Malacca"` → **0**. Ceylon gets the English exonym;
+  Malakka keeps the Dutch one. **Don't guess the spelling** — run once with
   `includeAggregations` and copy the exact settlement string from the breakdown.
 
 So `query="kaneel AND Ceylon"` returns **0** — not because AND is broken, but
@@ -155,12 +153,11 @@ ordering is fixed:
 The OBP default *is* chronological-ish, but with a catch: it sorts by `year_earliest`
 ascending, and the records with the **lowest** floors are the **least date-precise**
 ones (wide inventory-level ranges). So an unfiltered first page (`from=0`, no query)
-surfaces the most date-ambiguous documents first — *not* a bug, *not* "sorted by
-internal id". For a meaningful chronological window, constrain with `yearFrom`/`yearTo`
-rather than trusting page 1.
+surfaces the most date-ambiguous documents first. For a meaningful chronological
+window, constrain with `yearFrom`/`yearTo` rather than trusting page 1.
 
 **Deep pagination is cheap** — the sort is index-backed, so `from=200000` is as
-fast as `from=0`. No cursor workaround is needed at current corpus size.
+fast as `from=0`.
 
 ## Interpreting the year fields
 

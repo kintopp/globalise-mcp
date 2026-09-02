@@ -666,9 +666,9 @@ export function createServer(): McpServer {
         'Fetches the scan (base64) — whole page or a region of it. Not for the user to view: use globalise_view_document_ui for the interactive viewer. Not for finding pages: use globalise_search_transcriptions. ' +
         "Use region 'full' (default) to see the whole page, or a region to zoom into details: read a specific passage, a name, a numeral, marginalia, seals, or stamps. " +
         "Call it when the user highlights a region in the document viewer — a chat message or context note like \"[Highlight: region pct:31.2,18.4,22.0,6.1 on document NL-HaNA_1.04.02_9966_0106]\" — passing that documentId and region verbatim. " +
-        "Region coordinates: 'pct:x,y,w,h' (percentage of the full image, recommended), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). Quick reference: top-left quarter pct:0,0,50,50; bottom-right quarter pct:50,50,50,50; center strip pct:25,25,50,50; whole page 'full'. " +
+        "Region coordinates: 'pct:x,y,w,h' (percentage of the full image, recommended), 'crop_pixels:x,y,w,h' (pixels of the full image — use with nativeWidth/nativeHeight from a prior response), or 'x,y,w,h' (legacy IIIF pixels). " +
         "The response includes nativeWidth/nativeHeight (the scan's true pixel size) and cropPixelWidth/cropPixelHeight (the returned crop's size). " +
-        "To read a small hand, request a TIGHTER REGION rather than a bigger size: size is clamped per page shape to what arrives intact, and anything beyond that is downscaled before it reaches the assistant, so a narrower crop raises pixels-per-letter where a larger size raises nothing. A clamp is reported in `note`. quality 'gray' can help with faint ink. " +
+        "To read a small hand, request a tighter region rather than a bigger size: size is clamped per page shape to what arrives intact, and anything beyond that is downscaled before it reaches the assistant, so a narrower crop raises pixels-per-letter where a larger size raises nothing. A clamp is reported in `note`. quality 'gray' can help with faint ink. " +
         'The corpus transcriptions are machine HTR: use this tool to re-transcribe a specific passage as a second opinion where the HTR looks garbled (strongest on short passages, proper names, numerals, and marginalia; on long dense text the HTR is often the better reading — say so). Transcribe what you actually see and flag uncertain readings. Especially valuable on non-Latin-script pages (Persian, Tamil, Chinese, ...), where the Latin-script HTR is known-unreliable. ' +
         "Auto-navigation: when a viewer is open for this page, it automatically zooms to the inspected region (navigateViewer defaults to true). Use globalise_navigate_viewer separately to steer the user's open viewer to a region without fetching bytes for your own analysis.",
       inputSchema: inspectPageImageToolInputSchema as z.ZodObject<z.ZodRawShape>,
@@ -734,10 +734,10 @@ export function createServer(): McpServer {
         'Requires a viewUUID from a prior globalise_view_document_ui call (the viewer must be open). ' +
         'Not for opening the viewer — use globalise_view_document_ui. Not for visual analysis — use globalise_inspect_page_image (which also auto-zooms the open viewer to whatever it inspects).\n\n' +
         'By default, region coordinates are in full-image space (percentages or pixels of the original scan), not relative to the current viewport — the same pct:x,y,w,h used in globalise_inspect_page_image targets the identical area here. Exception: when a command includes relativeTo, region is interpreted in that inspected crop\'s local coordinate space.\n\n' +
-        'For an accurate zoom, inspect the target area with globalise_inspect_page_image FIRST, verify the region contains what you expect, then use the same or refined coordinates here — do not estimate positions from memory.\n\n' +
+        'Coordinates need to come from an inspected image: the scan\'s layout is unknown until globalise_inspect_page_image has returned it, so inspect the target area first and reuse (or refine) those coordinates here.\n\n' +
         "Region formats: 'pct:x,y,w,h' (percentage of the full scan), 'crop_pixels:x,y,w,h' (pixels of the full scan — bound with nativeWidth/nativeHeight from globalise_inspect_page_image; when used with relativeTo + relativeToSize it is instead pixels within that crop), 'x,y,w,h' (legacy IIIF pixels), or 'full' | 'square'. Out-of-bounds regions are rejected with a recovery hint — correct and retry.\n\n" +
         'Coordinate shortcut: to zoom to a sub-region of a prior inspect crop, pass relativeTo with the crop\'s region string and give region in crop-local coordinates (pct: directly, or crop_pixels: with relativeToSize:{width:cropPixelWidth,height:cropPixelHeight}) — the server projects to full-image space deterministically.\n\n' +
-        'The deliveryState field says whether the iframe drained the commands immediately (delivered_recently), the viewer exists but has not polled recently so the commands are queued (queued_waiting_for_viewer — typical when scrolled offscreen), or no viewer has connected yet (no_live_viewer_seen). In the queued case the command is preserved server-side and applies when the viewer resumes polling — do NOT narrate this as a delivery failure. no_live_viewer_seen is normal in the first few seconds after globalise_view_document_ui returns (the widget iframe starts polling only once the host renders it) — the queued commands apply on its first poll, so there is no need to wait or re-send. An unknown or expired viewUUID is a different, explicit error (sessions expire after ~30 min idle; re-open with globalise_view_document_ui). Host caveat: the reverse channel requires the host\'s MCP Apps bridge to support app-initiated tool calls (serverTools) — on hosts without it the iframe never polls and queued commands are never delivered; the response says so once the viewer is >30s old, and globalise_inspect_page_image is the host-independent way to show a detail.',
+        'The deliveryState field says whether the iframe drained the commands immediately (delivered_recently), the viewer exists but has not polled recently so the commands are queued (queued_waiting_for_viewer — typical when scrolled offscreen), or no viewer has connected yet (no_live_viewer_seen). In the queued case the command is preserved server-side and applies when the viewer resumes polling — a normal delivery state, not a failure. no_live_viewer_seen is normal in the first few seconds after globalise_view_document_ui returns (the widget iframe starts polling only once the host renders it) — the queued commands apply on its first poll, so there is no need to wait or re-send. An unknown or expired viewUUID is a different, explicit error (sessions expire after ~30 min idle; re-open with globalise_view_document_ui). Host caveat: the reverse channel requires the host\'s MCP Apps bridge to support app-initiated tool calls (serverTools) — on hosts without it the iframe never polls and queued commands are never delivered; the response says so once the viewer is >30s old, and globalise_inspect_page_image is the host-independent way to show a detail.',
       inputSchema: navigateViewerToolInputSchema as z.ZodObject<z.ZodRawShape>,
       ...outputSchemaField(navigateViewerOutputSchema),
       annotations: VIEWER_SESSION,
@@ -763,7 +763,10 @@ export function createServer(): McpServer {
     'globalise_poll_viewer_commands',
     {
       title: 'Poll Viewer Commands',
-      description: 'Internal: poll for pending viewer navigation commands.',
+      description:
+        'Internal channel for the document-viewer iframe. ' +
+        'It drains the navigation commands that globalise_navigate_viewer queued for one viewUUID. ' +
+        "Not for the assistant: a call from the assistant consumes the queued commands, so the zoom never reaches the user's viewer.",
       inputSchema: pollViewerCommandsInputSchema as unknown as typeof pollViewerCommandsInputSchema.shape,
       ...outputSchemaField(pollViewerCommandsOutputSchema as unknown as typeof pollViewerCommandsOutputSchema.shape),
       annotations: VIEWER_SESSION,
@@ -803,7 +806,7 @@ export function createServer(): McpServer {
         'Display a page for the user in an interactive scan-plus-transcription viewer. ' +
         'Shows a zoomable IIIF scan image beside its line-numbered transcription. ' +
         'Takes a document ID or URN; supports optional search-term highlighting. ' +
-        'When the user selects text in the transcription panel they typically want a translation of those words from 17th/18th-century Dutch to modern English.',
+        'Selecting text in the transcription panel sends the selection to the assistant as a context note ("User selected text in document …: …").',
       // Pass the strict schema at runtime (registerAppTool forwards it verbatim
       // to registerTool, which honors .strict() and rejects unknown params),
       // but type it as a raw shape: the wrapper's generics infer InputArgs from
@@ -858,8 +861,6 @@ export function createServer(): McpServer {
           '',
           `View in GLOBALISE: ${docResult.urls.viewer}`,
           docResult.urls.archive ? `National Archives: ${docResult.urls.archive}` : '',
-          '',
-          '**Note:** If the user selects text or interacts with the viewer, check widget context for the latest state.',
         ]
           .filter(Boolean)
           .join('\n');

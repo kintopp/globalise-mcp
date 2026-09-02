@@ -42,7 +42,7 @@ Any page opens in the web viewer at
 | `globalise_inspect_page_image` | **Look at the page yourself.** Fetch a page scan or region as an image and read it — re-transcribe a user-highlighted passage (a "[Highlight: region pct:…]" message) as a second opinion on the HTR, or zoom into a detail on request. When a viewer is open for the page it also auto-zooms there. | Live IIIF image API |
 | `globalise_navigate_viewer` | **Steer the open viewer.** Zoom/pan it to a region to direct the user's attention. Needs the `viewUUID` from `globalise_view_document_ui`. | In-memory session queue |
 
-> Internal: `globalise_poll_viewer_commands` is the viewer iframe's own command-polling channel — you never call it directly. It is marked app-only, but whether a host hides it is up to the host, so the tool count you see may be one higher than the table above. Don't use a tool count to identify which server you are connected to; test for a specific tool by name instead.
+> Internal: `globalise_poll_viewer_commands` is the viewer iframe's own command-polling channel — you never call it directly. It is marked app-only, but whether a host hides it is up to the host, so it may appear alongside the tools in the table above.
 
 ### Loading the tools
 
@@ -85,6 +85,10 @@ pct:…]` message into the chat with no image attached — just coordinates. Cal
 fetch the actual crop and read it yourself, e.g. as a second opinion on a
 garbled HTR passage. You can also call it proactively (region defaults to
 `full`) to zoom into a detail the user asks about.
+
+**Text selection.** Selecting text in the viewer's transcription panel pushes a
+`User selected text in document …: "…"` note into your context. Users who do this
+usually want those words translated from period Dutch into modern English.
 
 **Reverse channel (steer the viewer back).** The viewer runs a live session
 identified by the `viewUUID` in the `globalise_view_document_ui` result. When
@@ -193,9 +197,9 @@ response, not a failed query** — read the `note` and paginate.
 
 ## Operational notes
 
-- **Cold start:** the deployment sleeps when idle, so the *first* call after
-  a pause can fail with a transient connection error. Retry once — it wakes and
-  succeeds.
+- **Cold start (beta only):** the beta deployment sleeps when idle, so its *first*
+  call after a pause can fail with a transient connection error. Retry once — it
+  wakes and succeeds. Production is always on.
 - **Endpoints:** production `https://globalise-mcp-production.up.railway.app/mcp`,
   beta `https://globalise-mcp-beta-production.up.railway.app/mcp`. `/health`
   returns the running version.

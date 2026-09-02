@@ -125,7 +125,7 @@ export const searchTranscriptionsInputSchema = z.object({
     .max(500, 'fragmentSize cannot exceed 500')
     .optional()
     .default(200)
-    .describe('Max length (characters) of each highlighted snippet in highlightedFragments. Lower = smaller responses; higher = more context per hit. 20-500, default 200 (the upstream API default is 100; this tool previously used a fixed 500).'),
+    .describe('Max length (characters) of each highlighted snippet in highlightedFragments. Lower = smaller responses; higher = more context per hit. 20-500, default 200 (the upstream API default is 100).'),
 });
 
 export const searchOutputSchema = z.object({
