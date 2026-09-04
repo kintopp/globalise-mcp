@@ -61,8 +61,8 @@ flowchart TD
 
 ## Requirements
 
-- **Node 24.x** — the server uses the built-in `node:sqlite` module (available without flags since Node 24.0). The `engines` field pins `>=24.15.0 <25` to match the runtime bundled with Claude Desktop.
-- **~115 MB of disk** for the local databases: the committed `data/*.sqlite.gz` archives are decompressed on first build.
+- **Node 24.x** — the server uses the built-in `node:sqlite` module, which needs no flag on Node 24. The `engines` field pins `>=24.15.0 <25` to match the runtime bundled with Claude Desktop.
+- **~150 MB of disk** for the local databases: the committed `data/*.sqlite.gz` archives (~29 MB) are decompressed to ~120 MB on first build and kept alongside.
 - **Network access** to the upstream GLOBALISE services for the transcription tools (locally-run servers may receive upstream `403` responses — see the transports table under [CLI](#cli)); the finding-aid and glossary tools work fully offline.
 - **No native binaries** — all dependencies are pure JavaScript, so there is no compilation step and the same install works across platforms.
 
@@ -94,6 +94,18 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+### Extension bundle (`.mcpb`)
+
+For a one-click install, download `globalise-voc-research.mcpb` from the [latest release](https://github.com/kintopp/globalise-mcp/releases/latest) and open it with Claude Desktop, or build it yourself:
+
+```bash
+npm ci
+npm run build:mcpb     # → mcpb-build/globalise-voc-research.mcpb
+```
+
+The bundle is ~5 MB, runs on Claude Desktop's own Node 24 and needs no config-file editing. It ships the glossary database but not the ~112 MB archival index: the server downloads that once, on first use of `find_archival_documents` or the viewer, into the data directory chosen at install time (default `~/.globalise-mcp`). The install dialog also exposes debug logging and the structured-content switch. See [docs/mcpb.md](docs/mcpb.md) for the lazy download, staging and validation details. The companion research skill (`skills/globalise-voc-research/`) is published alongside the bundle on the release page.
+
 **Hosted instance** (no setup required):
 ```
 https://globalise-mcp-production.up.railway.app/mcp
@@ -119,7 +131,7 @@ npm run deps    # http-only: install just the npm deps (the MCP SDK); skips the 
 ```
 
 Both are thin aliases (`setup` = `npm install && npm run build`; `deps` = `npm install`) that exist to
-name the two starting points: the hosted-server route needs neither the build nor the 115 MB of DBs.
+name the two starting points: the hosted-server route needs neither the build nor the ~120 MB of DBs.
 
 ### Transports & requirements
 
@@ -132,9 +144,9 @@ build required.
 | Setup | `npm run setup` | `npm run deps` |
 | Node.js | 24.x | 24.x |
 | Local build (`dist/`) | required | — |
-| Local DBs (~115 MB) | required (build decompresses them) | — |
+| Local DBs (~120 MB) | required (build decompresses them) | — |
 | Network | only `search` / `retrieve` / `navigate`; these may receive upstream 403, while `find` / `commodity` / `measure` run offline | always (to the remote server) |
-| Best for | local development and offline finding-aid + glossary lookups | quickest start and hosted transcription access, no 115 MB build |
+| Best for | local development and offline finding-aid + glossary lookups | quickest start and hosted transcription access, no 120 MB build |
 
 ### Usage
 
@@ -170,10 +182,16 @@ default `npm test` chain, since it needs `dist/` + DBs + network.
 
 ## Environment Variables
 
+All optional, read straight from `process.env`. The full list with comments is in [`.env.example`](.env.example); the ones you are most likely to set:
+
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `TRANSPORT` | `stdio` | `http` for Streamable HTTP mode |
 | `PORT` | `3000` | HTTP port |
+| `ARCHIVAL_DB_PATH` | `data/archival-index.sqlite` | Location of the archival finding-aid index |
+| `ARCHIVAL_DB_URL` | unset | Where to download the index (`.gz`) when it is missing at the path above; unset means no download and the finding-aid tool reports the index as unavailable |
+| `REFERENCE_DB_PATH` | `data/reference.sqlite` | Location of the commodities + measures glossaries |
+| `DEBUG` | `false` | `true` adds a response-length debug line per tool call on stderr |
 | `MCP_ALLOWED_ORIGINS` | claude.ai/claude.com/chatgpt.com | **Enforced** Origin guard: rejects non-allowlisted browser origins with HTTP 403 (spec MUST, DNS-rebinding mitigation). Exact origins or `*.domain` globs; `*` disables. |
 | `ALLOWED_ORIGINS` | `*` | **Advisory** CORS allowlist — sets `Access-Control-Allow-Origin` response headers only; rejects nothing. Comma-separated; `*` allows all. This is a *separate* var from `MCP_ALLOWED_ORIGINS`: tightening the 403 guard does **not** tighten CORS headers, and vice versa. |
 | `STRUCTURED_CONTENT` | `true` | Set `false` to strip `outputSchema`/`structuredContent` for clients that reject them (MSTY, Jan.ai) |
@@ -181,12 +199,19 @@ default `npm test` chain, since it needs `dist/` + DBs + network.
 ## Development
 
 ```bash
-npm run build       # Viewer UI + TypeScript + archival index DB
-npm run dev         # tsc watch mode
-npm run inspector   # Build + run against MCP Inspector
-npm test            # Full offline suite (version-sync, FTS, SQLite tools, viewer, smoke, HTTP shutdown)
-npm run test:live   # Opt-in: live integration tests; fails with 403 when local upstream access is denied
+npm run build                 # Viewer UI → tsc → stamp dist/version.txt → decompress the local DBs
+npm run dev                   # tsc watch mode (npm run dev:ui rebuilds the viewer)
+npm run lint                  # eslint over src/ and scripts/ — not part of npm test
+npm run inspector             # Build + run against MCP Inspector
+npm test                      # 22-step offline suite: typechecks, FTS, DB tools, viewer, response sizing, version sync, smoke, HTTP shutdown
+npm run test:cli              # CLI client end to end (needs dist/, the DBs and network)
+npm run test:live             # Opt-in live upstream tests; fails with 403 when local upstream access is denied
+npm run build:mcpb            # Pack the extension bundle: build, stage, smoke-test, validate the manifest
+npm run build:db              # Regenerate data/archival-index.sqlite from data/sources/ (slow)
+npm run build:db:commodities  # Regenerate data/reference.sqlite
 ```
+
+CI (`.github/workflows/ci.yml`) runs `lint → build → test → build:mcpb` on every push.
 
 ## License
 
