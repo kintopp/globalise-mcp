@@ -223,7 +223,7 @@ response, not a failed query** — read the `note` and paginate.
 - ❌ Don't trust GM **`htrAvailable`** as "has transcriptions" — it only marks Zeeland; probe the inventory instead.
 - ❌ Don't call the per-page RGP link the whole letter (it's the **first page**), or go past the record/skill for RGP editors/dates/editions — point to the RGP series record for those.
 - ❌ Don't read an **empty OBP result** as "not in GLOBALISE" — many transcribed inventories (9966 → 495 pages, 9800 → 274) have no OBP index; check `search_transcriptions`.
-- ❌ Don't build a scan ID from an **OBP folio** (for **GM**, use the result's `scanStart` / scan URLs), or try to **filter transcriptions by year** (no date field).
+- ❌ Don't build a scan ID from an **OBP folio** (for **GM**, use the result's `scanStart` / scan URLs), or expect **page-level dates** on transcriptions (`yearFrom`/`yearTo` there is approximate — resolved via the archival index, not per page).
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.
 - ❌ Don't read `year_earliest=1600` (or any wide range) as a precise date.
 - ❌ Don't treat `language="unknown"` as unidentifiable, or `"art"` as a real language.
