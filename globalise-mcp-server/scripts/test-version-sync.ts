@@ -16,6 +16,10 @@
  * one-line fix (`npm version X.Y.Z --no-git-tag-version` folded into the
  * release), not a failure.
  *
+ * The skill frontmatter (skills/globalise-voc-research/SKILL.md `version:`) is
+ * the one hand-maintained copy: claude.ai shows it as the installed skill's
+ * version, and nothing stamps it, so it must equal package.json exactly.
+ *
  * manifest.json is deliberately NOT checked: its
  * version is stamped from package.json at pack time (scripts/build-mcpb.ts),
  * so the committed values are cosmetic and carry no sync obligation.
@@ -77,6 +81,16 @@ if (!newestTag) {
       );
     }
   }
+}
+
+const skillPath = join(ROOT, 'skills', 'globalise-voc-research', 'SKILL.md');
+const skillMatch = fs.readFileSync(skillPath, 'utf-8').match(/^version:\s*(\S+)\s*$/m);
+check(!!skillMatch, 'skills/globalise-voc-research/SKILL.md declares `version:` in its frontmatter');
+if (skillMatch) {
+  check(
+    skillMatch[1] === pkgVersion,
+    `skill frontmatter version (${skillMatch[1]}) matches package.json (${pkgVersion}) — bump both at release and repack the .skill`,
+  );
 }
 
 finish('Version sync');
