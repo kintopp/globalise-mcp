@@ -126,7 +126,7 @@ When using the transcriptions, please cite:
 
 **APA (7th ed.)**
 
-> Bosse, A. (2026). *GLOBALISE MCP Server* (Version 0.9.2) [Software]. Research and Infrastructure Support (RISE), University of Basel. https://github.com/kintopp/globalise-mcp
+> Bosse, A. (2026). *GLOBALISE MCP Server* (Version 0.9.3) [Software]. Research and Infrastructure Support (RISE), University of Basel. https://github.com/kintopp/globalise-mcp
 
 **BibTeX**
 ```bibtex
@@ -134,7 +134,7 @@ When using the transcriptions, please cite:
   author    = {Bosse, Arno},
   title     = {{GLOBALISE MCP Server}},
   year      = {2026},
-  version   = {0.9.2},
+  version   = {0.9.3},
   publisher = {Research and Infrastructure Support (RISE), University of Basel},
   url       = {https://github.com/kintopp/globalise-mcp},
   orcid     = {0000-0003-3681-1289},
