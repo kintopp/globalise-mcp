@@ -12,7 +12,7 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 
 ### Features
 
-- Search the full text of c. 4.78 million machine-transcribed pages from the *OBP* for a word or phrase, narrow the results by inventory number or language, and combine terms with boolean operators, wildcards, and fuzzy matching to catch historical spellings.
+- Search the full text of c. 4.78 million machine-transcribed pages from the *OBP* for a word or phrase, narrow the results by inventory number or range, by an approximate year window, or by language, and combine terms with boolean operators, wildcards, and fuzzy matching to catch historical spellings.
 - Retrieve any page by its identifier to read the complete transcription line by line, together with its languages, dates, rights statement, and links to the original scan at the Dutch National Archives.
 - Move page by page through an inventory to follow a volume in sequence instead of jumping between scattered search results.
 - View a page scan beside its line-numbered transcription in an interactive viewer, and ask the AI assistant to zoom in on a detail or examine the image for you.
@@ -43,7 +43,7 @@ Download: [`globalise-voc-research.skill`](https://github.com/kintopp/globalise-
 
 Most of the tools listed below were designed to reproduce functionality provided by the [GLOBALISE Transcriptions Viewer](https://transcriptions.globalise.huygens.knaw.nl/). A few tools, such as `globalise_inspect_page_image`, `globalise_navigate_viewer`, `globalise_lookup_commodity` and `globalise_lookup_measure` offer additional features not available there.
 
-- **`globalise_search_transcriptions`** — Searches the full text of approximately 4.78 million indexed transcription pages for a word or phrase, much like a regular keyword search, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number or language and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching. This also helps address historical variants.
+- **`globalise_search_transcriptions`** — Searches the full text of approximately 4.78 million indexed transcription pages for a word or phrase, much like a regular keyword search, and returns the best-matching passages with the search terms highlighted. It can narrow by inventory number, by a range of inventory numbers, or by language, and combine terms with `AND`/`OR`/`NOT`, quoted phrases, wildcards, and fuzzy matching. A year window can also be given: it is resolved through the local archival index into the inventories whose finding-aid dates overlap it and does not reach inventories the index lacks (about a quarter of the corpus, mostly the Zeeland copies); the response notes how many inventories were matched.
 
 - **`globalise_retrieve_document`** — Fetches a single page using its identifier and returns the complete transcription line by line together with its metadata: languages, dates, and rights statement. It also reports the identifiers of the preceding and following pages and provides links to the GLOBALISE transcription viewer and the original scan held by the Dutch National Archives.
 
