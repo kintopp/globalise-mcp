@@ -25,6 +25,32 @@ On top of `AND`/`OR`/`NOT` and `"exact phrase"`, it adds operators FTS5 lacks:
 | Phrase proximity | `"schip lading"~10` | the two words within N positions, any order |
 | Match everything | `*` | stats / browsing |
 
+## Composing a query, then saying what you ran
+
+Four habits that keep a search honest on this corpus. Apply them in order.
+
+1. **Multi-term queries are `AND` by default.** Write `peper AND malabar`, never
+   `peper malabar` — the bare form is OR, and one common word (`peper` alone →
+   160K pages) swamps the result while `total` looks meaningful. Use plain OR only
+   when you deliberately want alternatives, and then group them: `(gesant OR envoyé)`.
+2. **Proximity and fuzz don't mix.** `"peper malabar"~10` (both words within ten
+   positions) works; `"peper~1 malabar~1"~10` does **not** — the `~1` inside the
+   quotes is not honoured and the phrase quietly matches almost nothing. So when
+   spelling noise matters *and* the words must be close, spell the variants out as
+   alternative phrases instead: `"peper malabar"~10 OR "peper malabaer"~10`
+   (measured: 35 and 95 pages respectively — the second spelling is the commoner
+   one). When proximity matters less than recall, fall back to `peper~1 AND malabar~1`.
+3. **Inspect the first page, then revise.** A fuzzy or wildcard term can pull in an
+   unrelated word (`wijnen~1` also matches `sijne`, `wijsen`). Before quoting totals,
+   read the `highlightedFragments` of the first few hits; if one variant is
+   polluting, re-issue with that term exact, a tighter wildcard, or `NOT thatword`.
+   One extra call; it is the difference between a count and a guess.
+4. **State the query you ran.** Before presenting hits, give one line with the
+   query as sent (operators, per-term fuzz, any expansions or exclusions you added)
+   and the `total` — e.g. *"Searched `peper~1 AND malabar~1` (fuzz 1 on both): 1,060
+   pages."* The user cannot see the call, and a fuzzy expansion they did not ask
+   for is only acceptable if it is visible.
+
 **Fuzzy matching earns its keep.** The text is machine-transcribed 17th–18th-c.
 handwriting, so a word appears in many spellings and with OCR slips (`n`/`u`,
 `c`/`e`, `i`/`l`). Period orthography alone is decisive: the modern **`koffie`**

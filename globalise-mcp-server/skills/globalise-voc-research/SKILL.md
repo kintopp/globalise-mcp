@@ -114,7 +114,7 @@ pre-empt a specific class of silent wrong answer.
 | Read | Before | It covers |
 |---|---|---|
 | `references/archival-index.md` | any `find_archival_documents` call | OBP vs GM sources, FTS5 syntax, the period-spelling / auto-quoting / finding-aid traps, sorting, year fields, crossing to pages, RGP published editions |
-| `references/transcription-search.md` | any non-trivial `search_transcriptions` query | Elasticsearch operators, `space = OR`, fuzzy matching, the tokenizer, totals, sorting, `fragmentSize` |
+| `references/transcription-search.md` | any non-trivial `search_transcriptions` query | Elasticsearch operators, `space = OR`, the query-composition recipe (AND default, proximity vs fuzz, inspect-then-revise, report the query), fuzzy matching, the tokenizer, totals, sorting, `fragmentSize` |
 | `references/glossaries.md` | a trade good or a historical unit comes up | `lookup_commodity` recall workflow and definition provenance; `lookup_measure` and why it is not a converter |
 
 The rest of this file: [the tools](#the-tools) · [loading them](#loading-the-tools) ·
@@ -215,7 +215,9 @@ response, not a failed query** — read the `note` and paginate.
 - ✅ Offer **scan links** for non-Roman-script and Malay pages.
 - ✅ For a **published GM**, offer the `publishedEdition` links and say whether you're giving the **edited RGP text** or the **HTR** original.
 - ✅ In `search_transcriptions`, lean on **fuzzy `~1`** and period spellings for important terms (HTR/OCR noise).
+- ✅ In `search_transcriptions`, write **`AND` between terms by default**, glance at the first hits before trusting a total, and **say which query you ran** (operators, fuzz, expansions) when you present results.
 - ❌ Don't carry FTS5 habits to `search_transcriptions`: there **space = OR** (use `AND`), and it adds `~N` / `?` / proximity.
+- ❌ Don't put fuzz inside a phrase (`"peper~1 malabar"~10`) — it is silently ignored; OR alternative exact phrases instead.
 - ❌ Don't AND a modern toponym into the text query — it returns spurious 0s.
 - ❌ Don't trust GM **`htrAvailable`** as "has transcriptions" — it only marks Zeeland; probe the inventory instead.
 - ❌ Don't call the per-page RGP link the whole letter (it's the **first page**), or go past the record/skill for RGP editors/dates/editions — point to the RGP series record for those.
