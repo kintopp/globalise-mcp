@@ -70,7 +70,8 @@ Most research follows **scope → search → read**:
    relevant (the finding aids are richer and faster to filter than the raw page
    text). Inventory numbers in its results feed step 2.
 2. `globalise_search_transcriptions` (often with the `inventoryNumber` filter
-   from step 1) to find the actual transcribed pages.
+   from step 1, or scoped directly by `inventoryRange` / `yearFrom`–`yearTo`)
+   to find the actual transcribed pages.
 3. `globalise_retrieve_document` / `globalise_navigate` to read pages, or
    `globalise_view_document_ui` to show one to the user.
 
@@ -114,7 +115,7 @@ pre-empt a specific class of silent wrong answer.
 | Read | Before | It covers |
 |---|---|---|
 | `references/archival-index.md` | any `find_archival_documents` call | OBP vs GM sources, FTS5 syntax, the period-spelling / auto-quoting / finding-aid traps, sorting, year fields, crossing to pages, RGP published editions |
-| `references/transcription-search.md` | any non-trivial `search_transcriptions` query | Elasticsearch operators, `space = OR`, the query-composition recipe (AND default, proximity vs fuzz, inspect-then-revise, report the query), fuzzy matching, the tokenizer, totals, sorting, `fragmentSize` |
+| `references/transcription-search.md` | any non-trivial `search_transcriptions` query | Elasticsearch operators, `space = OR`, the query-composition recipe (AND default, proximity vs fuzz, inspect-then-revise, report the query), fuzzy matching, the tokenizer, totals, scoping by `inventoryRange` / `yearFrom`–`yearTo`, sorting, `fragmentSize` |
 | `references/glossaries.md` | a trade good or a historical unit comes up | `lookup_commodity` recall workflow and definition provenance; `lookup_measure` and why it is not a converter |
 
 The rest of this file: [the tools](#the-tools) · [loading them](#loading-the-tools) ·

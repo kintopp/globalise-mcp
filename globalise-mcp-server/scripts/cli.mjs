@@ -73,7 +73,7 @@ const VIEWER_TOOLS = new Set([
 // pagination hints the MCP descriptions don't carry. The per-command *flag* list stays
 // schema-derived (always current); only this prose framing is hand-written.
 const VERB_HELP = {
-  search:    { summary: "Full-text search across ~4.8M VOC transcription pages (Elasticsearch syntax: bare space=OR, AND/NOT, * ? wildcards, ~N fuzzy, \"phrases\"). Filter by --inventoryNumber / --languages; --matchAll for multilingual pages.",
+  search:    { summary: "Full-text search across ~4.8M VOC transcription pages (Elasticsearch syntax: bare space=OR, AND/NOT, * ? wildcards, ~N fuzzy, \"phrases\"). Filter by --inventoryNumber, --inventoryRange 1053-4454, --yearFrom/--yearTo (via the archival index), --languages; --matchAll for multilingual pages.",
                example: `glob-mcp search "peper" --inventoryNumber 9966 --max 5 --fields id,document` },
   find:      { summary: "Scope by archival metadata before searching transcriptions — 228K+ finding-aid entries (OBP indexes + GM Generale Missiven). FTS5 query syntax (space=AND). --source obp|gm|all, --settlement (OBP), --chamber (GM).",
                example: `glob-mcp find "Amsterdam" --source gm --chamber Amsterdam --max 5` },

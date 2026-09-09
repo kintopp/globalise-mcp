@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { ensureDatabaseFile, takeProvisionReport, formatMb, getDatabase, isDatabaseAvailable, createConnectionState, type ConnectionState } from '../utils/database.js';
 import { ToolError } from '../utils/errors.js';
 import { sanitizeFtsQuery, FTS_OPERATORS, FTS_AUTOQUOTE } from '../utils/fts.js';
+import { normalizeInventoryList } from '../utils/inventory-scope.js';
 
 // Input schema for archival index queries
 export const findArchivalDocumentsInputSchema = z.object({
@@ -205,16 +206,43 @@ function buildCommonConditions(
     }
   }
 
-  if (input.yearFrom !== undefined) {
-    conditions.push('(year_latest >= @yearFrom OR year_latest IS NULL)');
-    params.yearFrom = input.yearFrom;
-  }
-  if (input.yearTo !== undefined) {
-    conditions.push('(year_earliest <= @yearTo OR year_earliest IS NULL)');
-    params.yearTo = input.yearTo;
-  }
+  addYearOverlap(conditions, params, input.yearFrom, input.yearTo, { nullTolerant: true });
 
   return { conditions, params };
+}
+
+/**
+ * Records overlapping [yearFrom, yearTo], either bound optional. Null-tolerant
+ * for the finding-aid listing (an undated record should still be findable);
+ * strict for the search tool's year filter, where an undated row would put its
+ * inventory into every window.
+ */
+function addYearOverlap(
+  conditions: string[],
+  params: Record<string, string | number>,
+  yearFrom: number | undefined,
+  yearTo: number | undefined,
+  { nullTolerant }: { nullTolerant: boolean },
+): void {
+  const orNull = (col: string) => (nullTolerant ? ` OR ${col} IS NULL` : '');
+  if (yearFrom !== undefined) {
+    conditions.push(`(year_latest >= @yearFrom${orNull('year_latest')})`);
+    params.yearFrom = yearFrom;
+  }
+  if (yearTo !== undefined) {
+    conditions.push(`(year_earliest <= @yearTo${orNull('year_earliest')})`);
+    params.yearTo = yearTo;
+  }
+}
+
+/** Reject a reversed year window instead of silently matching nothing. */
+export function assertYearWindow(yearFrom: number | undefined, yearTo: number | undefined): void {
+  if (yearFrom !== undefined && yearTo !== undefined && yearFrom > yearTo) {
+    throw new ToolError(
+      `yearFrom (${yearFrom}) is greater than yearTo (${yearTo})`,
+      'Swap the bounds, or give only one of them.',
+    );
+  }
 }
 
 /**
@@ -417,6 +445,8 @@ const getDbState = createConnectionState((state) => ({
   gmTotal: (state.prepare('SELECT COUNT(*) as count FROM generale_missiven').get() as { count: number }).count,
   obpUnfilteredAggregations: undefined as Pick<Aggregations, 'settlements' | 'inventories'> | undefined,
   gmUnfilteredAggregations: undefined as Pick<Aggregations, 'chambers'> | undefined,
+  // Year window → inventory list, keyed "from:to"; paging a year-scoped search re-asks the same window.
+  yearScopes: new Map<string, string[]>(),
 }));
 
 /** OBP aggregations (top settlements and inventories) for the given WHERE clause. */
@@ -454,54 +484,14 @@ function computeGmAggregations(state: ConnectionState, { where, params }: WhereC
   return aggs;
 }
 
-/**
- * Normalize an inventoryNumber filter to an absent/non-empty form. An empty
- * array is truthy, so `{inventoryNumber: []}` slipped past the `if (input.
- * inventoryNumber)` guards: it bypassed the "folio requires an inventoryNumber"
- * check and built `inventory_number IN ()`, which SQLite rejects as a syntax
- * error. Collapse `[]` (and blank strings / all-blank arrays) to undefined and
- * trim surviving entries, so an effectively-empty filter behaves like no filter.
- */
-function normalizeInventoryNumber(
-  value: string | string[] | undefined,
-): string | string[] | undefined {
-  if (value === undefined) return undefined;
-  if (Array.isArray(value)) {
-    const cleaned = value.map((v) => v.trim()).filter(Boolean);
-    return cleaned.length > 0 ? cleaned : undefined;
-  }
-  return value.trim() || undefined;
-}
 
 /**
- * Query the archival index database.
- *
- * `claimProvisionNotice` is false for internal callers whose own result has no
- * `note` to carry it (the document viewer): the pending notice then stays put
- * for the next call that can actually surface it.
+ * Thin-bundle first-run provisioning: download the index now if it isn't on
+ * disk yet and a source URL is configured. No-op for the full bundle (the DB
+ * is shipped) and for dev without a URL (falls through to available:false).
+ * Shared by the finding-aid tool and the year-scoped transcription search.
  */
-export async function findArchivalDocuments(
-  rawInput: FindArchivalDocumentsInput,
-  { claimProvisionNotice = true }: { claimProvisionNotice?: boolean } = {},
-): Promise<FindArchivalDocumentsOutput> {
-  // Treat empty/whitespace-only settlement & chamber as absent. The
-  // source-routing checks test `!== undefined` while the WHERE builders test
-  // falsiness, so a literal '' diverged: `{settlement:''}` skipped GM and
-  // returned every OBP doc as if filtered, and `{source:'gm', settlement:''}`
-  // errored despite no effective filter (CODE-REVIEW finding 11). Normalizing
-  // once here makes both views agree. inventoryNumber gets the same treatment —
-  // an empty array is truthy and would otherwise build `IN ()` (see
-  // normalizeInventoryNumber).
-  const input: FindArchivalDocumentsInput = {
-    ...rawInput,
-    settlement: rawInput.settlement?.trim() || undefined,
-    chamber: rawInput.chamber?.trim() || undefined,
-    inventoryNumber: normalizeInventoryNumber(rawInput.inventoryNumber),
-  };
-
-  // Thin-bundle first-run provisioning: download the index now if it isn't on
-  // disk yet and a source URL is configured. No-op for the full bundle (the DB
-  // is shipped) and for dev without a URL (falls through to available:false).
+async function provisionIndex(): Promise<void> {
   try {
     await ensureDatabaseFile();
   } catch (error) {
@@ -523,6 +513,72 @@ export async function findArchivalDocuments(
       'Check the index download URL in the extension settings — it must serve archival-index.sqlite (or .sqlite.gz) over HTTP. The other GLOBALISE tools work without this local index.',
     );
   }
+}
+
+/** Coverage caveat every year-scoped search response and description must carry. */
+export const INDEX_COVERAGE_CAVEAT =
+  'the index dates ~4,981 of the corpus\'s ~6,890 inventories (the 9000-11024 Zeeland-copy series is largely unindexed), so pages in unindexed inventories are excluded';
+
+/**
+ * Inventory numbers whose finding-aid records overlap [yearFrom, yearTo] (either
+ * bound optional), for the year filter of search_transcriptions. Strict on
+ * dates (see addYearOverlap), numerically ordered, memoized per connection.
+ */
+export async function resolveInventoriesByYear(yearFrom?: number, yearTo?: number): Promise<string[]> {
+  await provisionIndex();
+  if (!isDatabaseAvailable()) {
+    throw new ToolError(
+      'The yearFrom/yearTo filter needs the local archival index, which is not available',
+      'Scope by inventoryNumber or inventoryRange instead, or make the index available (see the extension settings / ARCHIVAL_DB_URL).',
+    );
+  }
+  const state = getDbState(getDatabase());
+  const key = `${yearFrom ?? ''}:${yearTo ?? ''}`;
+  const cached = state.yearScopes.get(key);
+  if (cached) return cached;
+
+  const conditions: string[] = ["inventory_number != ''"];
+  const params: Record<string, string | number> = {};
+  addYearOverlap(conditions, params, yearFrom, yearTo, { nullTolerant: false });
+  const { where } = toWhereClause(conditions, params);
+  const rows = state.prepare(
+    `SELECT inventory_number FROM (
+       SELECT inventory_number FROM obp_documents ${where}
+       UNION SELECT inventory_number FROM generale_missiven ${where}
+     ) ORDER BY CAST(inventory_number AS INTEGER), inventory_number`,
+  ).all(params) as { inventory_number: string }[];
+  const result = rows.map((r) => r.inventory_number);
+  state.yearScopes.set(key, result);
+  return result;
+}
+
+/**
+ * Query the archival index database.
+ *
+ * `claimProvisionNotice` is false for internal callers whose own result has no
+ * `note` to carry it (the document viewer): the pending notice then stays put
+ * for the next call that can actually surface it.
+ */
+export async function findArchivalDocuments(
+  rawInput: FindArchivalDocumentsInput,
+  { claimProvisionNotice = true }: { claimProvisionNotice?: boolean } = {},
+): Promise<FindArchivalDocumentsOutput> {
+  // Treat empty/whitespace-only settlement & chamber as absent. The
+  // source-routing checks test `!== undefined` while the WHERE builders test
+  // falsiness, so a literal '' diverged: `{settlement:''}` skipped GM and
+  // returned every OBP doc as if filtered, and `{source:'gm', settlement:''}`
+  // errored despite no effective filter (CODE-REVIEW finding 11). Normalizing
+  // once here makes both views agree. inventoryNumber gets the same treatment —
+  // an empty array is truthy and would otherwise build `IN ()`.
+  const input: FindArchivalDocumentsInput = {
+    ...rawInput,
+    settlement: rawInput.settlement?.trim() || undefined,
+    chamber: rawInput.chamber?.trim() || undefined,
+    inventoryNumber: normalizeInventoryList(rawInput.inventoryNumber),
+  };
+
+  assertYearWindow(input.yearFrom, input.yearTo);
+  await provisionIndex();
 
   // Check database availability
   if (!isDatabaseAvailable()) {

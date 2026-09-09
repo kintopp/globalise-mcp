@@ -555,7 +555,7 @@ export function createServer(): McpServer {
     'globalise_search_transcriptions',
     'Full-text search of GLOBALISE VOC (Dutch East India Company) transcriptions. ' +
       '~4.8M HTR-transcribed pages from the Nationaal Archief (1.04.02), 17th-18th century. ' +
-      'Free-text query over the page transcriptions: covers the full corpus, with filters for inventory number(s) and language(s). ' +
+      'Free-text query over the page transcriptions: covers the full corpus, with filters for inventory number(s), inventory range(s) ("1053-4454", expanded server-side), a year window (yearFrom/yearTo, resolved through the local archival index to overlapping inventories — approximate, and blind to the ~28% of inventories the index lacks, mostly the 9000-11024 Zeeland copies; the note states the resolved count) and language(s). ' +
       'Query syntax (Elasticsearch): a bare space means OR — use uppercase AND for all-terms; plus NOT, wildcards (* ?), fuzzy matching (~N, for HTR/OCR spelling noise), exact phrases in quotes; query defaults to "*" (match everything). ' +
       'Languages accept ISO 639-3 codes or English names; matchAll=true requires pages to contain ALL listed languages (bilingual documents) by post-filtering a capped candidate window — totals are then a lower bound, see the response note. ' +
       'Returns paginated hits with highlighted fragments, plus language/inventory/document aggregations. ' +

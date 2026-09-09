@@ -192,9 +192,12 @@ and OBP vs GM behave oppositely:
 - **GM `rgpVolume`/`rgpPage`** (~558 of 950 letters) cite the *published* RGP edition
   and drive a **`publishedEdition`** link object (see next section); they mark the
   letter's *start* in the printed volume, not a page-by-page manuscript map.
-- **No year filter on transcriptions.** `search_transcriptions` exposes only
-  `inventoryNumber` and `languages` (exact-match) — *no* date field. Do year/place
-  scoping in `find_archival_documents`, then carry the inventory numbers across.
+- **Year scoping on transcriptions is approximate.** `search_transcriptions`
+  has `yearFrom`/`yearTo`, but pages carry no dates: the window is resolved
+  through *this* index to the inventories whose records overlap it, so it
+  inherits the index's coverage (~4,981 of ~6,890 inventories; the Zeeland
+  copies 9000–11024 are largely unindexed). *Place* scoping still lives only
+  here — filter by settlement, then carry the inventory numbers across.
 
 ## The RGP published edition links (GM only)
 

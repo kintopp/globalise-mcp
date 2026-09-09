@@ -9,6 +9,8 @@
  * per-record fields, keeps more records), then (2) drop tail records.
  */
 
+import { joinNotes } from './notes.js';
+
 /** UTF-8 byte length of a value's compact JSON serialization. */
 export function jsonByteLength(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
@@ -118,7 +120,7 @@ export const recordListTrim: TrimStrategy = (result) => {
       if (pagination) pagination.hasMore = true;
       const dropped = original - kept;
       const trimNote = `Response size-capped: returned ${kept} of ${original} fetched results (dropped ${dropped} to fit ~${Math.round(budgetBytes / 1000)}KB). The total count is unaffected — page with a higher \`from\`, narrow your filters, or lower \`size\`.`;
-      result.note = baseNote ? `${String(baseNote)} ${trimNote}` : trimNote;
+      result.note = joinNotes(baseNote as string | undefined, trimNote);
     },
   };
 };
@@ -207,7 +209,7 @@ export const searchResultTrim: TrimStrategy = (result) => {
       }
       if (changed) {
         const note = `Response size-capped: highlighted snippets were shortened (kept ${SEARCH_COMPACT_MAX_FRAGMENTS} per hit, ≤${SEARCH_COMPACT_FRAGMENT_CHARS} chars). Lower \`size\` or \`fragmentSize\` for full snippets.`;
-        result.note = result.note ? `${String(result.note)} ${note}` : note;
+        result.note = joinNotes(result.note as string | undefined, note);
       }
       return changed;
     },

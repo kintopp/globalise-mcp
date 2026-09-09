@@ -11,6 +11,9 @@
  *      URLs, multi-page and volume-only rows, null for unpublished missives
  *   7. per-connection statement cache rebuilds after a DB reopen
  *   8. GM rows the source marks deleted are excluded from the build
+ *   9. GM scan URLs are normalized to a 4-digit scan tail
+ *  10. resolveInventoriesByYear (the search tool's year filter) — overlap
+ *      semantics (strict, undated rows never match), numeric ordering, empty windows
  *
  * Plain Node script (no framework). Imports the tool directly from src via
  * tsx — no build needed, but the local SQLite database must exist.
@@ -22,6 +25,7 @@ import {
   findArchivalDocuments,
   findArchivalDocumentsInputSchema,
   FindArchivalDocumentsOutput,
+  resolveInventoriesByYear,
 } from '../src/tools/archival-index.js';
 import { isDatabaseAvailable, closeDatabase, getDatabasePath } from '../src/utils/database.js';
 import { ToolError } from '../src/utils/errors.js';
@@ -300,6 +304,22 @@ async function main() {
     [r.scanUrlFirst, r.scanUrlLast].filter((u): u is string => u !== null && !/_\d{4,}$/.test(u)),
   );
   check(badTails.length === 0, `every non-null scan URL ends in a 4+-digit scan number (bad: ${badTails.slice(0, 3).join(', ') || 'none'})`);
+
+  console.log('10. resolveInventoriesByYear (search_transcriptions year filter)');
+  // Inventory 9016 is dated 1731-1734 and 8379 1715-1717 in the OBP index.
+  const y1731 = await resolveInventoriesByYear(1731, 1731);
+  check(y1731.includes('9016') && !y1731.includes('8379'), 'single-year window keeps overlapping inventories only');
+  const numeric = y1731.filter((n) => /^\d+$/.test(n)).map(Number);
+  check(numeric.every((n, i) => i === 0 || numeric[i - 1] <= n), 'resolved list is in numeric order');
+  const openEnded = await resolveInventoriesByYear(1790, undefined);
+  check(openEnded.includes('3819') && !openEnded.includes('9016'), 'one-sided window (from 1790) keeps 3819 (1787-1790), drops 9016');
+  // 1990+, not 1900+: one OBP source row (inventory 7880) carries year_latest 1983, a typo for 1783.
+  const future = await resolveInventoriesByYear(1990, 2000);
+  check(future.length === 0, 'window after the corpus resolves to no inventories');
+  const all = await resolveInventoriesByYear(undefined, undefined);
+  check(all.length >= 4900 && all.length <= 5100, `unbounded window resolves to every indexed inventory (got ${all.length})`);
+  check((await resolveInventoriesByYear(undefined, undefined)) === all, 'resolution is memoized per connection');
+  await expectStructuredError({ yearFrom: 1750, yearTo: 1700, size: 1 }, 'reversed year window is rejected by find_archival_documents too');
 
   closeDatabase();
 

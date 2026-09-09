@@ -9,6 +9,9 @@ import { z } from 'zod';
 import { apiPost, buildUrl, API_CONFIG, validateSearchFields } from '../utils/api-client.js';
 import { SearchResponse } from '../utils/types.js';
 import { languageSchema, zipLanguages } from '../utils/languages.js';
+import { expandInventoryRanges, normalizeInventoryList, resolveInventoryScope } from '../utils/inventory-scope.js';
+import { assertYearWindow, resolveInventoriesByYear, INDEX_COVERAGE_CAVEAT } from './archival-index.js';
+import { joinNotes } from '../utils/notes.js';
 
 /**
  * ISO 639-3 code to human-readable label mapping for languages in the GLOBALISE corpus.
@@ -92,7 +95,16 @@ export const searchTranscriptionsInputSchema = z.object({
     .describe('Search query (Elasticsearch). A space means OR — matches pages with ANY term; write uppercase AND for all-terms (peper AND koffie). Also NOT, wildcards (* ?, including leading *schip), fuzzy ~N (the key tool for HTR/OCR spelling noise — coffij~1 over koffie), exact phrases in quotes, proximity ("phrase"~N). NB: opposite default from globalise_find_archival_documents (FTS5, where space = AND). Defaults to "*" (match everything) — combine with filters and size=1 to get aggregation statistics cheaply.'),
   inventoryNumber: z.union([z.string(), z.array(z.string())])
     .optional()
-    .describe('Restrict to inventory number(s). Single: "9966" or multiple: ["9966", "4293"]'),
+    .describe('Restrict to inventory number(s). Single: "9966" or multiple: ["9966", "4293"]. Unions with inventoryRange.'),
+  inventoryRange: z.union([z.string(), z.array(z.string())])
+    .optional()
+    .describe('Restrict to an inclusive span of inventory numbers, "A-B" (one or several). Expanded server-side, so a whole series is one filter: "1053-4454" = Overgekomen Brieven en Papieren (chronological, 1607-1794), "7527-11024" = Zeeland chamber copies. Lettered part-inventories (9014A) are not matched by a range — list them in inventoryNumber.'),
+  yearFrom: z.number().int()
+    .optional()
+    .describe(`Earliest year (inclusive) — resolved via the local archival index to the inventories whose finding-aid dates overlap the window, then applied as an inventory filter (intersecting any inventoryNumber/inventoryRange). Approximate: most inventories span 1-3 years, and ${INDEX_COVERAGE_CAVEAT} — the note reports the resolved count.`),
+  yearTo: z.number().int()
+    .optional()
+    .describe('Latest year (inclusive); see yearFrom. Either bound may be given alone.'),
   languages: z.array(z.string())
     .optional()
     .describe('Filter by language(s), as ISO 639-3 codes ("nld", "fas") or English names ("Dutch", "Persian"); mixing is fine. Default: documents matching ANY listed language.'),
@@ -157,7 +169,7 @@ export const searchOutputSchema = z.object({
     size: z.number(),
     hasMore: z.boolean().describe('True when more results exist beyond this page, or when this response was size-capped and trailing results were dropped to fit the budget — in either case page with a higher `from` (the note states how many were kept) to reach the rest.'),
   }),
-  note: z.string().optional().describe('Caveats about how this result was computed — e.g. a matchAll scan cap, or a size-cap that shortened snippets and/or dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest).'),
+  note: z.string().optional().describe('Caveats about how this result was computed — e.g. how an inventoryRange/year filter was resolved (and its coverage limit), a matchAll scan cap, or a size-cap that shortened snippets and/or dropped trailing results to fit the response budget (it then states how many of how many were kept and how to recover the rest).'),
 });
 
 export type SearchOutput = z.infer<typeof searchOutputSchema>;
@@ -250,7 +262,7 @@ async function search(input: SearchInput): Promise<SearchOutput> {
   let note: string | undefined;
   if (input.includeAggregations) {
     const omitted = [
-      ...(selfFacetOmitted.invNr ? ['topInventoryNumbers (inventoryNumber filter active)'] : []),
+      ...(selfFacetOmitted.invNr ? ['topInventoryNumbers (inventory filter active)'] : []),
       ...(selfFacetOmitted.langIso ? ['languages (languages filter active)'] : []),
     ];
     if (omitted.length) {
@@ -324,9 +336,17 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
   const languages = input.languages?.map(normalizeLanguage);
   const useMatchAll = input.matchAll && (languages?.length ?? 0) > 1;
 
-  const filters = input.inventoryNumber
-    ? { invNr: Array.isArray(input.inventoryNumber) ? input.inventoryNumber : [input.inventoryNumber] }
-    : undefined;
+  const { invNr, scopeNote } = await buildInventoryFilter(input);
+  if (invNr?.length === 0) {
+    // Empty scope: never send an empty terms list (upstream treats it as no filter).
+    return {
+      total: { value: 0, relation: 'eq' },
+      results: [],
+      pagination: { from: input.from, size: input.size, hasMore: false },
+      note: joinNotes(scopeNote, 'No inventory satisfies the combined inventory/year filters, so nothing was searched.'),
+    };
+  }
+  const filters = invNr ? { invNr } : undefined;
 
   // For matchAll, filter upstream on the rarest plausible language (first
   // non-Dutch entry) to avoid a candidate window dominated by Dutch pages.
@@ -349,7 +369,7 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
   });
 
   if (!useMatchAll) {
-    return searchResult;
+    return withNote(searchResult, joinNotes(scopeNote, searchResult.note));
   }
 
   // Post-filter: keep only pages containing ALL requested languages
@@ -370,6 +390,50 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
       size: input.size,
       hasMore: input.from + input.size < matched.length,
     },
-    note: `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); total and aggregations describe the matching pages within that window — the total is a lower bound and pages beyond the scanned window are unreachable.`,
+    note: joinNotes(
+      scopeNote,
+      `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); total and aggregations describe the matching pages within that window — the total is a lower bound and pages beyond the scanned window are unreachable.`,
+    ),
   };
+}
+
+function withNote(result: SearchOutput, note: string | undefined): SearchOutput {
+  return note ? { ...result, note } : result;
+}
+
+/**
+ * Turn inventoryNumber / inventoryRange / yearFrom+yearTo into the upstream
+ * `invNr` terms filter (union/intersection rules in inventory-scope.ts) plus a
+ * note saying what the expansion did. `invNr: []` means the scope excludes
+ * everything; the caller must not send it upstream.
+ */
+async function buildInventoryFilter(
+  input: SearchTranscriptionsInput,
+): Promise<{ invNr?: string[]; scopeNote?: string }> {
+  assertYearWindow(input.yearFrom, input.yearTo);
+  const explicit = normalizeInventoryList(input.inventoryNumber);
+  const rangeSpecs = normalizeInventoryList(input.inventoryRange);
+  const fromRanges = rangeSpecs && expandInventoryRanges(rangeSpecs);
+  const fromYears = input.yearFrom !== undefined || input.yearTo !== undefined
+    ? await resolveInventoriesByYear(input.yearFrom, input.yearTo)
+    : undefined;
+
+  const invNr = resolveInventoryScope(explicit, fromRanges, fromYears);
+  if (invNr === undefined) return {};
+
+  const notes: string[] = [];
+  if (rangeSpecs && fromRanges) {
+    notes.push(`inventoryRange ${rangeSpecs.join(', ')} expanded to ${fromRanges.length} inventory numbers`);
+  }
+  if (fromYears) {
+    const window = input.yearFrom !== undefined && input.yearTo !== undefined
+      ? `${input.yearFrom}-${input.yearTo}`
+      : input.yearFrom !== undefined ? `from ${input.yearFrom}` : `to ${input.yearTo}`;
+    const bounds = fromYears.length ? ` (${fromYears[0]}…${fromYears[fromYears.length - 1]})` : '';
+    notes.push(`year filter ${window} resolved via the archival index to ${fromYears.length} inventories${bounds}; ${INDEX_COVERAGE_CAVEAT}`);
+    if (explicit || fromRanges) {
+      notes.push(`after intersecting with the inventory filter, ${invNr.length} inventories remain`);
+    }
+  }
+  return { invNr, scopeNote: notes.length ? `Inventory scope: ${notes.join('; ')}.` : undefined };
 }

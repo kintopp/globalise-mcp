@@ -156,6 +156,7 @@ eating the flags); `node scripts/cli.mjs …` is the equivalent direct invocatio
 ```bash
 # stdio (after `npm run setup`): glob-mcp spawns node dist/index.js
 npm run cli -- search "peper" --inventoryNumber 9966 --max 5 --fields id,document
+npm run cli -- search "peper AND malabar" --yearFrom 1700 --yearTo 1710 --max 5   # year window via the archival index
 npm run cli -- retrieve NL-HaNA_1.04.02_9966_0106 --json
 npm run cli -- find "Amsterdam" --source gm --chamber Amsterdam --max 5 --table
 npm run cli -- commodity "mace" --fields prefLabelNl,prefLabelEn

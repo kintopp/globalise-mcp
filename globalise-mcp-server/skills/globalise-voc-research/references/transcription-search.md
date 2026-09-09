@@ -77,6 +77,35 @@ says so in its `note` — the upstream facet for a filtered field ignores its ow
 filter and would show unfiltered corpus counts. Expect only the `languages`
 facet on filtered-inventory calls; the facet's absence is deliberate, not a gap.
 
+## Scoping by inventory range and by year
+
+Three filters narrow the corpus before the query runs; all three end up as one
+inventory-number list upstream, so they compose predictably.
+
+- **`inventoryNumber`** — explicit numbers, including lettered part-inventories
+  (`"9014A"`).
+- **`inventoryRange`** — `"A-B"`, inclusive, expanded server-side (one or several).
+  Use it for a whole series: `"1053-4454"` is the Overgekomen Brieven en Papieren
+  (chronological, 1607–1794), `"7527-11024"` the Zeeland chamber copies. Unions
+  with `inventoryNumber`. A range never matches a lettered inventory.
+- **`yearFrom` / `yearTo`** — either bound alone or both. Resolved through the
+  local archival index to every inventory whose finding-aid dates overlap the
+  window, then applied as an inventory filter that *intersects* any
+  `inventoryNumber`/`inventoryRange`. Two limits, both stated in the response
+  `note`: it is **approximate** (an inventory is a bound volume; most span 1–3
+  years, but ~150 registers span decades — 10435 covers 1600–1721 — so a narrow
+  window still admits pages from outside it), and it is
+  **blind to unindexed inventories** — the index dates ~4,981 of the corpus's
+  ~6,890, and the 9000–11024 Zeeland copies are almost entirely absent. For a
+  Zeeland-only question, scope by `inventoryRange` instead of years.
+
+Read the `note` and quote it: *"1700–1710 resolved to 421 inventories"* tells the
+user what was actually searched. A window that resolves to nothing returns
+`total: 0` without searching, and says so. The `topInventoryNumbers` facet is
+omitted under any of these filters (see above); to learn *which* inventories in a
+window mention a term, sort by `invNr` and page, or probe candidate inventories
+from `find_archival_documents` one at a time.
+
 **Sorting — this tool *does* have it** (unlike `find_archival_documents`). `sortBy`
 takes `_score` (relevance, the default), `document` (page ID), or `invNr` (inventory);
 `sortOrder` is `asc`/`desc` (default `desc`). Relevance order suits most queries — reach
