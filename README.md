@@ -20,6 +20,8 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 - Look up a VOC trade good or a historical unit of weight, volume, length, or area to find the period term to search for, its spelling variants, a sourced definition, and any recorded conversion ratios.
 - Run searches and lookups from the command line with the [bundled CLI client](./globalise-mcp-server/README.md), which outputs JSON for piping into tools like `jq`.
 
+<p align="center"><img src="docs/malabar-coast.jpg" alt="NL-HaNA_1.04.02_1107_0757 (inventory 1107) highlighting 'Malabar' and 'peper'." width="600"></p>
+
 ### Installation
 
 The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector — additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
