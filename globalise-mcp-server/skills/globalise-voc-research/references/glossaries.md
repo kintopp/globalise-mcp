@@ -22,7 +22,8 @@ nothing (`koffie` → 119 pages; the period `coffij` → 25,124). So:
 3. **If it has none (usual), reconstruct the period form** — the corpus prefers *c-*
    over *k-* and *-ij* over *-ie* (`koffie`→`coffij`) — **and add fuzzy `~1` / wildcards**
    (`coffij~1`, `peper~1`) for spelling + HTR noise. Don't assume one spelling suffices.
-4. Feed the forms into `search_transcriptions` (space = OR there) or OR them into
+4. OR the forms as one group and AND it with the rest of the query —
+   `(coffij~1 OR koffie) AND batavia` in `search_transcriptions` — or OR them into
    the `find_archival_documents` FTS5 `query` (Trap 3).
 
 It is a **flat term-lookup, not a category browser** (the source's classifications

@@ -57,8 +57,7 @@ or chamber (GM) — cheap and useful for "what's in here?" questions.
 > transcribed in GLOBALISE (inv 1056 → 550 pages, inv 1058 → 418). To find letters
 > you can actually read, take the inventory number and probe
 > `search_transcriptions(query="*", inventoryNumber=…, size=1)` — don't filter on
-> `htrAvailable`. (Some GM records also carry an **empty inventory number**, so
-> they can't be chained to transcriptions at all.)
+> `htrAvailable`.
 
 ## `find_archival_documents` query syntax (SQLite FTS5)
 

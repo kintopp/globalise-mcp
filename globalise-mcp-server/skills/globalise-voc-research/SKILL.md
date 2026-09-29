@@ -195,9 +195,6 @@ server **trims and flags it**; it never drops data silently:
   On `truncated`, open `view_document_ui` (**exempt** — always renders the full page)
   or fetch the scan.
 
-A short result with `hasMore:true` and a size-cap `note` is **expected on a large
-response, not a failed query** — read the `note` and paginate.
-
 ## Operational notes
 
 - **Cold start (beta only):** the beta deployment sleeps when idle, so its *first*
