@@ -38,7 +38,9 @@ function git(args: string): string {
  * Resolve the display version. Precedence:
  *   1. dist/version.txt — baked from the nearest `v*` tag at build (the deployed truth)
  *   2. `git describe` on the nearest `v*` tag — local dev before/without a build
- *   3. package.json version — final fallback (frozen relic; the commit is reported separately)
+ *   3. package.json version — what production reports: Railway's build checkout
+ *      carries no tags, so 1 and 2 are empty there. test:version-sync keeps it
+ *      equal to the newest tag.
  * The leading `v` is stripped so tag `v1.2.0` displays as `1.2.0`, matching the sibling servers.
  *
  * @param moduleDir the importing module's __dirname (dist/ when built, src/ under tsx)

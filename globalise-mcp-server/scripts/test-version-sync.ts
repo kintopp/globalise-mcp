@@ -1,20 +1,15 @@
 /**
  * Version source-of-truth guard (family parity: ub-sgbr test/version.test.js).
  *
- * This repo is TAGS-PRIMARY by decision (src/utils/build-info.ts: the displayed
- * version is the git tag of a published release; the hand-bumped package.json
- * ritual is retired — "history = commits + tags now"). package.json survives
- * only as the last-resort fallback when no tag reaches the build. That decision
- * has one enforceable invariant, which this script guards:
+ * A release is a `v*` tag, but Railway's build checkout carries no tags, so
+ * production /health always reports package.json's version (the last step of
+ * resolveVersion in src/utils/build-info.ts). The two must therefore agree:
  *
- *   package.json `version` must NEVER be AHEAD of the newest `v*` tag.
+ *   package.json `version` must EQUAL the newest `v*` tag.
  *
- * A package.json above every published tag means the retired hand-bump ritual
- * crept back in: /health would advertise a release that was never tagged. The
- * reverse (tag ahead of package.json) is legal under tags-primary — the
- * fallback is then merely stale, so it's reported as a warning with the
- * one-line fix (`npm version X.Y.Z --no-git-tag-version` folded into the
- * release), not a failure.
+ * Ahead: /health would advertise a release that was never tagged.
+ * Behind: a tagged release would deploy still reporting the previous version.
+ * Release order: bump package.json + skill, commit, tag, then run this.
  *
  * The skill frontmatter (skills/globalise-voc-research/SKILL.md `version:`) is
  * the one hand-maintained copy: claude.ai shows it as the installed skill's
@@ -62,7 +57,7 @@ try {
 }
 
 if (!newestTag) {
-  console.log('  (no v* tag yet — pre-first-release state; the ahead-of-tag guard arms at the first release)');
+  console.log('  (no v* tag yet — pre-first-release state; the tag-equality guard arms at the first release)');
 } else {
   const tagVersion = newestTag.replace(/^v/, '');
   check(
@@ -72,14 +67,13 @@ if (!newestTag) {
   if (SEMVER_RE.test(tagVersion)) {
     check(
       compareSemver(pkgVersion, tagVersion) <= 0,
-      `package.json (${pkgVersion}) is not ahead of the newest release tag (${newestTag}) — tags are primary; do not hand-bump package.json past a release`,
+      `package.json (${pkgVersion}) <= newest release tag (${newestTag}) — else /health advertises an untagged release: tag it, or revert the bump`,
     );
-    if (compareSemver(pkgVersion, tagVersion) < 0) {
-      console.log(
-        `  note: package.json (${pkgVersion}) lags ${newestTag} — legal, but the fallback shown when a build sees no tags is stale.` +
-        ` Fold \`npm version ${tagVersion} --no-git-tag-version\` into the release to refresh it.`,
-      );
-    }
+    check(
+      compareSemver(pkgVersion, tagVersion) >= 0,
+      `package.json (${pkgVersion}) >= newest release tag (${newestTag}) — else production reports the old version:` +
+        ` run \`npm version ${tagVersion} --no-git-tag-version\` and bump the skill frontmatter`,
+    );
   }
 }
 

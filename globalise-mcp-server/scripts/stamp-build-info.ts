@@ -9,8 +9,9 @@
  *
  * Runs at the tail of `npm run build`, after `tsc` has produced dist/. On
  * Railway, RAILWAY_GIT_COMMIT_SHA covers the commit even when git is absent; the
- * tag has no such env var, so version.txt is only written when the build
- * checkout actually carries tags (otherwise /health reports package.json version).
+ * tag has no such env var, and Railway's checkout carries no tags, so on
+ * Railway version.txt is never written and /health reports package.json's
+ * version. Local builds stamp the tag.
  *
  * Usage: npm run build   (or standalone: npx tsx scripts/stamp-build-info.ts)
  */
