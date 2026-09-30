@@ -16,7 +16,7 @@ baked in — the server downloads it once, lazily, and caches it on-device:
 
 | | |
 |---|---|
-| `.mcpb` download | **~4.7 MB** |
+| `.mcpb` download | **~5.9 MB** |
 | Finding-aid index | **downloaded on first use of the index**, then cached |
 | What triggers it | `globalise_find_archival_documents`, and `globalise_view_document_ui` (it enriches a page with archival context) |
 | First archival query | one-time ~26 MB fetch + decompress (~112 MB on disk) |
