@@ -11,8 +11,8 @@
 import type { Server } from 'node:http';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
+import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createOriginGuard } from '../utils/origin.js';
@@ -114,7 +114,7 @@ export function createHttpServer(options: HttpServerOptions): Server {
    */
   app.post('/mcp', originGuard, async (req: Request, res: Response) => {
     const server = createServer();
-    const transport = new StreamableHTTPServerTransport({
+    const transport = new NodeStreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless mode
     });
 

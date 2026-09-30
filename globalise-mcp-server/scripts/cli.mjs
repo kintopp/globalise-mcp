@@ -31,9 +31,9 @@
  *   node scripts/cli.mjs --http https://globalise-mcp-production.up.railway.app/mcp search "nootmuskaat"
  *   node scripts/cli.mjs tools --compact          # compact capability manifest (agent bootstrap)
  */
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 

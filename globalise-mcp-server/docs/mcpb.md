@@ -46,7 +46,7 @@ exercise, not a code change:
 
 | Requirement | How it's met |
 |---|---|
-| Pure JS, no native modules | Five runtime deps (`@modelcontextprotocol/{sdk,ext-apps}`, `cors`, `express`, `zod`); SQLite is Node's built-in `node:sqlite` (`better-sqlite3` was removed in v2.5.0) |
+| Pure JS, no native modules | Seven runtime deps (`@modelcontextprotocol/{server,client,node,ext-apps}`, `cors`, `express`, `zod`); SQLite is Node's built-in `node:sqlite` (`better-sqlite3` was removed in v2.5.0) |
 | stdio transport | Default transport — `src/index.ts` runs `StdioServerTransport` when `TRANSPORT` is unset |
 | Node 24 runtime | `engines.node` `>=24.15.0 <25`, matching Claude Desktop's runtime |
 | Read-only, relocatable DB | `node:sqlite` opens with `{ readOnly: true }` (no WAL/SHM writes → works in a read-only install dir); path overridable via `ARCHIVAL_DB_PATH` |

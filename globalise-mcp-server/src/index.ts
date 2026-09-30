@@ -18,9 +18,9 @@
  * server). Stdio mode calls it once; HTTP mode calls it per request.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import {
   registerAppResource,
   registerAppTool,
@@ -671,7 +671,7 @@ export function createServer(): McpServer {
         "To read a small hand, request a tighter region rather than a bigger size: size is clamped per page shape to what arrives intact, and anything beyond that is downscaled before it reaches the assistant, so a narrower crop raises pixels-per-letter where a larger size raises nothing. A clamp is reported in `note`. quality 'gray' can help with faint ink. " +
         'The corpus transcriptions are machine HTR: use this tool to re-transcribe a specific passage as a second opinion where the HTR looks garbled (strongest on short passages, proper names, numerals, and marginalia; on long dense text the HTR is often the better reading — say so). Transcribe what you actually see and flag uncertain readings. Especially valuable on non-Latin-script pages (Persian, Tamil, Chinese, ...), where the Latin-script HTR is known-unreliable. ' +
         "Auto-navigation: when a viewer is open for this page, it automatically zooms to the inspected region (navigateViewer defaults to true). Use globalise_navigate_viewer separately to steer the user's open viewer to a region without fetching bytes for your own analysis.",
-      inputSchema: inspectPageImageToolInputSchema as z.ZodObject<z.ZodRawShape>,
+      inputSchema: inspectPageImageToolInputSchema,
       ...outputSchemaField(inspectPageImageOutputSchema),
       annotations: EXTERNAL_READ_ONLY,
     },
@@ -738,7 +738,7 @@ export function createServer(): McpServer {
         "Region formats: 'pct:x,y,w,h' (percentage of the full scan), 'crop_pixels:x,y,w,h' (pixels of the full scan — bound with nativeWidth/nativeHeight from globalise_inspect_page_image; when used with relativeTo + relativeToSize it is instead pixels within that crop), 'x,y,w,h' (legacy IIIF pixels), or 'full' | 'square'. Out-of-bounds regions are rejected with a recovery hint — correct and retry.\n\n" +
         'Coordinate shortcut: to zoom to a sub-region of a prior inspect crop, pass relativeTo with the crop\'s region string and give region in crop-local coordinates (pct: directly, or crop_pixels: with relativeToSize:{width:cropPixelWidth,height:cropPixelHeight}) — the server projects to full-image space deterministically.\n\n' +
         'The deliveryState field says whether the iframe drained the commands immediately (delivered_recently), the viewer exists but has not polled recently so the commands are queued (queued_waiting_for_viewer — typical when scrolled offscreen), or no viewer has connected yet (no_live_viewer_seen). In the queued case the command is preserved server-side and applies when the viewer resumes polling — a normal delivery state, not a failure. no_live_viewer_seen is normal in the first few seconds after globalise_view_document_ui returns (the widget iframe starts polling only once the host renders it) — the queued commands apply on its first poll, so there is no need to wait or re-send. An unknown or expired viewUUID is a different, explicit error (sessions expire after ~30 min idle; re-open with globalise_view_document_ui). Host caveat: the reverse channel requires the host\'s MCP Apps bridge to support app-initiated tool calls (serverTools) — on hosts without it the iframe never polls and queued commands are never delivered; the response says so once the viewer is >30s old, and globalise_inspect_page_image is the host-independent way to show a detail.',
-      inputSchema: navigateViewerToolInputSchema as z.ZodObject<z.ZodRawShape>,
+      inputSchema: navigateViewerToolInputSchema,
       ...outputSchemaField(navigateViewerOutputSchema),
       annotations: VIEWER_SESSION,
     },
@@ -767,8 +767,8 @@ export function createServer(): McpServer {
         'Internal channel for the document-viewer iframe. ' +
         'It drains the navigation commands that globalise_navigate_viewer queued for one viewUUID. ' +
         "Not for the assistant: a call from the assistant consumes the queued commands, so the zoom never reaches the user's viewer.",
-      inputSchema: pollViewerCommandsInputSchema as unknown as typeof pollViewerCommandsInputSchema.shape,
-      ...outputSchemaField(pollViewerCommandsOutputSchema as unknown as typeof pollViewerCommandsOutputSchema.shape),
+      inputSchema: pollViewerCommandsInputSchema,
+      ...outputSchemaField(pollViewerCommandsOutputSchema),
       annotations: VIEWER_SESSION,
       _meta: { ui: { visibility: ['app'] } },
     },
@@ -807,17 +807,12 @@ export function createServer(): McpServer {
         'Shows a zoomable IIIF scan image beside its line-numbered transcription. ' +
         'Takes a document ID or URN; supports optional search-term highlighting. ' +
         'Selecting text in the transcription panel sends the selection to the assistant as a context note ("User selected text in document …: …").',
-      // Pass the strict schema at runtime (registerAppTool forwards it verbatim
-      // to registerTool, which honors .strict() and rejects unknown params),
-      // but type it as a raw shape: the wrapper's generics infer InputArgs from
-      // both this value and the ToolCallback arg, and a full ZodObject collides
-      // with the ZodRawShapeCompat arm. registerJsonTool casts for the same
-      // reason. A plain .shape would be non-strict — hence the strict value.
-      inputSchema: viewDocumentUiToolInputSchema as unknown as typeof viewDocumentUiInputSchema.shape,
+      // Strict schema: rejects unknown params. A plain .shape would be non-strict.
+      inputSchema: viewDocumentUiToolInputSchema,
       // outputSchema only when structured output is enabled: once set, the SDK
       // requires a matching structuredContent on every non-error result, and
       // the STRUCTURED_CONTENT=false branch below emits none.
-      ...outputSchemaField(viewDocumentUiOutputSchema as unknown as typeof viewDocumentUiOutputSchema.shape),
+      ...outputSchemaField(viewDocumentUiOutputSchema),
       annotations: EXTERNAL_READ_ONLY,
       _meta: {
         ui: {
