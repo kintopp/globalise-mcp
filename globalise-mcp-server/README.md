@@ -137,7 +137,8 @@ name the two starting points: the hosted-server route needs neither the build no
 
 The CLI defaults to **stdio** (spawns `node dist/index.js` locally). Pass `--http <url>` (or set
 `GLOBALISE_MCP_HTTP`) to drive a running server instead — e.g. the hosted Railway instance, no local
-build required.
+build required. `--protocol <legacy|auto|2026-07-28>` picks the MCP protocol era (default `legacy`;
+`auto` and `2026-07-28` probe first, which over stdio spawns a short-lived extra server process).
 
 | | **stdio** (default) | **http** (`--http <url>`) |
 |---|---|---|
