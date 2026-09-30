@@ -11,6 +11,8 @@
  *   --http <url>   StreamableHTTP against a running server / Railway (warm → instant).
  *   (default)      stdio-subprocess: spawns `node dist/index.js` (zero-config; needs
  *                  `npm run build`, which decompresses the DBs into data/).
+ *   --protocol <legacy|auto|2026-07-28>   MCP protocol era (default legacy; auto/2026-07-28
+ *                  probe first, which over stdio spawns a short-lived extra process).
  *
  * Output is JSON-first for agent/pipeline use:
  *   default   list tools → JSONL on stdout; single-object tools → one compact JSON object.
@@ -95,7 +97,7 @@ for (const v of Object.keys(VERBS)) {
 // Global flags (consumed by the CLI, never forwarded as tool args). NB: `--compact` is NOT here on
 // purpose — it's only meaningful on the `tools` verb (handled by argv inspection before tokenize).
 const GLOBAL_BOOL = new Set(["json", "table", "quiet", "show-call", "help", "stdin"]);
-const GLOBAL_VALUE = new Set(["http", "fields"]);
+const GLOBAL_VALUE = new Set(["http", "fields", "protocol"]);
 // Short/friendly flag aliases → canonical schema name.
 //   --max/-n → size   (the result cap)        --offset → from   (the pagination offset)
 const FLAG_ALIASES = { max: "size", n: "size", offset: "from", h: "help" };
@@ -216,7 +218,9 @@ function buildToolArgs(verbCfg, schema, flags, positionals) {
 }
 
 // ── Transport / connection ───────────────────────────────────────────────────
-async function connect(httpUrl) {
+const PROTOCOLS = ["legacy", "auto", "2026-07-28"];
+
+async function connect(httpUrl, protocol = "legacy") {
   const transport = httpUrl
     ? new StreamableHTTPClientTransport(new URL(httpUrl))
     : new StdioClientTransport({
@@ -226,7 +230,13 @@ async function connect(httpUrl) {
         // Explicit intent (redundant: the server is structured-ON unless STRUCTURED_CONTENT==='false').
         env: { ...process.env, STRUCTURED_CONTENT: "true" },
       });
-  const client = new Client({ name: "globalise-mcp-cli", version: "0.1" });
+  /** @type {import("@modelcontextprotocol/client").VersionNegotiationOptions | undefined} */
+  const versionNegotiation =
+    protocol === "auto" ? { mode: "auto" } : protocol === "2026-07-28" ? { mode: { pin: "2026-07-28" } } : undefined;
+  const client = new Client(
+    { name: "globalise-mcp-cli", version: "0.1" },
+    versionNegotiation ? { versionNegotiation } : undefined,
+  );
   await client.connect(transport);
   return client;
 }
@@ -371,7 +381,7 @@ function topUsage() {
   const lines = [
     "glob-mcp — headless CLI over the GLOBALISE MCP tools",
     "",
-    "Usage: glob-mcp [--http <url>] <command> [args] [flags]",
+    "Usage: glob-mcp [--http <url>] [--protocol <era>] <command> [args] [flags]",
     "       glob-mcp tools [--compact|--json]   list tool capabilities (compact = agent bootstrap)",
     "       glob-mcp <command> --help           flags + an example for one command",
     "",
@@ -384,6 +394,7 @@ function topUsage() {
     "",
     "Common flags:",
     "  --http <url>     target a running server (else stdio-spawns dist/index.js); env: GLOBALISE_MCP_HTTP",
+    "  --protocol <era> MCP protocol era: legacy (default) | auto | 2026-07-28",
     "  --fields a,b,c   project to these top-level keys on every row (biggest token saver)",
     "  --max N  (-n)    result cap → size  (search/find ≤500; commodity/measure ≤100)",
     "  --offset N       pagination offset → from",
@@ -502,8 +513,9 @@ async function main() {
 
   // Pre-scan for the transport URL + the verb. We can't classify every flag's
   // value-arity before listTools(), but we only need to skip the global value
-  // flags (--http/--fields) in space-form to find the first bare token.
+  // flags (--http/--protocol/--fields) in space-form to find the first bare token.
   let httpUrl = process.env.GLOBALISE_MCP_HTTP || null;
+  let protocol = "legacy";
   let verb;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -516,6 +528,17 @@ async function main() {
       httpUrl = argv[i + 1]; i++; continue;
     }
     if (a.startsWith("--http=")) { httpUrl = a.slice("--http=".length); continue; }
+    if (a === "--protocol" || a.startsWith("--protocol=")) {
+      const v = a === "--protocol" ? argv[i + 1] : a.slice("--protocol=".length);
+      if (!PROTOCOLS.includes(v)) {
+        process.stderr.write(`Error: --protocol must be one of ${PROTOCOLS.join(", ")}\n`);
+        process.exitCode = 2;
+        return;
+      }
+      protocol = v;
+      if (a === "--protocol") i++;
+      continue;
+    }
     if (a.startsWith("-")) {
       const key = a.replace(/^--?/, "").split("=")[0];
       if (GLOBAL_VALUE.has(key) && !a.includes("=")) i++; // skip its value
@@ -553,7 +576,7 @@ async function main() {
 
   let client;
   try {
-    client = await connect(httpUrl);
+    client = await connect(httpUrl, protocol);
   } catch (err) {
     // Per-command help degrades to static verb info + a hint when no server is reachable.
     if (isVerbHelp) {
