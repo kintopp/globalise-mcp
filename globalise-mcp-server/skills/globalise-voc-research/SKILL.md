@@ -1,7 +1,7 @@
 ---
 name: globalise-voc-research
-version: 0.9.3
-last_updated: 2026-09-09
+version: 0.10.0
+last_updated: 2026-09-30
 description: >-
   Search and read the 17th–18th-century Dutch East India Company (VOC /
   Verenigde Oostindische Compagnie) archives — ~4.8M HTR-transcribed pages
