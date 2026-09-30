@@ -1,18 +1,17 @@
 /**
  * HTTP transport for MCP server
  *
- * Streamable HTTP in stateless mode: every POST /mcp gets a fresh server
- * instance and a fresh transport (sessionIdGenerator: undefined), both torn
- * down when the response closes. No session IDs, no session maps, nothing to
- * expire — and immune to proxies killing long-lived connections or clients
- * caching stale session IDs.
+ * Stateless Streamable HTTP: createMcpHandler serves both 2025-era and
+ * 2026-07-28 clients on POST /mcp, building a fresh server per request. No
+ * session IDs, no session maps, nothing to expire — and immune to proxies
+ * killing long-lived connections or clients caching stale session IDs.
  */
 
 import type { Server } from 'node:http';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { McpServer } from '@modelcontextprotocol/server';
-import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
+import { toNodeHandler } from '@modelcontextprotocol/node';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createOriginGuard } from '../utils/origin.js';
@@ -31,13 +30,17 @@ export interface HttpServerOptions {
   createServer: () => McpServer;
 }
 
+export interface HttpServerHandle {
+  server: Server;
+  /** Ends long-lived MCP streams (2026-07-28 subscriptions/listen) that would block server.close(). */
+  closeMcp: () => Promise<void>;
+}
+
 /**
- * Create and start the HTTP server. Returns the underlying http.Server so the
- * caller can drain it on shutdown — discarding it (and returning the express
- * app) meant SIGTERM had no handle to close, cutting in-flight requests on
- * every redeploy (CODE-REVIEW finding 5).
+ * Create and start the HTTP server. Returns the http.Server and the MCP close
+ * hook so the caller can drain both on shutdown.
  */
-export function createHttpServer(options: HttpServerOptions): Server {
+export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
   const { port = 3000, allowedOrigins = ['*'], name = 'mcp-server', version = 'unknown', commit = 'unknown', createServer } = options;
 
   const app = express();
@@ -57,6 +60,14 @@ export function createHttpServer(options: HttpServerOptions): Server {
   // Origin validation on MCP endpoints (spec MUST: 403 on invalid origins).
   // Separate from CORS, which only sets response headers and rejects nothing.
   const originGuard = createOriginGuard();
+
+  // Default legacy: 'stateless' keeps 2025-era clients working — don't set 'reject'.
+  const mcpHandler = createMcpHandler(createServer, {
+    onerror: (error) => console.error('[MCP] Error handling request:', error),
+  });
+  const handleMcp = toNodeHandler(mcpHandler, {
+    onerror: (error) => console.error('[MCP] adapter error:', error),
+  });
 
   // ==========================================================================
   // Health Check Endpoint
@@ -106,28 +117,15 @@ export function createHttpServer(options: HttpServerOptions): Server {
   // ==========================================================================
 
   /**
-   * POST /mcp - Handle MCP requests
+   * POST /mcp - Handle MCP requests (both protocol eras)
    *
-   * Stateless: fresh server + transport per request, closed when the
-   * response ends. Initialize requests get no session ID, so clients
-   * never send one back; every request is self-contained.
+   * Stateless: the handler builds a fresh server per request and tears it
+   * down when the response ends. No session IDs; every request is
+   * self-contained.
    */
   app.post('/mcp', originGuard, async (req: Request, res: Response) => {
-    const server = createServer();
-    const transport = new NodeStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined, // stateless mode
-    });
-
-    res.on('close', () => {
-      // Fire-and-forget teardown: a rejected close must not become an
-      // unhandledRejection (fatal on Node 24); there is nothing to recover.
-      transport.close().catch(() => {});
-      server.close().catch(() => {});
-    });
-
     try {
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
+      await handleMcp(req, res, req.body);
     } catch (error) {
       console.error('[MCP] Error handling request:', error);
       if (!res.headersSent) {
@@ -173,5 +171,5 @@ export function createHttpServer(options: HttpServerOptions): Server {
     console.error('='.repeat(65));
   });
 
-  return server;
+  return { server, closeMcp: () => mcpHandler.close() };
 }

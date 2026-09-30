@@ -1,7 +1,7 @@
 /**
  * Origin validation middleware for MCP endpoints.
  *
- * The MCP spec (2025-11-25, Streamable HTTP transport) requires servers to
+ * The MCP spec (Streamable HTTP transport, 2025-11-25 and 2026-07-28) requires servers to
  * validate the Origin header as a DNS-rebinding mitigation and to respond
  * with HTTP 403 Forbidden for invalid origins.
  *

@@ -36,7 +36,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, '..');
 const STAGE_DIR = process.argv[2] ?? join(PACKAGE_ROOT, 'mcpb-build', 'stage');
 
-const PROTOCOL_VERSION = '2025-06-18';
+const PROTOCOL_VERSION = '2025-06-18'; // deliberately a 2025-era handshake: the shipped bundle must keep serving legacy hosts
 const VIEWER_RESOURCE_URI = 'ui://globalise/document-viewer.html';
 const OVERALL_TIMEOUT_MS = 60_000;
 

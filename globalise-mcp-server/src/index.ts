@@ -15,11 +15,12 @@
  *
  * All registration lives in createServer() so every transport connection
  * gets its own Server instance (the SDK binds exactly one transport per
- * server). Stdio mode calls it once; HTTP mode calls it per request.
+ * server). The transports may call it more than once per connection (per
+ * HTTP request; stdio also for a throwaway server/discover probe).
  */
 
 import { McpServer } from '@modelcontextprotocol/server';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import {
   registerAppResource,
@@ -27,10 +28,10 @@ import {
   RESOURCE_MIME_TYPE,
 } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
-import type { Server } from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { HttpServerHandle } from './transports/http-server.js';
 
 // Import tool implementations
 import {
@@ -898,12 +899,10 @@ async function main() {
     const port = parseInt(process.env.PORT || '3000', 10);
     const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 
-    httpServer = createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, commit: SERVER_COMMIT, createServer });
+    httpHandle = createHttpServer({ port, allowedOrigins, name: SERVER_NAME, version: SERVER_VERSION, commit: SERVER_COMMIT, createServer });
   } else {
     // Stdio transport (default) for Claude Desktop integration
-    const server = createServer();
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
+    serveStdio(createServer, { onerror: (error) => console.error('[MCP] stdio error:', error) });
 
     console.error('GLOBALISE MCP Server running on stdio');
   }
@@ -916,8 +915,15 @@ async function main() {
  */
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
-/** The running HTTP listener (set only in http mode), so shutdown() can drain it. */
-let httpServer: Server | undefined;
+/**
+ * Delay before closing the MCP handler. Its long-lived listen streams never
+ * finish on their own, but closing aborts in-flight requests too, so ordinary
+ * requests get this long to drain first. Keep well under SHUTDOWN_TIMEOUT_MS.
+ */
+const MCP_CLOSE_GRACE_MS = 3_000;
+
+/** The running HTTP listener and MCP close hook (http mode only), so shutdown() can drain them. */
+let httpHandle: HttpServerHandle | undefined;
 
 /**
  * Graceful shutdown. In HTTP mode, stop accepting new connections and let
@@ -928,7 +934,7 @@ let httpServer: Server | undefined;
 function shutdown(signal: string) {
   console.error(`[SHUTDOWN] ${signal} received, cleaning up...`);
 
-  if (!httpServer) {
+  if (!httpHandle) {
     closeDatabase();
     process.exit(0);
   }
@@ -945,12 +951,18 @@ function shutdown(signal: string) {
   // Stop accepting new connections and release idle keep-alive sockets, so
   // close() waits only on requests still in flight, then tear down once they
   // finish.
-  httpServer.closeIdleConnections();
-  httpServer.close(() => {
+  const { server, closeMcp } = httpHandle;
+  server.closeIdleConnections();
+  server.close(() => {
     clearTimeout(forceExit);
     closeDatabase();
     process.exit(0);
   });
+
+  // A listen socket only goes idle after its stream ends, hence the second sweep.
+  setTimeout(() => {
+    closeMcp().catch(() => {}).finally(() => server.closeIdleConnections());
+  }, MCP_CLOSE_GRACE_MS).unref();
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
