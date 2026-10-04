@@ -70,7 +70,7 @@ The questions live in [`scripts/bench/prompts.json`](../scripts/bench/prompts.js
 | `gm-1700` | medium | Inventory and RGP volume of the Generale Missive of 1 December 1700 | inv. `1628`, volume 6 |
 | `cipher-pages` | medium | How many pages are in cipher, and in which inventories | 8; `1232`, `1292` |
 | `dodo-references` | complex | Every reference to the dodo, across spelling variants and languages | pages `1059_0277`, `1095_0922`, `1164_0738` or `1165_0143`, `4011_0411`; the split form "walg vogel" |
-| `red-rail` | complex | Passages that describe the Mauritius red rail, which had no Dutch name of its own | pages `4005_0603`, `1128_0360`; "velthoender" |
+| `red-rail` | complex | Passages that describe the Mauritius red rail, which had no Dutch name of its own | page `4005_0603`, plus `1128_0360` or `1095_0922` (a *velthoenders* "field-hen" page) |
 
 An answer check is a simple text match. It can tell whether the right facts came back, but not everything a good answer does: for the dodo question it doesn't score whether Claude tried the other languages and reported, correctly, that none of them contains the bird.
 
