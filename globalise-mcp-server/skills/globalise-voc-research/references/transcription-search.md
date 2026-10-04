@@ -59,6 +59,19 @@ commodity, 200× the recall. For any important term, prefer `term~1` or wildcard
 the varying part: `coffie~1` catches `cofije`; `batavi*` catches `Batavien`;
 `kof?ie` catches `koffie`.
 
+**Sweep the variants before claiming a term is rare or absent.** The spelling
+in the secondary literature is often not the one the scribes used most, so a
+search for it alone can return a handful of pages and look conclusive.
+- Read the snippets of the first true hits for spellings you did not search,
+  and search each one.
+- Wildcard the vowels that vary inside the stem (`c?ff*`) rather than fuzzing a
+  short word: `~1` on a four-letter word matches thousands of unrelated words.
+- A compound split across a line break becomes two tokens that no single-word
+  wildcard matches; add the halves as a proximity phrase (`"first second"~1`).
+- Search the whole corpus before narrowing by place or inventory: a thing can
+  turn up far from where it originated, in cargo lists, gifts or another
+  office's journal.
+
 **Tokenizer (standard Elasticsearch).** Punctuation is stripped and `-`, `=`,
 `:`, the line-break `„` split words — so `oost-indie` ≡ `oost indie`, and a VOC
 abbreviation like `Comp=s` must be searched as `"comp s"` or `comp*`. Archive
