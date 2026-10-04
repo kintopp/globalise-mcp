@@ -63,7 +63,9 @@ the varying part: `coffie~1` catches `cofije`; `batavi*` catches `Batavien`;
 `:`, the line-break `„` split words — so `oost-indie` ≡ `oost indie`, and a VOC
 abbreviation like `Comp=s` must be searched as `"comp s"` or `comp*`. Archive
 numbers (`1.04.02`) lose their dots — filter by `inventoryNumber` rather than
-querying them. There's no reliable way to match a literal `*` or `?`.
+querying them. There's no reliable way to match a literal `*` or `?`. Accents are
+**not** folded, and the HTR mostly omits them: `général` matches 5 pages, `general`
+541 French pages — search French/Portuguese/Spanish terms unaccented, or OR both forms.
 
 **Totals are usually exact, occasionally a floor.** `total.relation` is `"eq"`
 (exact) or `"gte"` (at least). Counts are exact even when large (`peper` →
