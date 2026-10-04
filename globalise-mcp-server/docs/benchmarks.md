@@ -78,7 +78,29 @@ An answer check is a simple text match. It can tell whether the right facts came
 
 ### Results
 
-No measured runs yet.
+**2026-10-04 · Claude Sonnet 5.5 (effort `high`) · server v0.10.0 · 3 runs per question and arm · cache warm-up on**
+
+Average cost per question at API list price, with the average number of steps (turns) in brackets. *Passed* counts the runs whose answer contained the expected facts. Entry cost (the warm-up, paid once per session): mcp $0.056, mcp+skill $0.072, baseline $0.008.
+
+| Question | Tier | mcp | mcp+skill | baseline | mcp vs baseline |
+|---|---|---|---|---|---|
+| `voc-archive-code` | simple | $0.006 (1) · 3/3 | $0.010 (1) · 3/3 | $0.004 (1) · 3/3 | 1.4× more |
+| `bahar-pepper` | simple | $0.032 (2) · 3/3 | $0.038 (2) · 3/3 | $0.009 (1) · 3/3 | 3.8× more |
+| `foelie-kruidnagel` | simple | $0.022 (2) · 3/3 | $0.027 (2) · 3/3 | $0.006 (1) · 3/3 | 3.4× more |
+| `gm-1700` | medium | $0.030 (2) · 3/3 | $0.034 (2) · 3/3 | $1.520 (66) · 3/3 | 0.02× |
+| `cipher-pages` | medium | $0.014 (2) · 3/3 | $0.020 (2) · 3/3 | $0.351 (13) · 2/3 | 0.04× |
+| `dodo-references` | complex | $0.977 (38) · **1/3** | $0.981 (41) · 2/3 | $1.138 (39) · **0/3**¹ | 0.86× |
+| `red-rail` | complex | $0.355 (19) · 2/3 | $0.447 (23) · **1/3** | $0.488 (16) · **0/3** | 0.73× |
+
+¹ One baseline run was stopped at the 900 s session limit and counts as a failure; the cost and step averages cover the other two.
+
+The whole set (63 sessions) came to $18.39 at the API list price. What the numbers show:
+
+- **On what Claude already knows, the server costs a few cents more.** The archive code, the bahar and the commodity terms are answered from memory, so the baseline costs well under a cent; reading the server's tool descriptions costs more than that. The archive-code question needs no tool call at all with the server, because the answer is in the server's own instructions.
+- **On archival questions, it is 25–50 times cheaper.** The baseline did answer the Generale Missive question, by working through the Nationaal Archief's online inventory and the published edition, but it took 66 steps and five minutes on average against two steps and five seconds. For the cipher pages it found GLOBALISE's own language-identification dataset on GitHub, which worked twice out of three.
+- **The baseline cannot search the transcriptions at all.** The search API accepts only POST requests and Claude's web tools send only GET, so on the two complex questions the baseline failed every run. It found the published discussion of the 1615 dodo journal (and, in one trial run outside this set, that page's ID from the post's link), but never the other pages.
+- **The complex questions are hard even with the server.** On the dodo question, two of the six server runs missed the 1647 Japan pages, which lie outside the Mauritius material, and one searched only the textbook spellings, found none of the dodeersen/dodersen pages, and concluded that only one page mentions the bird. On the red rail, half the server runs found Pretorius's description but not a *velthoenders* page.
+- **The skill makes no clear difference yet.** Claude loaded it on every complex question and on no simple one, where it adds 15–60% for nothing. On the complex questions it cost about the same and passed 2/3 against 1/3 on the dodo but 1/3 against 2/3 on the red rail, which with three runs each is noise.
 
 ### Server footprint
 
