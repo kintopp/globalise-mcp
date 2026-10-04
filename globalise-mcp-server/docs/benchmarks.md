@@ -102,6 +102,8 @@ The whole set (63 sessions) came to $18.39 at the API list price. What the numbe
 - **The complex questions are hard even with the server.** On the dodo question, two of the six server runs missed the 1647 Japan pages, which lie outside the Mauritius material, and one searched only the textbook spellings, found none of the dodeersen/dodersen pages, and concluded that only one page mentions the bird. On the red rail, half the server runs found Pretorius's description but not a *velthoenders* page.
 - **The skill makes no clear difference yet.** Claude loaded it on every complex question and on no simple one, where it adds 15–60% for nothing. On the complex questions it cost about the same and passed 2/3 against 1/3 on the dodo but 1/3 against 2/3 on the red rail, which with three runs each is noise.
 
+**Follow-up, same day.** A paragraph was added to the skill's search reference telling Claude to sweep spelling variants before concluding that a term is rare: read new spellings off the first hits, wildcard the vowels inside a stem, search split compounds as phrases, and search the whole corpus before narrowing by place. It names no dodo spellings. Three more mcp+skill runs of the dodo question passed 2/3 again at $0.91 on average; the failing run again stopped at the textbook spelling and reported a single page. The guidance did not change the outcome measurably.
+
 ### Server footprint
 
 The benchmark above measures complete conversations, so its numbers include Claude Code's own instructions and habits. A second, much simpler measurement looks only at what the server itself adds, which is the same whichever app you use:
