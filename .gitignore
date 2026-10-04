@@ -48,3 +48,6 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
+
+# MCP token benchmark output
+globalise-mcp-server/scripts/bench/results/

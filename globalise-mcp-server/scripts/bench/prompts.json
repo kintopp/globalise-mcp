@@ -1,0 +1,66 @@
+[
+  {
+    "id": "voc-archive-code",
+    "tier": "simple",
+    "prompt": "What is the Nationaal Archief access number (archive code) of the archive of the Dutch East India Company (VOC)?",
+    "expect": ["1\\.04\\.02"],
+    "probes": [
+      { "tool": "globalise_find_archival_documents", "args": { "query": "generale missive", "source": "gm", "size": 1, "includeAggregations": false } }
+    ]
+  },
+  {
+    "id": "bahar-pepper",
+    "tier": "simple",
+    "prompt": "In VOC trade, roughly how many kilograms was a bahar of pepper?",
+    "expect": ["\\b1[78]\\d\\s*(kg|kilo)"],
+    "probes": [
+      { "tool": "globalise_lookup_measure", "args": { "query": "bahar", "size": 1 } }
+    ]
+  },
+  {
+    "id": "foelie-kruidnagel",
+    "tier": "simple",
+    "prompt": "VOC cargo lists often mention 'foelie' and 'kruidnagel'. What English commodities do these terms denote?",
+    "expect": ["mace", "clove"],
+    "probes": [
+      { "tool": "globalise_lookup_commodity", "args": { "query": "foelie OR kruidnagel", "size": 2 } }
+    ]
+  },
+  {
+    "id": "gm-1700",
+    "tier": "medium",
+    "prompt": "Find the Generale Missive (general letter from Batavia to the Heren XVII) dated 1 December 1700: which VOC inventory number holds it in the Nationaal Archief, and in which volume of the published Rijks Geschiedkundige Publicatiën edition does it appear?",
+    "expect": ["1628", "(vol(ume)?|deel|GM|RGP)\\.?\\s*(VI\\b|6\\b)"],
+    "probes": [
+      { "tool": "globalise_find_archival_documents", "args": { "query": "generale missive", "source": "gm", "yearFrom": 1700, "yearTo": 1700, "includeAggregations": false } }
+    ]
+  },
+  {
+    "id": "cipher-pages",
+    "tier": "medium",
+    "prompt": "Some VOC letters were written in cipher. How many pages in the GLOBALISE transcription corpus are classified as cipher text, and in which inventories are they?",
+    "expect": ["\\b8\\b|eight", "1232", "1292"],
+    "probes": [
+      { "tool": "globalise_search_transcriptions", "args": { "query": "*", "languages": ["art"], "size": 10, "fragmentSize": 20 } }
+    ]
+  },
+  {
+    "id": "dodo-references",
+    "tier": "complex",
+    "prompt": "Systematically find every reference to the dodo in the VOC records. Start from the period names known from the literature (Dutch dodaers, walghvogel, dronte) and extend them: spelling variants, HTR transcription errors, words split across line breaks, and the bird's names in the archive's other Latin-script languages (English, French, Spanish, Portuguese, German, Latin, Malay). Distinguish the dodo from the Mauritius red hen. List each page by GLOBALISE document ID with its year, the spelling used and a one-line summary, and say which variants and languages produced nothing.",
+    "expect": ["1059_0277", "1095_0922", "1164_0738|1165_0143", "4011_0411", "walg\\s*vogel"],
+    "probes": [
+      { "tool": "globalise_search_transcriptions", "args": { "query": "dodeers dodaers dodersen dodeersen dodaersen", "size": 20, "fragmentSize": 150 } },
+      { "tool": "globalise_retrieve_document", "args": { "documentId": "NL-HaNA_1.04.02_1059_0277" } }
+    ]
+  },
+  {
+    "id": "red-rail",
+    "tier": "complex",
+    "prompt": "The Mauritius red rail (Aphanapteryx bonasia) had no fixed name of its own in Dutch sources. Find the passages in the VOC records that most plausibly describe it, explain how you identified each one, and give their GLOBALISE document IDs.",
+    "expect": ["4005_0603", "1128_0360", "velthoender"],
+    "probes": [
+      { "tool": "globalise_retrieve_document", "args": { "documentId": "NL-HaNA_1.04.02_4005_0603" } }
+    ]
+  }
+]
