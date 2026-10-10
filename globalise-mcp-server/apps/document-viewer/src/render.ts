@@ -34,7 +34,7 @@ export function escapeHtml(text: string): string {
 /**
  * Escape special regex characters
  */
-export function escapeRegex(text: string): string {
+function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
@@ -77,7 +77,7 @@ export function renderTranscription(lines: string[], highlightTerms: string[]): 
 /**
  * Build HTML for archival context section
  */
-export function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
+function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
   if (!ctx || ctx.source === 'none') {
     return '';
   }

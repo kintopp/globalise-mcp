@@ -1,7 +1,7 @@
 /**
  * Unit tests for the pure render helpers in apps/document-viewer/src/render.ts
- * Exercises: escapeHtml, escapeRegex, sanitizeUrl, renderTranscription,
- * buildArchivalContextHtml, headerInnerHtml, pageInfoText.
+ * Exercises: escapeHtml, sanitizeUrl, renderTranscription, headerInnerHtml,
+ * pageInfoText.
  *
  * Runs under tsx (browser-free Node environment) — render.ts has no DOM/OSD
  * imports, so it loads cleanly here. Structurally mirrors test-viewer-protocol.ts.
@@ -10,10 +10,8 @@
 import type { ViewDocumentUiOutput, ArchivalContext } from '../src/tools/document-viewer.js';
 import {
   escapeHtml,
-  escapeRegex,
   sanitizeUrl,
   renderTranscription,
-  buildArchivalContextHtml,
   headerInnerHtml,
   pageInfoText,
 } from '../apps/document-viewer/src/render.js';
@@ -28,14 +26,8 @@ function main(): void {
   );
   check(escapeHtml('no specials') === 'no specials', 'clean string passes through unchanged');
 
-  // ── escapeRegex ─────────────────────────────────────────────────────────────
-  console.log('2. escapeRegex');
-  check(escapeRegex('a.b*c') === 'a\\.b\\*c', 'dot and star are backslash-escaped');
-  check(escapeRegex('a[b]') === 'a\\[b\\]', 'square brackets escaped');
-  check(escapeRegex('hello') === 'hello', 'plain string unchanged');
-
   // ── sanitizeUrl ─────────────────────────────────────────────────────────────
-  console.log('3. sanitizeUrl');
+  console.log('2. sanitizeUrl');
   const httpUrl = 'http://example.com/foo';
   const httpsUrl = 'https://service.archief.nl/iip/example.jp2/full/max/0/default.jpg';
   check(sanitizeUrl(httpUrl) === httpUrl, 'http:// passes through');
@@ -46,7 +38,7 @@ function main(): void {
   check(sanitizeUrl('') === '#', 'empty string → #');
 
   // ── renderTranscription ─────────────────────────────────────────────────────
-  console.log('4. renderTranscription');
+  console.log('3. renderTranscription');
 
   // Line numbers are 1-based
   const oneLineHtml = renderTranscription(['hello'], []);
@@ -67,6 +59,12 @@ function main(): void {
   const upperHtml = renderTranscription(['PEPER en thee'], ['peper']);
   check(upperHtml.includes('<mark>PEPER</mark>'), 'highlight is case-insensitive');
 
+  // Highlight terms are literal text, not regex syntax
+  const dotHtml = renderTranscription(['a.b axb'], ['a.b']);
+  check(dotHtml.includes('<mark>a.b</mark>') && !dotHtml.includes('<mark>axb</mark>'), 'a "." in a term matches only a dot');
+  const bracketHtml = renderTranscription(['f[1] r'], ['[1]']);
+  check(bracketHtml.includes('f<mark>[1]</mark>'), 'a bracketed term is matched literally');
+
   // Empty-string highlight term produces no <mark> (filter(Boolean) drops '')
   const emptyTermHtml = renderTranscription(['a b'], ['']);
   check(!emptyTermHtml.includes('<mark>'), 'empty highlight term produces no <mark>');
@@ -76,38 +74,8 @@ function main(): void {
   const spaceTermHtml = renderTranscription(['a b c'], [' ']);
   check(spaceTermHtml.includes('<mark> </mark>'), 'space-only term wraps spaces (current behavior, not a bug fix)');
 
-  // ── buildArchivalContextHtml ─────────────────────────────────────────────────
-  console.log('5. buildArchivalContextHtml');
-
-  check(buildArchivalContextHtml(undefined) === '', 'undefined → empty string');
-  check(
-    buildArchivalContextHtml({ source: 'none', inventoryTotal: 0 } as ArchivalContext) === '',
-    '{ source: "none" } → empty string',
-  );
-
-  // Context with settlements and yearRange produces .archival-context block
-  const ctx: ArchivalContext = {
-    source: 'obp',
-    inventoryTotal: 5,
-    settlements: ['Batavia'],
-    yearRange: { from: 1680, to: 1685 },
-  };
-  const ctxHtml = buildArchivalContextHtml(ctx);
-  check(ctxHtml.includes('class="archival-context"'), 'produces .archival-context block');
-  check(ctxHtml.includes('Batavia'), 'settlement appears in output');
-
-  // description containing < is escaped
-  const ctxWithDesc: ArchivalContext = {
-    source: 'gm',
-    inventoryTotal: 3,
-    description: 'Notes <draft> only',
-  };
-  const descHtml = buildArchivalContextHtml(ctxWithDesc);
-  check(!descHtml.includes('<draft>'), 'description < is escaped — no raw tag in output');
-  check(descHtml.includes('&lt;draft&gt;'), 'description angle-brackets become entities');
-
   // ── headerInnerHtml ──────────────────────────────────────────────────────────
-  console.log('6. headerInnerHtml');
+  console.log('4. headerInnerHtml');
 
   // Fuller fixture: must populate languages (array), urls.viewer (passed to
   // sanitizeUrl → new URL()), and id (string) at minimum or the call throws.
@@ -153,8 +121,31 @@ function main(): void {
     'viewer URL present in external link',
   );
 
+  // ── archival context in the header ──────────────────────────────────────────
+  console.log('5. archival context in the header');
+  const withContext = (archivalContext?: ArchivalContext) => headerInnerHtml({ ...doc, archivalContext });
+
+  check(!withContext(undefined).includes('archival-context'), 'no context → no archival block');
+  check(
+    !withContext({ source: 'none', inventoryTotal: 0, settlements: ['Batavia'] }).includes('archival-context'),
+    '{ source: "none" } → no archival block, even with fields set',
+  );
+
+  const ctxHtml = withContext({
+    source: 'obp',
+    inventoryTotal: 5,
+    settlements: ['Batavia'],
+    yearRange: { from: 1680, to: 1685 },
+  });
+  check(ctxHtml.includes('class="archival-context"'), 'settlements + year range produce an archival block');
+  check(ctxHtml.includes('Batavia') && ctxHtml.includes('1680–1685'), 'settlement and year range appear in it');
+
+  const descHtml = withContext({ source: 'gm', inventoryTotal: 3, description: 'Notes <draft> only' });
+  check(!descHtml.includes('<draft>'), 'description < is escaped — no raw tag in output');
+  check(descHtml.includes('&lt;draft&gt;'), 'description angle-brackets become entities');
+
   // ── pageInfoText ─────────────────────────────────────────────────────────────
-  console.log('7. pageInfoText');
+  console.log('6. pageInfoText');
   check(
     pageInfoText(doc) === 'Page 0106 of inventory 9966',
     'formats scan + inventory correctly',
