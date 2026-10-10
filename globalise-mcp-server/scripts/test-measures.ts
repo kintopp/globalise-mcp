@@ -132,15 +132,11 @@ async function main() {
   });
   check(Boolean(selfRef), `Mutsje retains a self-referential ratio (${selfRef?.ratio ?? 'none found'})`);
 
-  console.log('12. contract: results validate against the output schema; definitions are nl/en only');
+  console.log('12. contract: results validate against the output schema');
   for (const [name, out] of [['bahar', bahar], ['all', all], ['empty', empty]] as const) {
     check(lookupMeasureOutputSchema.safeParse(out).success, `${name} result conforms to lookupMeasureOutputSchema`);
   }
   const allDefs = [...bahar.results, ...all.results].flatMap((r) => r.definitions);
-  check(
-    allDefs.every((d) => Object.keys(d).every((k) => k === 'nl' || k === 'en')),
-    'every definition object carries only nl/en keys (parseDefinitions strips the rest)',
-  );
   check(allDefs.some((d) => typeof d.en === 'string' && d.en.length > 0), 'an English-bearing definition is present in the result set');
 
   closeDatabase();

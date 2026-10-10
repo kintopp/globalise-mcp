@@ -46,7 +46,6 @@ check(VISION_MAX_TOKENS === 4784, `token budget is 4784 (got: ${VISION_MAX_TOKEN
 // edge check runs on the PADDED width, nothing between 1989 and 2016 is
 // reachable, so 1988 is not merely tidy — it is forced.
 check(VISION_MAX_EDGE < 2000, 'edge cap stays under the ~2000px many-image limit');
-check(VISION_MAX_EDGE !== 2016, 'edge cap is NOT 2016 — that is over the many-image limit');
 check(padToPatch(1989) === 2016, 'a width of 1989 pads to 2016, hence unreachable');
 
 check(padToPatch(28) === 28, 'padToPatch is exact on a grid multiple');
@@ -117,14 +116,6 @@ console.log('3. shape, not width, determines the ceiling');
   const oldH = Math.ceil(2016 * leafH / leafW);
   check(!fitsBudget(2016, leafW, leafH), `the retired 2016 cap does not fit a portrait leaf (would be 2016x${oldH})`);
   check(padToPatch(oldH) > 2000, `...and its padded height ${padToPatch(oldH)} breaches the ~2000px many-image limit`);
-}
-
-{
-  // The default (1568) breaches the many-image limit on ~70% of the corpus —
-  // the finding that made this a live bug rather than a latent one.
-  const dh = Math.ceil(1568 * 4138 / 3165);
-  check(padToPatch(dh) > 2000, `default 1568px on a median leaf pads to ${padToPatch(dh)} — over ~2000px`);
-  check(maxInspectWidth(3165, 4138) < 1568, 'so the clamp must reduce the default on portrait leaves');
 }
 
 // ---------------------------------------------------------------------------

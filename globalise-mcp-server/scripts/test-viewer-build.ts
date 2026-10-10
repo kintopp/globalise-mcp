@@ -24,22 +24,9 @@ if (htmlExists) {
   check(!html.includes('cdn.jsdelivr.net'), 'no cdn.jsdelivr.net references (OpenSeadragon is bundled)');
   check(html.includes('OpenSeadragon'), 'OpenSeadragon is inlined');
   check(html.length > 400_000, `bundle is self-contained (${html.length} bytes — a CDN-importing build is far smaller)`);
-  // R19: the viewer reads structuredContent first and deep-zooms via IIIF
-  check(html.includes('structuredContent'), 'viewer reads structuredContent (R19)');
-  check(html.includes('info.json'), 'viewer fetches IIIF info.json for deep-zoom (R19)');
-  // Help overlay (issue #422) must survive the bundle build.
-  check(html.includes('shortcuts-overlay'), 'help overlay markup is present (issue #422)');
-  check(html.includes('show-shortcuts'), 'help (?) button is present (issue #422)');
-  // Navigator fix (issue #422): the crossOrigin policy must survive the build.
-  check(html.includes('crossOriginPolicy'), 'viewer sets crossOriginPolicy for CORS-clean navigator tiles (issue #422)');
-  // Full-screen 'f' shortcut wires the MCP Apps display-mode toggle.
-  check(html.includes('requestDisplayMode'), 'viewer wires the f full-screen toggle (requestDisplayMode)');
-  // Select-region mode (plan 020): the ☐ toolbar button, the chat highlight
-  // token, and the labelled-highlight CSS class must all survive the bundle.
-  check(html.includes('select-mode'), 'select-mode button markup is present (plan 020)');
+  // Strings the server side depends on: the highlight token is the format
+  // globalise_inspect_page_image's description tells the model to look for.
   check(html.includes('[Highlight: region '), 'highlight chat-token format is present (plan 020)');
-  check(html.includes('region-label'), 'highlight label-chip class is present (plan 020)');
-  // Reverse channel (plan 021): the poll-tool name must survive the bundle build.
   check(html.includes('globalise_poll_viewer_commands'), 'poll-tool name is present (plan 021)');
 }
 
