@@ -3,7 +3,9 @@
  * behind search_transcriptions): range parsing, clamping and validation, list
  * normalisation, union of explicit numbers with ranges, intersection with a
  * year-resolved set, and the empty-scope signal (an empty array, never an
- * empty upstream terms list).
+ * empty upstream terms list) — including that search_transcriptions honours it
+ * without calling upstream, which would read an empty terms list as "no
+ * filter" and search the whole corpus. Section 5 needs the local archival DB.
  *
  * Run with: npm run test:inventory-scope
  */
@@ -16,6 +18,7 @@ import {
   CORPUS_INVENTORY_MIN,
   CORPUS_INVENTORY_MAX,
 } from '../src/utils/inventory-scope.js';
+import { searchTranscriptions, searchTranscriptionsInputSchema } from '../src/tools/search.js';
 import { check, finish, throwsToolError } from './test-utils.js';
 
 const range = (spec: string) => { const r = parseInventoryRange(spec); return [r.from, r.to]; };
@@ -50,5 +53,29 @@ check(eq(resolveInventoryScope(undefined, undefined, ['1500', '1501'])!, ['1500'
 check(resolveInventoryScope(undefined, undefined, [])!.length === 0, 'years resolving to nothing → empty scope (not undefined)');
 check(eq(resolveInventoryScope(undefined, ['1500', '1501', '1502'], ['1501', '1502', '1503'])!, ['1501', '1502']), 'ranges ∩ years');
 check(resolveInventoryScope(['9966'], undefined, ['1501'])!.length === 0, 'disjoint explicit ∩ years → empty scope');
+
+console.log('5. search_transcriptions short-circuits an empty scope');
+{
+  let upstreamCalls = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    upstreamCalls++;
+    throw new Error('upstream must not be called for an empty scope');
+  }) as typeof fetch;
+  try {
+    // Inventory 9966 is not among the inventories dated 1610-1615.
+    const out = await searchTranscriptions(searchTranscriptionsInputSchema.parse({
+      query: 'peper', inventoryNumber: '9966', yearFrom: 1610, yearTo: 1615,
+    }));
+    check(upstreamCalls === 0, `no upstream request (got ${upstreamCalls})`);
+    check(out.total.value === 0 && out.results.length === 0, 'reports zero results');
+    check(out.pagination.hasMore === false, 'reports no further pages');
+    check(/nothing was searched/.test(out.note ?? ''), `note says nothing was searched (got: ${out.note})`);
+  } catch (e) {
+    check(false, `empty scope must not reach upstream (${upstreamCalls} upstream calls; threw: ${e instanceof Error ? e.message : JSON.stringify(e)})`);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
 
 finish('Inventory-scope tests');
