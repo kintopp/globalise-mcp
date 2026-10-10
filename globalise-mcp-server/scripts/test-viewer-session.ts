@@ -1,99 +1,109 @@
 /**
- * Unit tests for the viewer command-queue session semantics (plan 021,
- * src/utils/viewer-session.ts). Pure in-memory Map/array operations — no
- * network, no DB. These pin the behaviors the navigate/poll/view handlers
- * rely on: mint/read, drain (splice), and remount.
+ * Viewer command-queue session (plan 021, src/utils/viewer-session.ts), tested
+ * through the functions the view/poll handlers call. Failure modes pinned:
+ *   - a remount that replaces the entry instead of updating it drops
+ *     createdAt, lastPolledAt and commands queued before the page turn
+ *   - a stale or absent UUID that is adopted instead of minting a fresh one
+ *   - a drain that returns commands without emptying the queue (replayed zooms)
+ *     or without stamping lastPolledAt
+ *   - eviction that removes fresh entries, or keeps idle ones
  *
  * Run with: npm run test:viewer-session
  */
 
-import { viewerQueues, sweepTtlMap, type ViewerQueue } from '../src/utils/viewer-session.js';
+import {
+  viewerQueues, mintOrRemount, drainQueue, evictIdle,
+} from '../src/utils/viewer-session.js';
 import { check, finish } from './test-utils.js';
 
-function makeQueue(documentId: string): ViewerQueue {
-  return {
-    commands: [],
-    createdAt: Date.now(),
-    lastAccess: Date.now(),
-    documentId,
-    imageWidth: 5892,
-    imageHeight: 4167,
-  };
-}
+const DOC_A = 'urn:globalise:NL-HaNA_1.04.02_9966_0106';
+const DOC_B = 'urn:globalise:NL-HaNA_1.04.02_9966_0107';
 
 // ---------------------------------------------------------------------------
-// 1. Mint + read
+// 1. Mint
 // ---------------------------------------------------------------------------
 
-console.log('1. mint + read');
+console.log('1. mint');
 
 {
-  const uuid = 'test-uuid-1';
-  viewerQueues.set(uuid, makeQueue('urn:globalise:NL-HaNA_1.04.02_9966_0106'));
+  const uuid = mintOrRemount(undefined, DOC_A, { width: 5892, height: 4167 });
   const q = viewerQueues.get(uuid);
-  check(!!q, 'minted queue is retrievable by UUID');
-  check(q?.documentId === 'urn:globalise:NL-HaNA_1.04.02_9966_0106', 'documentId stored');
-  check(q?.imageWidth === 5892 && q?.imageHeight === 4167, 'dims stored');
-  check(Array.isArray(q?.commands) && q?.commands.length === 0, 'commands starts empty');
-  viewerQueues.delete(uuid);
+  check(!!q, 'a minted session is retrievable by the returned UUID');
+  check(q?.documentId === DOC_A && q?.imageWidth === 5892 && q?.imageHeight === 4167, 'document and dims stored');
+  check(q?.commands.length === 0, 'a fresh session has no commands');
+
+  const stale = mintOrRemount('evicted-uuid', DOC_A);
+  check(stale !== 'evicted-uuid' && viewerQueues.has(stale), 'an unknown UUID mints a fresh session instead of adopting it');
+  check(!viewerQueues.has('evicted-uuid'), 'the unknown UUID is not created');
+  check(mintOrRemount(undefined, DOC_A) !== uuid, 'each mint gets its own UUID');
 }
 
 // ---------------------------------------------------------------------------
-// 2. Drain semantics (splice(0) returns all + empties)
+// 2. Remount (in-viewer page navigation)
 // ---------------------------------------------------------------------------
 
-console.log('2. drain semantics');
+console.log('2. remount');
 
 {
-  const q = makeQueue('doc');
-  q.commands.push({ action: 'navigate', region: 'pct:0,0,50,50' });
-  q.commands.push({ action: 'navigate', region: 'pct:10,10,5,5' });
-  const drained = q.commands.splice(0);
-  check(drained.length === 2, 'drain returns all queued commands');
-  check(q.commands.length === 0, 'queue is empty after drain');
-  check(q.commands.splice(0).length === 0, 'a second drain returns nothing');
-}
+  const uuid = mintOrRemount(undefined, DOC_A, { width: 5892, height: 4167 });
+  const before = viewerQueues.get(uuid)!;
+  const { createdAt } = before;
+  before.lastPolledAt = 123456;
+  before.lastAccess = 0;
+  before.commands.push({ action: 'navigate', region: 'pct:0,0,50,50' });
 
-// ---------------------------------------------------------------------------
-// 3. Remount semantics (same key overwrite swaps content, keeps createdAt)
-// ---------------------------------------------------------------------------
-
-console.log('3. remount semantics');
-
-{
-  const uuid = 'test-uuid-remount';
-  const original = makeQueue('urn:globalise:NL-HaNA_1.04.02_9966_0106');
-  original.lastPolledAt = 123456;
-  viewerQueues.set(uuid, original);
-  const createdAt = original.createdAt;
-
-  // Remount (as viewDocumentUi does): reuse the entry, swap content, keep
-  // createdAt and lastPolledAt untouched.
-  const existing = viewerQueues.get(uuid)!;
-  existing.documentId = 'urn:globalise:NL-HaNA_1.04.02_9966_0107';
-  existing.imageWidth = 4000;
-  existing.imageHeight = 3000;
-  existing.lastAccess = Date.now();
-
+  const again = mintOrRemount(uuid, DOC_B, { width: 4000, height: 3000 });
   const q = viewerQueues.get(uuid)!;
-  check(q.documentId === 'urn:globalise:NL-HaNA_1.04.02_9966_0107', 'remount swaps documentId');
+  check(again === uuid, 'a live UUID is kept');
+  check(q.documentId === DOC_B, 'remount swaps the document');
+  check(q.imageWidth === 4000 && q.imageHeight === 3000, 'remount swaps the dims');
   check(q.createdAt === createdAt, 'remount preserves createdAt');
   check(q.lastPolledAt === 123456, 'remount leaves lastPolledAt untouched (iframe still polling)');
-  viewerQueues.delete(uuid);
+  check(q.lastAccess > 0, 'remount refreshes lastAccess');
+  check(q.commands.length === 1, 'remount keeps commands queued before the page turn');
+
+  mintOrRemount(uuid, DOC_A);
+  check(q.imageWidth === undefined && q.imageHeight === undefined,
+    'remounting onto a page without dims clears the old dims rather than keeping the wrong ones');
 }
 
 // ---------------------------------------------------------------------------
-// 4. sweepTtlMap is exported and callable (interval is unref'd)
+// 3. Drain
 // ---------------------------------------------------------------------------
 
-console.log('4. sweepTtlMap');
+console.log('3. drain');
 
 {
-  const m = new Map<string, { lastAccess: number }>();
-  m.set('k', { lastAccess: Date.now() });
-  // Should not throw; the interval it starts is unref'd so it won't hang exit.
-  sweepTtlMap(m, 1_000_000);
-  check(m.has('k'), 'sweepTtlMap does not immediately evict a fresh entry');
+  const uuid = mintOrRemount(undefined, DOC_A);
+  const q = viewerQueues.get(uuid)!;
+  q.commands.push({ action: 'navigate', region: 'pct:0,0,50,50' });
+  q.commands.push({ action: 'navigate', region: 'pct:10,10,5,5' });
+
+  const drained = drainQueue(uuid);
+  check(drained.length === 2 && drained[0].region === 'pct:0,0,50,50', 'drain returns every queued command, in order');
+  check(drainQueue(uuid).length === 0, 'a second drain returns nothing (no replayed zooms)');
+  check(typeof q.lastPolledAt === 'number' && q.lastPolledAt > 0, 'drain stamps lastPolledAt');
+  check(drainQueue('no-such-uuid').length === 0, 'an unknown UUID drains nothing');
+  check(!viewerQueues.has('no-such-uuid'), 'draining an unknown UUID does not create a session');
+}
+
+// ---------------------------------------------------------------------------
+// 4. Idle eviction
+// ---------------------------------------------------------------------------
+
+console.log('4. evictIdle');
+
+{
+  const now = 10_000_000;
+  const m = new Map([
+    ['fresh', { lastAccess: now - 1_000 }],
+    ['boundary', { lastAccess: now - 60_000 }],
+    ['idle', { lastAccess: now - 60_001 }],
+  ]);
+  evictIdle(m, 60_000, now);
+  check(m.has('fresh'), 'a recently used entry survives');
+  check(m.has('boundary'), 'an entry idle for exactly the TTL survives');
+  check(!m.has('idle'), 'an entry idle past the TTL is evicted');
 }
 
 finish('Viewer session tests');

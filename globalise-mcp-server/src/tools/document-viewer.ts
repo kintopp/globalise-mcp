@@ -5,13 +5,12 @@
  * including IIIF image URL extracted from the API response.
  */
 
-import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getCachedApiGet, buildUrl, API_CONFIG, VIEWER_URL_PREFIX, documentCache } from '../utils/api-client.js';
 import { normalizeDocumentId, parseDocumentId } from '../utils/document-id.js';
 import { extractIiifImageUrl } from '../utils/iiif.js';
 import { fetchIiifDims } from '../utils/iiif-info.js';
-import { viewerQueues } from '../utils/viewer-session.js';
+import { mintOrRemount } from '../utils/viewer-session.js';
 import { DocumentResponse } from '../utils/types.js';
 import { languageSchema, mapPageLanguages } from '../utils/languages.js';
 import { normalizeLicense } from './document.js';
@@ -191,28 +190,7 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
   // be projected server-side until a dims-bearing page is opened.
   const dims = await fetchIiifDims(documentUrn, iiifImageUrl);
 
-  // Mint a fresh session, or — when a live UUID is supplied (in-viewer page
-  // navigation) — reuse it with remount semantics: identity preserved, content
-  // swapped. Do NOT touch lastPolledAt: the iframe is already polling this
-  // UUID. A stale supplied UUID (TTL-evicted) silently mints a fresh one; the
-  // viewer adopts whatever comes back.
-  const viewUUID = input.viewUUID && viewerQueues.has(input.viewUUID) ? input.viewUUID : randomUUID();
-  const existing = viewerQueues.get(viewUUID);
-  if (existing) {
-    existing.documentId = documentUrn;
-    existing.imageWidth = dims?.width;
-    existing.imageHeight = dims?.height;
-    existing.lastAccess = Date.now();
-  } else {
-    viewerQueues.set(viewUUID, {
-      commands: [],
-      createdAt: Date.now(),
-      lastAccess: Date.now(),
-      documentId: documentUrn,
-      imageWidth: dims?.width,
-      imageHeight: dims?.height,
-    });
-  }
+  const viewUUID = mintOrRemount(input.viewUUID, documentUrn, dims);
 
   return {
     id: documentUrn,

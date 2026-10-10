@@ -94,7 +94,7 @@ import {
   navigateViewerOutputSchema,
   pollViewerCommandsOutputSchema,
 } from './tools/viewer-commands.js';
-import { viewerQueues } from './utils/viewer-session.js';
+import { drainQueue } from './utils/viewer-session.js';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -776,16 +776,7 @@ export function createServer(): McpServer {
     async (args): Promise<CallToolResult> =>
       runTool('globalise_poll_viewer_commands', async () => {
         const { viewUUID } = args as { viewUUID: string };
-        const queue = viewerQueues.get(viewUUID);
-        if (!queue) {
-          return {
-            content: [{ type: 'text', text: 'No pending commands' }],
-            ...structuredPayload({ commands: [] }),
-          };
-        }
-        queue.lastAccess = Date.now();
-        queue.lastPolledAt = Date.now();
-        const commands = queue.commands.splice(0);  // drain
+        const commands = drainQueue(viewUUID);
         return {
           content: [{ type: 'text', text: commands.length ? `${commands.length} commands polled` : 'No pending commands' }],
           ...structuredPayload({ commands }),
