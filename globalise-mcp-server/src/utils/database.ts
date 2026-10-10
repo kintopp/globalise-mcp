@@ -268,8 +268,7 @@ const DOWNLOAD_PROGRESS_BYTES = 4 * 1024 * 1024;
  * Idle timeout: abort if no bytes arrive for this long. Armed before the fetch
  * (so a hung connect/handshake trips it) and re-armed on every chunk (so a
  * mid-stream stall trips it too). Plain `fetch()` has NO timeout, so a wrong or
- * firewalled ARCHIVAL_DB_URL — e.g. the manifest's localhost default with no
- * server running — otherwise hangs the tool call forever. Override via
+ * firewalled ARCHIVAL_DB_URL otherwise hangs the tool call forever. Override via
  * ARCHIVAL_DB_TIMEOUT_MS (raise it on slow links; lower it in tests).
  */
 function downloadIdleTimeoutMs(): number {
