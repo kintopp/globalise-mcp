@@ -333,14 +333,17 @@ console.log('9. extractIiifImageUrl');
     'LogicalText target first still yields the Image URL',
   );
 
-  // Fallback: a payload without `type` degrades to the historic [0] behaviour.
   check(
     extractIiifImageUrl(resp([{ source: IMG }, { source: TXT }])) === IMG,
     'untyped targets fall back to target[0]',
   );
   check(
-    extractIiifImageUrl(resp([target('Canvas', 'c'), target('Text', TXT)])) === 'c',
-    'no Image target falls back to target[0]',
+    extractIiifImageUrl(resp([target('Canvas', 'c'), target('Text', TXT)])) === undefined,
+    'typed targets with no Image yield undefined, not a Canvas or TextRepo URL',
+  );
+  check(
+    extractIiifImageUrl(resp([target('Text', TXT), target('Canvas', 'c')])) === undefined,
+    '...including when a Text target comes first',
   );
 
   // Pre-existing guards must survive the change.
