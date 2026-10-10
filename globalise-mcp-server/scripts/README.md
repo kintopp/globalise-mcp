@@ -5,13 +5,18 @@
 - **build-commodities-db.ts** — builds the whole reference DB (commodities + measures) → `data/reference.sqlite`. `npm run build:db:commodities`.
 - **ensure-archival-db.ts**, **ensure-reference-db.ts** — decompress/download the committed DBs at build time. `npm run ensure:db`.
 - **db-build-utils.ts** — shared helpers for the build/ensure scripts.
+- **commodities-tsv.ts** — the commodities TSV parser, shared by the reference-DB build and `test-commodities-quoting.ts`.
 - **build-mcpb.ts** — packs the `.mcpb` bundle (full/thin). `npm run build:mcpb[:thin]`.
 
 ## Tests
-Run by `npm test` (offline chain): test-fts.ts, test-archival-index.ts,
-test-commodities.ts, test-measures.ts, test-viewer-build.ts,
-test-viewer-protocol.ts, test-response-size.ts, smoke-test.ts,
-test-http-shutdown.ts (+ test-utils.ts shared helpers). The chain also runs two
+Run by `npm test` (offline chain): test-fts.ts, test-api-client.ts,
+test-cache.ts, test-document-id.ts, test-iiif-region.ts, test-vision-sizing.ts,
+test-image-dimensions.ts, test-archival-download.ts, test-inventory-scope.ts,
+test-viewer-session.ts, test-archival-index.ts, test-commodities.ts,
+test-commodities-quoting.ts, test-measures.ts, test-version-sync.ts,
+test-viewer-build.ts, test-viewer-protocol.ts, test-viewer-render.ts,
+test-response-size.ts, test-protocol-eras.ts, smoke-test.ts
+(+ test-utils.ts shared helpers). The chain also runs two
 typecheck-only gates that have no script file: `test:viewer-typecheck`
 (`tsc -p apps/document-viewer`) and `test:cli-typecheck`
 (`tsc -p scripts/tsconfig.cli.json`).

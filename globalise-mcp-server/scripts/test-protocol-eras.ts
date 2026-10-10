@@ -2,8 +2,11 @@
  * Protocol-era matrix: the server must serve both the 2025-era (legacy) and
  * 2026-07-28 (modern) protocols over stdio and HTTP. Each connection asserts
  * the negotiated era, tool listing, an offline tool call and the MCP Apps
- * resource read; the HTTP child is then SIGTERMed while a modern
- * subscriptions/listen stream is open, to prove the shutdown drain closes it.
+ * resource read; the HTTP child also answers /health, and is then SIGTERMed
+ * while a modern subscriptions/listen stream is open, to prove the shutdown
+ * drains (exit 0, no forced-exit backstop) and closes the stream. On a hung
+ * drain the backstop also exits 0, which is why the backstop and elapsed
+ * checks matter, not just the exit code.
  *
  * Requires a prior `npm run build` (runs dist/index.js).
  *
@@ -121,6 +124,14 @@ async function main() {
     const exited = new Promise<number | null>((resolve) => proc.on('exit', (code) => resolve(code)));
     await waitForHealth(proc, 10_000);
 
+    console.log('C0. /health');
+    const health = (await (await fetch(`http://localhost:${PORT}/health`)).json()) as {
+      status?: string; version?: string; commit?: string;
+    };
+    check(health.status === 'ok', 'health endpoint responds ok');
+    check(typeof health.version === 'string' && health.version.length > 0, 'health reports a version');
+    check(typeof health.commit === 'string' && health.commit.length > 0, 'health reports a commit');
+
     const url = new URL(`http://localhost:${PORT}/mcp`);
     const c = new Client({ name: 'globalise-era-test', version: '1.0.0' });
     clients.push(c);
@@ -142,6 +153,7 @@ async function main() {
     const elapsed = Date.now() - t0;
     console.log(`  exit=${code} elapsed=${elapsed}ms`);
     check(code === 0, `clean exit on SIGTERM (got: ${code})`);
+    check(stderr.includes('[SHUTDOWN] SIGTERM received'), 'shutdown sequence logged');
     check(!stderr.includes('drain timed out'), 'drain did not hit the forced-exit backstop');
     check(elapsed < 8000, `drained in ${elapsed}ms (< 8000)`);
     const closed = await Promise.race([sub.closed, sleep(2000).then(() => 'timeout')]);
