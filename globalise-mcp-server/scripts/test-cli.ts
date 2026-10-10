@@ -29,7 +29,7 @@ const CLI = path.join(SERVER_ROOT, 'scripts', 'cli.mjs');
 // Stable, known-good document used throughout the repo's docs (..._0107 exists).
 const DOC = 'NL-HaNA_1.04.02_9966_0106';
 
-type CliResult = { code: number; killed: boolean; stdout: string; stderr: string };
+type CliResult = { code: number; stdout: string; stderr: string };
 
 /** Run the CLI; resolve with {code, stdout, stderr} (never rejects). */
 function runCli(args: string[], timeout = 90000): Promise<CliResult> {
@@ -44,8 +44,9 @@ function runCli(args: string[], timeout = 90000): Promise<CliResult> {
       { cwd: SERVER_ROOT, timeout, maxBuffer: 64 * 1024 * 1024, env },
       (err: any, stdout: string, stderr: string) => {
         resolve({
-          code: err?.code ?? 0,
-          killed: !!err?.killed,
+          // A timeout kill leaves err.code null and a spawn failure makes it a
+          // string ('ENOENT'); map both to -1 so neither reads as a clean exit.
+          code: !err ? 0 : typeof err.code === 'number' ? err.code : -1,
           stdout: stdout ?? '',
           stderr: stderr ?? '',
         });
