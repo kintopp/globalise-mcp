@@ -23,9 +23,7 @@
  * The small reference glossaries ARE bundled — without them
  * globalise_lookup_commodity / _measure would degrade to "unavailable".
  *
- * There is only one variant. A second, "full" bundle that baked the index in
- * used to be built from a separate manifest.thin.json / manifest.json pair;
- * that was retired on 2026-08-04 and the thin manifest became manifest.json.
+ * There is only one variant.
  *
  * Prerequisite: `npm run build` (compiles dist/ and materializes reference.sqlite).
  * `npm run build:mcpb` chains both. Run from globalise-mcp-server/.
