@@ -8,9 +8,6 @@
 import {
   IIIF_REGION_RE,
   parsePctRegion,
-  parseCropPixelsRegion,
-  parsePixelRegion,
-  parseAnyPixelRegion,
   cropPixelsToIiifPixels,
   checkRegionBounds,
   infoJsonUrlFromImageUrl,
@@ -50,10 +47,10 @@ for (const region of rejectedRegions) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. parsePctRegion / parseCropPixelsRegion / cropPixelsToIiifPixels
+// 2. parsePctRegion / cropPixelsToIiifPixels
 // ---------------------------------------------------------------------------
 
-console.log('2. parsePctRegion / parseCropPixelsRegion / cropPixelsToIiifPixels');
+console.log('2. parsePctRegion / cropPixelsToIiifPixels');
 
 {
   const p = parsePctRegion('pct:31.2,18.4,22.0,6.1');
@@ -63,27 +60,8 @@ console.log('2. parsePctRegion / parseCropPixelsRegion / cropPixelsToIiifPixels'
 }
 
 {
-  const p = parseCropPixelsRegion('crop_pixels:1,2,3,4');
-  check(!!p && p[0] === 1 && p[1] === 2 && p[2] === 3 && p[3] === 4, 'parseCropPixelsRegion round-trips');
-  check(parseCropPixelsRegion('1,2,3,4') === null, 'parseCropPixelsRegion(plain pixels) is null');
-  check(parseCropPixelsRegion('pct:1,2,3,4') === null, 'parseCropPixelsRegion(pct) is null');
-}
-
-{
   check(cropPixelsToIiifPixels('crop_pixels:1,2,3,4') === '1,2,3,4', 'cropPixelsToIiifPixels strips the prefix');
   check(cropPixelsToIiifPixels('1,2,3,4') === null, 'cropPixelsToIiifPixels(plain pixels) is null');
-}
-
-{
-  // The bare x,y,w,h grammar has one parser, not a copy per caller — both
-  // checkRegionBounds and regionPixelDims go through parseAnyPixelRegion.
-  const p = parsePixelRegion('1,2,3,4');
-  check(!!p && p[0] === 1 && p[3] === 4, 'parsePixelRegion round-trips');
-  check(parsePixelRegion('crop_pixels:1,2,3,4') === null, 'parsePixelRegion(crop_pixels) is null');
-  const a = parseAnyPixelRegion('crop_pixels:1,2,3,4');
-  const b = parseAnyPixelRegion('1,2,3,4');
-  check(!!a && !!b && a.join() === b.join(), 'parseAnyPixelRegion accepts both pixel forms identically');
-  check(parseAnyPixelRegion('pct:1,2,3,4') === null, 'parseAnyPixelRegion(pct) is null');
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +107,11 @@ check(checkRegionBounds('pct:0,0,100.005,100') === null, 'pct:0,0,100.005,100 wi
   const oob = checkRegionBounds('5000,4000,2000,1000', 5892, 4167);
   check(oob !== null, 'px region exceeding native dims flagged out-of-bounds');
   check(oob?.clampedTo === '5000,4000,892,167', `px region clamps to 5000,4000,892,167 (got: ${oob?.clampedTo})`);
+}
+{
+  const oob = checkRegionBounds('crop_pixels:5000,4000,2000,1000', 5892, 4167);
+  check(oob?.clampedTo === 'crop_pixels:5000,4000,892,167',
+    `crop_pixels region is bounded like a bare one and keeps its prefix (got: ${oob?.clampedTo})`);
 }
 
 // px without dims — only w>0/h>0 checked

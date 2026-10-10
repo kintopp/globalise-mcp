@@ -59,14 +59,14 @@ export function parsePctRegion(region: string): [number, number, number, number]
 }
 
 /** Parse a `crop_pixels:x,y,w,h` region into its four integers, or null if not that shape. */
-export function parseCropPixelsRegion(region: string): [number, number, number, number] | null {
+function parseCropPixelsRegion(region: string): [number, number, number, number] | null {
   const m = region.match(/^crop_pixels:(\d+),(\d+),(\d+),(\d+)$/);
   if (!m) return null;
   return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), parseInt(m[4], 10)];
 }
 
 /** Parse a bare `x,y,w,h` IIIF pixel region into its four integers, or null. */
-export function parsePixelRegion(region: string): [number, number, number, number] | null {
+function parsePixelRegion(region: string): [number, number, number, number] | null {
   const m = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
   if (!m) return null;
   return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), parseInt(m[4], 10)];
@@ -77,7 +77,7 @@ export function parsePixelRegion(region: string): [number, number, number, numbe
  * integers. The two always travel together (the prefix is cosmetic; step 6 of
  * the inspect handler strips it), so callers that measure a region want both.
  */
-export function parseAnyPixelRegion(region: string): [number, number, number, number] | null {
+function parseAnyPixelRegion(region: string): [number, number, number, number] | null {
   return parseCropPixelsRegion(region) ?? parsePixelRegion(region);
 }
 
