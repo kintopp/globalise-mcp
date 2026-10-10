@@ -61,8 +61,8 @@ if (!hasGit) {
   console.log('  (no git checkout, e.g. an exported tree: tag-equality guard skipped)');
 } else if (!newestTag) {
   // Releases exist since v0.9.0, so a tagless checkout means tags were not
-  // fetched (actions/checkout needs fetch-tags: true), not "no release yet".
-  check(false, 'v* tags visible in this checkout — fetch them (git fetch --tags; in CI, actions/checkout fetch-tags: true)');
+  // fetched (actions/checkout needs fetch-depth: 0), not "no release yet".
+  check(false, 'v* tags visible in this checkout — fetch them (git fetch --tags; in CI, actions/checkout fetch-depth: 0)');
 } else {
   const tagVersion = newestTag.replace(/^v/, '');
   check(
