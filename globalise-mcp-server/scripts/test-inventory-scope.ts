@@ -15,8 +15,6 @@ import {
   expandInventoryRanges,
   normalizeInventoryList,
   resolveInventoryScope,
-  CORPUS_INVENTORY_MIN,
-  CORPUS_INVENTORY_MAX,
 } from '../src/utils/inventory-scope.js';
 import { searchTranscriptions, searchTranscriptionsInputSchema } from '../src/tools/search.js';
 import { check, finish, throwsToolError } from './test-utils.js';
@@ -28,7 +26,7 @@ console.log('1. parseInventoryRange');
 check(eq(range('1053-4454'), [1053, 4454]), 'plain A-B');
 check(eq(range(' 9966 - 9970 '), [9966, 9970]), 'whitespace tolerated');
 check(eq(range('9966-9966'), [9966, 9966]), 'single-number span');
-check(eq(range('1-20000'), [CORPUS_INVENTORY_MIN, CORPUS_INVENTORY_MAX]), 'over-wide span is clamped to the corpus');
+check(eq(range('1-20000'), [1053, 11024]), 'over-wide span is clamped to the corpus (1053-11024)');
 throwsToolError(() => parseInventoryRange('4454-1053'), 'reversed bounds rejected');
 throwsToolError(() => parseInventoryRange('9014A-9015'), 'lettered inventory rejected');
 throwsToolError(() => parseInventoryRange('1053'), 'missing hyphen rejected');

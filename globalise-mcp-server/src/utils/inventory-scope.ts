@@ -10,8 +10,8 @@
 import { ToolError } from './errors.js';
 
 /** Numeric extent of the transcribed corpus (NL-HaNA 1.04.02); ranges are clamped to it. */
-export const CORPUS_INVENTORY_MIN = 1053;
-export const CORPUS_INVENTORY_MAX = 11024;
+const CORPUS_INVENTORY_MIN = 1053;
+const CORPUS_INVENTORY_MAX = 11024;
 
 const RANGE_RE = /^\s*(\d+)\s*-\s*(\d+)\s*$/;
 
