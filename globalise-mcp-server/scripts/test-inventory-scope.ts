@@ -21,6 +21,8 @@ import { check, finish, throwsToolError } from './test-utils.js';
 
 const range = (spec: string) => { const r = parseInventoryRange(spec); return [r.from, r.to]; };
 const eq = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+// Upstream reads the scope as an OR-list, so order is free but duplicates are not.
+const sameSet = (a: string[], b: string[]) => a.length === b.length && eq([...a].sort(), [...b].sort());
 
 console.log('1. parseInventoryRange');
 check(eq(range('1053-4454'), [1053, 4454]), 'plain A-B');
@@ -34,8 +36,8 @@ throwsToolError(() => parseInventoryRange('1-1000'), 'range entirely below the c
 throwsToolError(() => parseInventoryRange('20000-30000'), 'range entirely above the corpus rejected');
 
 console.log('2. expandInventoryRanges');
-check(expandInventoryRanges(['1053-1055']).join(',') === '1053,1054,1055', 'expands inclusively');
-check(expandInventoryRanges(['1053-1055', '1054-1056']).join(',') === '1053,1054,1055,1056', 'overlapping ranges dedupe');
+check(sameSet(expandInventoryRanges(['1053-1055']), ['1053', '1054', '1055']), 'expands inclusively');
+check(sameSet(expandInventoryRanges(['1053-1055', '1054-1056']), ['1053', '1054', '1055', '1056']), 'overlapping ranges dedupe');
 check(expandInventoryRanges(['1053-11024']).length === 9972, 'whole corpus span expands to 9972 numbers');
 
 console.log('3. normalizeInventoryList');
@@ -46,10 +48,10 @@ check(eq(normalizeInventoryList(['9966', ' ', '4293 '])!, ['9966', '4293']), 'ar
 
 console.log('4. resolveInventoryScope');
 check(resolveInventoryScope() === undefined, 'no inputs → no filter');
-check(eq(resolveInventoryScope(['9966'], ['1053', '9966'])!, ['9966', '1053']), 'explicit ∪ ranges, deduped');
-check(eq(resolveInventoryScope(undefined, undefined, ['1500', '1501'])!, ['1500', '1501']), 'years alone stand as the filter');
+check(sameSet(resolveInventoryScope(['9966'], ['1053', '9966'])!, ['9966', '1053']), 'explicit ∪ ranges, deduped');
+check(sameSet(resolveInventoryScope(undefined, undefined, ['1500', '1501'])!, ['1500', '1501']), 'years alone stand as the filter');
 check(resolveInventoryScope(undefined, undefined, [])!.length === 0, 'years resolving to nothing → empty scope (not undefined)');
-check(eq(resolveInventoryScope(undefined, ['1500', '1501', '1502'], ['1501', '1502', '1503'])!, ['1501', '1502']), 'ranges ∩ years');
+check(sameSet(resolveInventoryScope(undefined, ['1500', '1501', '1502'], ['1501', '1502', '1503'])!, ['1501', '1502']), 'ranges ∩ years');
 check(resolveInventoryScope(['9966'], undefined, ['1501'])!.length === 0, 'disjoint explicit ∩ years → empty scope');
 
 console.log('5. search_transcriptions short-circuits an empty scope');

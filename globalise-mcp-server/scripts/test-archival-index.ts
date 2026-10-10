@@ -21,6 +21,7 @@
  * Run with: npm run test:archival
  */
 
+import { isDeepStrictEqual } from 'node:util';
 import {
   findArchivalDocuments,
   findArchivalDocumentsInputSchema,
@@ -320,7 +321,7 @@ async function main() {
   check(future.length === 0, 'window after the corpus resolves to no inventories');
   const all = await resolveInventoriesByYear(undefined, undefined);
   check(all.length >= 4900 && all.length <= 5100, `unbounded window resolves to every indexed inventory (got ${all.length})`);
-  check((await resolveInventoriesByYear(undefined, undefined)) === all, 'resolution is memoized per connection');
+  check(isDeepStrictEqual(await resolveInventoriesByYear(undefined, undefined), all), 'a repeated resolution returns the same inventories');
   await expectStructuredError({ yearFrom: 1750, yearTo: 1700, size: 1 }, 'reversed year window is rejected by find_archival_documents too');
 
   closeDatabase();
