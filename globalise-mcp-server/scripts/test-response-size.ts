@@ -50,6 +50,15 @@ function makeSearchResult(n: number, fragCount = 3, fragLen = 400): Record<strin
   };
 }
 
+/**
+ * A trim must keep something and use the budget it was given: dropping every
+ * record also satisfies "fits the budget" and "kept is a prefix".
+ */
+function checkUsesBudget(kept: number, bytes: number, budget: number, what: string): void {
+  check(kept > 0, `${what}: at least one kept (got ${kept})`);
+  check(bytes > budget / 2, `${what}: trim uses the budget (${bytes} > ${budget / 2})`);
+}
+
 // ---------------------------------------------------------------------------
 // Case 1: Under budget → untouched
 // ---------------------------------------------------------------------------
@@ -86,6 +95,7 @@ console.log('2. over budget → row-trimmed, kept < original, serialized fits bu
     keptItems.every((item, i) => item.id === (originalItems[i] as { id: string }).id),
     'kept items are a prefix of original order',
   );
+  checkUsesBudget(keptItems.length, report.bytes, budget, 'list trim');
 }
 
 // ---------------------------------------------------------------------------
@@ -115,19 +125,17 @@ console.log('3. repair applied: pagination.hasMore=true, total unchanged, note n
 }
 
 // ---------------------------------------------------------------------------
-// Case 4: Still valid JSON after trim
+// Case 4: the budget is UTF-8 bytes, not characters (the corpus has ĳ, é, …)
 // ---------------------------------------------------------------------------
-console.log('4. still valid JSON after trim');
+console.log('4. multi-byte text is metered in UTF-8 bytes');
 {
-  const result = makeListResult(500, 1_000);
-  fitResultToBudget(result, recordListTrim, 50_000);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(JSON.stringify(result));
-  } catch {
-    parsed = null;
-  }
-  check(parsed !== null && typeof parsed === 'object', 'JSON.parse(JSON.stringify(result)) succeeds');
+  const result = makeListResult(200, 0);
+  for (const item of result.results as Array<{ label: string }>) item.label = 'ĳ€'.repeat(300);
+  const budget = 50_000;
+  const report = fitResultToBudget(result, recordListTrim, budget);
+  const actual = Buffer.byteLength(JSON.stringify(result), 'utf8');
+  check(actual <= budget, `UTF-8 size (${actual}) <= budget (${budget})`);
+  check(report.bytes === actual, `reported bytes (${report.bytes}) are the UTF-8 size (${actual})`);
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +212,7 @@ console.log('6b. compact + row-drop when budget requires both');
   check(report.trimmed === true, 'trimmed:true (rows also dropped)');
   check(typeof report.kept === 'number' && report.kept < n, `kept(${report.kept}) < original(${n})`);
   check(report.bytes <= budget, `final bytes (${report.bytes}) <= budget (${budget})`);
+  checkUsesBudget(report.kept ?? 0, report.bytes, budget, 'compact + row-drop');
 
   const rowMsgs = (String(result.note).match(/fetched results \(dropped/g) || []).length;
   check(rowMsgs === 1, `search row-drop cap message appears exactly once (got ${rowMsgs})`);
@@ -254,11 +263,7 @@ console.log('7. retrieve: documentLineTrim trims text.lines, sets truncated+tota
     keptLines.every((line, i) => line === (originalLines[i] as string)),
     'kept lines are a prefix of original',
   );
-
-  // Still valid JSON
-  let ok = false;
-  try { JSON.parse(JSON.stringify(result)); ok = true; } catch { ok = false; }
-  check(ok, 'result is still valid JSON after line trim');
+  checkUsesBudget(keptLines.length, report.bytes, budget, 'document line trim');
 }
 
 // ---------------------------------------------------------------------------
@@ -283,12 +288,14 @@ console.log('8. navigate: navigateLineTrim trims targetDocument.text.lines');
   };
 
   const budget = 15_000;
-  fitResultToBudget(result, navigateLineTrim, budget);
+  const report = fitResultToBudget(result, navigateLineTrim, budget);
 
   const targetDoc = result.targetDocument as { text: { lines: unknown[]; truncated: boolean; totalLines: number } };
   check(targetDoc.text.lines.length < lineCount, `targetDocument.text.lines trimmed (${targetDoc.text.lines.length} < ${lineCount})`);
   check(targetDoc.text.truncated === true, 'targetDocument.text.truncated===true');
   check(targetDoc.text.totalLines === lineCount, `targetDocument.text.totalLines===${lineCount}`);
+  check(report.bytes <= budget, `bytes (${report.bytes}) <= budget (${budget})`);
+  checkUsesBudget(targetDoc.text.lines.length, report.bytes, budget, 'navigate line trim');
 }
 
 // ---------------------------------------------------------------------------
@@ -351,10 +358,7 @@ console.log('10. viewer: viewerTranscriptionTrim drops tail lines of result.tran
     transcription.every((line, i) => line === (originalLines[i] as string)),
     'kept lines are a prefix of the original order',
   );
-
-  let ok = false;
-  try { JSON.parse(JSON.stringify(result)); ok = true; } catch { ok = false; }
-  check(ok, 'viewer result is still valid JSON after transcription trim');
+  checkUsesBudget(transcription.length, report.bytes, budget, 'viewer transcription trim');
 }
 
 // ---------------------------------------------------------------------------
