@@ -11,7 +11,7 @@
  */
 
 import { createServer, type Server } from 'node:http';
-import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -36,6 +36,10 @@ const close = (s: Server): Promise<void> => {
   s.closeAllConnections?.();
   return new Promise((res) => s.close(() => res()));
 };
+// The download streams into a private temp file beside the target, so a failure
+// must leave the directory empty, not merely lack the final file name.
+const leftovers = (): string[] => readdirSync(dir);
+
 async function reject(fn: () => Promise<unknown>): Promise<Error | null> {
   try { await fn(); return null; } catch (e) { return e instanceof Error ? e : new Error(String(e)); }
 }
@@ -54,7 +58,7 @@ console.log('1. unreachable URL → fast reject, names URL');
   check(err !== null, 'rejects instead of hanging');
   check(!!err && err.message.includes(url), `error names the URL (got: ${err?.message})`);
   check(ms < 3000, `fails fast (${ms}ms < 3000)`);
-  check(!existsSync(target), 'no file written on failure');
+  check(leftovers().length === 0, `no file written on failure (found: ${leftovers().join(', ')})`);
 }
 
 // 2. Server that accepts the connection but never responds → idle-timeout.
@@ -70,7 +74,7 @@ console.log('2. hanging server → idle-timeout reject (no infinite hang)');
   check(err !== null, 'rejects instead of hanging');
   check(ms >= 500 && ms < 3000, `trips the ~700ms idle timeout (${ms}ms)`);
   check(!!err && /not responding|no response within/.test(err.message), `timeout-shaped message (got: ${err?.message})`);
-  check(!existsSync(target), 'no file written on timeout');
+  check(leftovers().length === 0, `no file written on timeout (found: ${leftovers().join(', ')})`);
   await close(hang);
 }
 
@@ -127,7 +131,7 @@ console.log('4. mid-stream stall → reject naming bytes received');
   check(!!stall, `names bytes received + elapsed (got: ${err?.message})`);
   check(!!stall && Number(stall[1]) > 0 && Number(stall[1]) < Number(stall[2]),
     `reports a partial transfer, not 0.0 (got: ${stall?.[1]} of ${stall?.[2]} MB)`);
-  check(!existsSync(target), 'no partial file left behind');
+  check(leftovers().length === 0, `no partial or temp file left behind (found: ${leftovers().join(', ')})`);
   await close(srv);
 }
 
