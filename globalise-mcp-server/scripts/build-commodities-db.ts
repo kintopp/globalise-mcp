@@ -42,12 +42,12 @@
  */
 
 import { DatabaseSync } from 'node:sqlite';
-import { parse } from 'csv-parse';
-import { createReadStream, existsSync, readFileSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getReferenceDatabasePath } from '../src/utils/database.js';
 import { runInTransaction, stampDataVersion, writeGzipArtifact } from './db-build-utils.js';
+import { parseCommoditiesTsv, type CommodityRow } from './commodities-tsv.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -66,68 +66,6 @@ const MEASURES_JSON = join(SOURCES_DIR, 'weights-measures.json');
 const DATA_VERSION = 1;
 
 const BATCH_SIZE = 1000;
-
-type CommodityRow = {
-  uuid: string;
-  pref_nl: string | null;
-  pref_en: string | null;
-  alt_labels: string | null;
-  definition: string;
-  definition_language: string | null;
-  definition_source: string | null;
-  definition_source_desc: string | null;
-  confidence: string | null;
-  definition_source_url: string | null;
-};
-
-function strOrNull(val: string | undefined): string | null {
-  if (val === undefined) return null;
-  const trimmed = val.trim();
-  return trimmed === '' ? null : trimmed;
-}
-
-async function parseCommoditiesTsv(): Promise<CommodityRow[]> {
-  console.log('Parsing commodities TSV...');
-  const rows: CommodityRow[] = [];
-
-  return new Promise((resolve, reject) => {
-    const parser = parse({
-      columns: true,
-      delimiter: '\t',
-      skip_empty_lines: true,
-      bom: true,
-      relax_column_count: true,
-      // The TSV is RFC-4180: fields containing a comma are wrapped in "…" and
-      // internal quotes are doubled (""). Decode that structure rather than
-      // importing the quotes as literal text. (escape defaults to '"', so ""→".)
-      quote: '"',
-    });
-
-    createReadStream(COMMODITIES_TSV)
-      .pipe(parser)
-      .on('data', (record: Record<string, string>) => {
-        const uuid = (record['id'] || '').trim();
-        if (!uuid) return; // skip any blank-id row
-        rows.push({
-          uuid,
-          pref_nl: strOrNull(record['prefLabel_nl']),
-          pref_en: strOrNull(record['prefLabel_en']),
-          alt_labels: strOrNull(record['altLabels']),
-          definition: record['definition'] || '',
-          definition_language: strOrNull(record['definitionLanguage']),
-          definition_source: strOrNull(record['definitionSource']),
-          definition_source_desc: strOrNull(record['definitionSource_desc']),
-          confidence: strOrNull(record['confidence']),
-          definition_source_url: strOrNull(record['definitionSource_url']),
-        });
-      })
-      .on('end', () => {
-        console.log(`  Parsed ${rows.length} commodity rows`);
-        resolve(rows);
-      })
-      .on('error', reject);
-  });
-}
 
 function createSchema(db: DatabaseSync): void {
   console.log('Creating schema...');
@@ -218,7 +156,7 @@ interface MeasuresSource {
 
 // `type` aliases (not interfaces) so they satisfy stmt.run()'s
 // Record<string, SQLInputValue> param — an interface lacks the implicit index
-// signature a type-aliased object literal has. Mirrors CommodityRow above.
+// signature a type-aliased object literal has. Mirrors CommodityRow (commodities-tsv.ts).
 type MeasureRow = {
   unit_id: string;
   label: string;
@@ -404,7 +342,7 @@ async function main(): Promise<void> {
     unlinkSync(DB_PATH);
   }
 
-  const rows = await parseCommoditiesTsv();
+  const rows = await parseCommoditiesTsv(COMMODITIES_TSV);
   const measures = parseMeasures();
 
   console.log('');
