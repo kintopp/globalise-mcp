@@ -80,7 +80,8 @@ async function main() {
   }
 
   console.log('6. conversions shape: every ratio is a non-empty string');
-  const everyRatioOk = (baharHit?.conversions ?? []).every((c) => typeof c.ratio === 'string' && c.ratio.length > 0);
+  const baharConversions = baharHit?.conversions ?? [];
+  const everyRatioOk = baharConversions.length > 0 && baharConversions.every((c) => typeof c.ratio === 'string' && c.ratio.length > 0);
   check(everyRatioOk, 'every conversion on the Bahar unit has a non-empty ratio string');
 
   console.log('7. no-match query');

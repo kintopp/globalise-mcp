@@ -105,7 +105,7 @@ async function main() {
     size: 5,
     includeAggregations: false,
   });
-  check(folioAll.results.every((r) => r.type === 'obp'), 'folio on "all" → OBP results only (GM skipped)');
+  check(folioAll.results.length > 0 && folioAll.results.every((r) => r.type === 'obp'), 'folio on "all" → OBP results only (GM skipped)');
   check(
     Boolean(folioAll.note?.includes('folio') && folioAll.note?.includes('GM')),
     'folio on "all" → note names folio and the skipped GM source',
@@ -121,7 +121,8 @@ async function main() {
   // Previously {source:'gm', settlement:''} threw "settlement is OBP-only"; now
   // the empty filter is a no-op and the GM query runs.
   const gmEmptySettlement = await call({ source: 'gm', settlement: '', size: 1, includeAggregations: false });
-  check(gmEmptySettlement.results.every((r) => r.type === 'gm'), 'empty settlement on source "gm" no longer errors');
+  check(gmEmptySettlement.results.length > 0 && gmEmptySettlement.results.every((r) => r.type === 'gm'),
+    'empty settlement on source "gm" no longer errors');
 
   console.log('2d. empty inventoryNumber array is treated as absent (audit finding #7)');
   // An empty array is truthy, so it previously bypassed the "folio requires an
@@ -286,9 +287,10 @@ async function main() {
     source: 'gm', chamber: 'Amsterdam', yearFrom: 1680, yearTo: 1689,
     size: 6, includeAggregations: false,
   });
+  const gmDecadeRows = gmDecade.results.filter(isGm);
   check(
-    gmDecade.results.filter(isGm).every((r) => r.description.trim() !== ''),
-    'chamber+year query returns no blank stub rows',
+    gmDecadeRows.length > 0 && gmDecadeRows.every((r) => r.description.trim() !== ''),
+    'chamber+year query returns rows, none of them blank stubs',
   );
 
   console.log('9. GM scan URLs are normalized to a 4-digit scan tail');

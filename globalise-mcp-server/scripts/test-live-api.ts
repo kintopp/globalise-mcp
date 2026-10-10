@@ -55,7 +55,7 @@ async function main() {
     await searchTranscriptions(searchTranscriptionsInputSchema.parse({ query: 'peper', inventoryNumber: '9966', size: 2 })),
   );
   check(
-    filtered.results.every((r) => r.inventoryNumber === '9966'),
+    filtered.results.length > 0 && filtered.results.every((r) => r.inventoryNumber === '9966'),
     `every filtered result is in inventory 9966 (got ${JSON.stringify(filtered.results.map((r) => r.inventoryNumber))})`,
   );
 
@@ -68,7 +68,7 @@ async function main() {
   check(Boolean(matchAll.note && /scan|cap|lower bound/i.test(matchAll.note)), `matchAll note mentions the scan cap (got: ${matchAll.note})`);
   check(matchAll.total.relation === 'gte', `matchAll total is a lower bound (relation=${matchAll.total.relation})`);
   check(
-    matchAll.results.every((r) => {
+    matchAll.results.length > 0 && matchAll.results.every((r) => {
       const codes = r.languages.map((l) => l.code);
       return codes.includes('nld') && codes.includes('msa');
     }),
