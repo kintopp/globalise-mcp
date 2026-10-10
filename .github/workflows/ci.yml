@@ -16,6 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # test:version-sync compares package.json with the newest v* tag;
+          # the default checkout fetches no tags.
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version-file: globalise-mcp-server/.nvmrc
@@ -26,8 +30,9 @@ jobs:
       # Full build first: the offline test chain needs its outputs — dist/ for
       # test:smoke (stdio handshake against the built server) and the local
       # SQLite DBs, which ensure:db decompresses from the committed data/*.gz
-      # (no network). The stamp step's "[stamp] no v* tag found" on a tagless
-      # Actions checkout is expected and harmless (see scripts/stamp-build-info.ts).
+      # (no network). The stamp step's "[stamp] no v* tag found" is expected and
+      # harmless: the checkout is one commit deep, so git describe sees a tag only
+      # when HEAD itself is the release commit (see scripts/stamp-build-info.ts).
       - run: npm run build
       # Offline only. The network-backed suites (test:live, test:cli) are
       # deliberately NOT run here: they hit the HuC/Gloccoli production API,
