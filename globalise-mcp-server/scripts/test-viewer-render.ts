@@ -36,6 +36,10 @@ function main(): void {
   check(sanitizeUrl('data:text/html,<h1>x</h1>') === '#', 'data: blocked → #');
   check(sanitizeUrl('not a url') === '#', 'non-URL string → #');
   check(sanitizeUrl('') === '#', 'empty string → #');
+  check(
+    !/["<>]/.test(sanitizeUrl('https://example.com/a"onmouseover="x()<b>')),
+    'a quote or angle bracket in an http(s) URL cannot leave the href attribute',
+  );
 
   // ── renderTranscription ─────────────────────────────────────────────────────
   console.log('3. renderTranscription');
@@ -120,6 +124,15 @@ function main(): void {
     hdrHtml.includes('https://transcriptions.globalise.huygens.knaw.nl'),
     'viewer URL present in external link',
   );
+
+  const hostileHdr = headerInnerHtml({
+    ...doc,
+    metadata: { ...doc.metadata, languages: [{ code: 'x" onclick="y', label: '<img src=x>' }] },
+    urls: { viewer: 'https://example.com/a"onmouseover="x()', archive: null },
+  });
+  check(!hostileHdr.includes('<img'), 'a language label is escaped');
+  check(!hostileHdr.includes('" onclick="'), 'a language code cannot leave its title attribute');
+  check(!hostileHdr.includes('"onmouseover="'), 'a viewer URL cannot leave its href attribute');
 
   // ── archival context in the header ──────────────────────────────────────────
   console.log('5. archival context in the header');

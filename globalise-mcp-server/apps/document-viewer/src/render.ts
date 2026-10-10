@@ -39,13 +39,15 @@ function escapeRegex(text: string): string {
 }
 
 /**
- * Validate URL protocol to prevent javascript: and data: injection
+ * Validate URL protocol to prevent javascript: and data: injection. Returns the
+ * parsed href, which percent-encodes `"`, `<` and `>`, so the result is safe
+ * inside a double-quoted attribute.
  */
 export function sanitizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return url;
+      return parsed.href;
     }
   } catch {
     // Invalid URL
@@ -135,7 +137,7 @@ function buildArchivalContextHtml(ctx: ArchivalContext | undefined): string {
  */
 export function headerInnerHtml(doc: DocumentData): string {
   const languageBadges = doc.metadata.languages
-    .map((l) => `<span class="language-badge" title="${l.code}">${l.label}</span>`)
+    .map((l) => `<span class="language-badge" title="${escapeHtml(l.code)}">${escapeHtml(l.label)}</span>`)
     .join('');
   const archivalHtml = buildArchivalContextHtml(doc.archivalContext);
   // Sanitize URLs to prevent protocol injection.
