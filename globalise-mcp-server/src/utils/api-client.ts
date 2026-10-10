@@ -83,7 +83,7 @@ export interface ApiError {
  * Parse Retry-After header value to milliseconds
  * Supports both seconds (integer) and HTTP-date formats
  */
-export function parseRetryAfter(response: Response): number | undefined {
+function parseRetryAfter(response: Response): number | undefined {
   const retryAfter = response.headers.get('Retry-After');
   if (!retryAfter) return undefined;
 
@@ -219,7 +219,7 @@ function isRetryableError(error: ApiError): boolean {
  * True when a server Retry-After exceeds our ceiling — we surface the rate-limit
  * error instead of blocking the call then retrying earlier than the server permitted.
  */
-export function retryAfterExceedsCeiling(error?: ApiError): boolean {
+function retryAfterExceedsCeiling(error?: ApiError): boolean {
   return !!error?.retryAfterMs && error.retryAfterMs > API_CONFIG.RETRY_MAX_DELAY_MS;
 }
 
@@ -229,9 +229,7 @@ export function retryAfterExceedsCeiling(error?: ApiError): boolean {
  * A present Retry-After under the ceiling is honored verbatim (over-ceiling is
  * failed fast in withRetry, so it never reaches this branch).
  */
-export function calculateRetryDelay(attempt: number, error?: ApiError): number {
-  // A present Retry-After under the ceiling is honored verbatim (over-ceiling is
-  // failed fast in withRetry, so it never reaches this branch).
+function calculateRetryDelay(attempt: number, error?: ApiError): number {
   if (error?.retryAfterMs) {
     return error.retryAfterMs;
   }
