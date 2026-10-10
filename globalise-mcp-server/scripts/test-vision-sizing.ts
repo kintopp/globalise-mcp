@@ -8,6 +8,7 @@ import {
   VISION_PATCH,
   VISION_MAX_EDGE,
   VISION_MAX_TOKENS,
+  VISION_FALLBACK_WIDTH,
   padToPatch,
   visualTokens,
   maxInspectWidth,
@@ -63,12 +64,16 @@ check(visualTokens(1568, 2130) === 56 * 77, `1568x2130 costs 56*77 tokens (got: 
 
 console.log('2. maxInspectWidth is maximal for each shape');
 
-const SHAPES: Array<[string, number, number]> = [
+const CORPUS_SHAPES: Array<[string, number, number]> = [
   // Real GLOBALISE scan shapes, from the 499-page corpus sample.
   ['single leaf (median 0.751)', 3165, 4138],
   ['narrowest leaf observed', 2600, 4220],
   ['two-page opening', 6296, 4179],
   ['widest opening observed', 7496, 4253],
+];
+
+const SHAPES: Array<[string, number, number]> = [
+  ...CORPUS_SHAPES,
   // Region crops, which is where the tool spends most of its calls.
   ['half-page column crop', 1500, 4100],
   ['single-line strip', 3000, 200],
@@ -82,6 +87,12 @@ for (const [label, w, h] of SHAPES) {
   const got = maxInspectWidth(w, h);
   check(fitsBudget(got, w, h), `${label}: ${got}px fits the budget`);
   check(!fitsBudget(got + 1, w, h), `${label}: ${got + 1}px does not — ${got} is the ceiling`);
+}
+
+// The fallback is used when the page's shape is unknown, so it must fit every
+// page shape the corpus has, not just the median one.
+for (const [label, w, h] of CORPUS_SHAPES) {
+  check(fitsBudget(VISION_FALLBACK_WIDTH, w, h), `${label}: the ${VISION_FALLBACK_WIDTH}px fallback fits the budget`);
 }
 
 // ---------------------------------------------------------------------------

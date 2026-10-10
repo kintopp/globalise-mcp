@@ -198,7 +198,8 @@ console.log('4b. resolveDeliverySize');
   // A full portrait leaf is bounded by the vision budget, not its own pixels —
   // the case the old width-only clamp got wrong.
   const r = resolveDeliverySize('full', 1988, 3165, 4138);
-  check(r.size < 1568, `a portrait leaf clamps below the default (got: ${r.size})`);
+  check(r.size > VISION_FALLBACK_WIDTH && r.size < 1568,
+    `a portrait leaf is fitted to its shape: below the default, above the any-shape fallback (got: ${r.size})`);
   check(!!r.note?.includes('downscaled before the model sees it'), `note names the vision reason (got: ${r.note})`);
 }
 {
@@ -212,7 +213,7 @@ console.log('4b. resolveDeliverySize');
   // and on ~70% of the corpus the default is above the deliverable ceiling, so
   // noting it every time would train the model to ignore notes.
   const r = resolveDeliverySize('full', undefined, 3165, 4138);
-  check(r.size < 1568, `an omitted size is still fitted to the page (got: ${r.size})`);
+  check(r.size > VISION_FALLBACK_WIDTH && r.size < 1568, `an omitted size is still fitted to the page (got: ${r.size})`);
   check(r.note === undefined, 'fitting an omitted size raises no note');
 }
 {
