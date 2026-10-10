@@ -6,7 +6,7 @@
 - **ensure-archival-db.ts**, **ensure-reference-db.ts** — decompress/download the committed DBs at build time. `npm run ensure:db`.
 - **db-build-utils.ts** — shared helpers for the build/ensure scripts.
 - **commodities-tsv.ts** — the commodities TSV parser, shared by the reference-DB build and `test-commodities-quoting.ts`.
-- **build-mcpb.ts** — packs the `.mcpb` bundle (full/thin). `npm run build:mcpb[:thin]`.
+- **build-mcpb.ts** — packs the `.mcpb` bundle. `npm run build:mcpb`.
 
 ## Tests
 Run by `npm test` (offline chain): test-fts.ts, test-api-client.ts,
