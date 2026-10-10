@@ -19,6 +19,7 @@
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { check, finish } from './test-utils.js';
 
@@ -193,10 +194,9 @@ async function main() {
   const content = result.content as Array<{ type: string; text?: string }>;
   const payload = JSON.parse(content[0]?.text ?? '{}');
   check(typeof payload.total?.value === 'number' && payload.total.value > 0, `GM results found (total: ${payload.total?.value})`);
-  const structured = result.structuredContent as { total?: { value?: number } } | undefined;
   check(
-    typeof structured?.total?.value === 'number',
-    'structuredContent mirrors the result (R8)',
+    isDeepStrictEqual(result.structuredContent, payload),
+    'structuredContent mirrors the text-channel result (R8)',
   );
 
   console.log('4b. tools/call globalise_lookup_commodity (reference DB)');
