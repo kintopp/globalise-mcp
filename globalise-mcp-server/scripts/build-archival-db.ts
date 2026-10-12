@@ -135,7 +135,10 @@ async function parseObpCsv(): Promise<ObpRow[]> {
   });
 }
 
-type VolumeRule = { id: string; folios?: [number, number]; years?: [number, number] };
+// A null upper bound leaves the range open. `ids` bounds the OBP `ID` column, for
+// volumes whose foliation restarts and so can't be told apart by folio alone.
+type Range = [number, number | null];
+type VolumeRule = { id: string; folios?: Range; years?: Range; ids?: Range };
 type LetteredVolumes = Record<string, { volumes: VolumeRule[] }>;
 
 function loadLetteredVolumes(): LetteredVolumes {
@@ -145,19 +148,27 @@ function loadLetteredVolumes(): LetteredVolumes {
 /**
  * The OBP source stores inventory numbers as integers, so rows of lettered
  * volumes (9014A, 9014B) all read "9014" — a number with no scans of its own.
- * A row moves to a volume only when a rule places its whole span inside it;
- * otherwise it keeps the base number and lists every volume as a candidate.
+ * A row moves to a volume only when its span falls inside every range the
+ * volume's rule gives; otherwise it keeps the base number and lists every
+ * volume as a candidate.
  */
 function resolveObpVolumes(rows: ObpRow[], inventories: LetteredVolumes): void {
   // Compare a row's [lo, hi] span with a volume's range: inside it, or overlapping it.
-  const test = (lo: number | null, hi: number | null, range: [number, number] | undefined, inside: boolean) => {
-    if (!range || lo === null) return false;
+  const test = (lo: number | null, hi: number | null, range: Range, inside: boolean) => {
+    if (lo === null) return false;
     const end = hi ?? lo;
-    return inside ? lo >= range[0] && end <= range[1] : lo <= range[1] && end >= range[0];
+    const top = range[1] ?? Infinity;
+    return inside ? lo >= range[0] && end <= top : lo <= top && end >= range[0];
   };
-  const matches = (row: ObpRow, v: VolumeRule, inside: boolean) =>
-    test(row.folio_start, row.folio_end, v.folios, inside) ||
-    test(row.year_earliest, row.year_latest, v.years, inside);
+  const matches = (row: ObpRow, v: VolumeRule, inside: boolean) => {
+    const checks: [number | null, number | null, Range | undefined][] = [
+      [row.folio_start, row.folio_end, v.folios],
+      [row.year_earliest, row.year_latest, v.years],
+      [row.id_csv, row.id_csv, v.ids],
+    ];
+    const given = checks.filter((c): c is [number | null, number | null, Range] => c[2] !== undefined);
+    return given.length > 0 && given.every(([lo, hi, range]) => test(lo, hi, range, inside));
+  };
   let assigned = 0;
   let flagged = 0;
   for (const row of rows) {

@@ -18,7 +18,9 @@
  *      with no scans. Ways this can fail: a base number reported with no hint of
  *      its volumes; a volume filter missing rows that may lie in it, or matching
  *      rows that cannot; a folio rule misplacing a row (2352: foliation continues
- *      across volumes, A = 1-300, B = 301-600, verified on the scans); the year
+ *      across volumes, A = 1-300, B = 301-600, verified on the scans); a row
+ *      landing in the wrong volume at a boundary read off the scans, or 9015's
+ *      restarted foliation sending 9015B rows to 9015A; the year
  *      filter of search_transcriptions sending a scanless base number upstream.
  *
  * Plain Node script (no framework). Imports the tool directly from src via
@@ -342,7 +344,23 @@ async function main() {
   }
   check(unflagged.length === 0, `no row reports a scanless base number without volume candidates (bad: ${unflagged.slice(0, 3).map((r) => r.id).join(', ') || 'none'})`);
   const r9014A = await obpRows('9014A');
-  check(r9014A.length > 0 && r9014A.every((r) => r.volumeCandidates?.includes('9014A')), 'filtering on 9014A returns the 9014 rows that may lie in it');
+  check(r9014A.some((r) => r.inventoryNumber === '9014A') && r9014A.some((r) => r.volumeCandidates?.includes('9014A')),
+    'filtering on 9014A returns both the rows placed in it and those that may lie in it');
+  // Rows whose volume was read off the scans (OBP ID → volume, or null when the
+  // document runs across two volumes). 9015B restarts at folio 1.
+  const SCAN_VERIFIED: [number, string, string | null][] = [
+    [9135, '1171', '1171B'], [33116, '1457', '1457B'], [33178, '1457', '1457C'], [45256, '1604', '1604B'],
+    [45257, '1604', '1604C'], [164014, '9014', null], [164015, '9014', '9014B'], [164068, '9015', '9015A'],
+    [164069, '9015', '9015B'], [164071, '9015', '9015C'],
+  ];
+  const misplaced = [];
+  for (const [idCsv, base, volume] of SCAN_VERIFIED) {
+    const volumes = ['A', 'B', 'C'].map((l) => base + l);
+    const found = (await Promise.all(volumes.map(obpRows))).flat().find((r) => r.idCsv === idCsv);
+    if (!found || found.inventoryNumber !== (volume ?? base)) misplaced.push(`${idCsv}→${found?.inventoryNumber ?? 'missing'}`);
+  }
+  check(misplaced.length === 0, `rows land in the volume their scans show (bad: ${misplaced.join(', ') || 'none'})`);
+  check((await obpRows('1179B')).every((r) => r.volumeCandidates !== null), '1179 (two copies, same folios) places no row in either copy');
   const r2352B = await obpRows('2352B');
   const placedB = r2352B.filter((r) => r.inventoryNumber === '2352B');
   check(placedB.length > 0 && placedB.every((r) => r.folioStart! >= 301 && r.folioEnd! <= 600 && r.volumeCandidates === null),
