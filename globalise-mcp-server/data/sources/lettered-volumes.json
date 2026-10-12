@@ -1,12 +1,42 @@
 {
-  "description": "Base inventory numbers that exist in archive 1.04.02 only as lettered volumes. The OBP index stores inventory numbers as integers, so rows of e.g. 9014A and 9014B are both recorded as 9014; some Generale Missiven rows do the same but name the volume in their scan URL. Volumes and rules are taken from the Nationaal Archief EAD of 1.04.02. An OBP rule assigns a row only when its whole folio or year span falls inside one volume; otherwise the row keeps its base number and lists the volumes as candidates.",
+  "description": "Base inventory numbers that exist in archive 1.04.02 only as lettered volumes. The OBP index stores inventory numbers as integers, so rows of e.g. 9014A and 9014B are both recorded as 9014; some Generale Missiven rows do the same but name the volume in their scan URL. Volumes are taken from the Nationaal Archief EAD of 1.04.02. Each rule gives ranges (folios, years, or OBP IDs; a null upper bound is open) and an OBP row is assigned only when its span falls inside every range of exactly one volume; otherwise the row keeps its base number and lists candidate volumes. Folio boundaries not stated in the EAD were fixed by matching the opening and closing scans of each volume (GLOBALISE HTR) to OBP descriptions; each note names the scans.",
   "source": "https://www.nationaalarchief.nl/onderzoeken/archief/1.04.02/download/xml",
   "inventories": {
-    "1171": { "volumes": [{ "id": "1171A" }, { "id": "1171B" }] },
-    "1179": { "volumes": [{ "id": "1179A" }, { "id": "1179B" }] },
-    "1457": { "volumes": [{ "id": "1457A" }, { "id": "1457B" }, { "id": "1457C" }] },
-    "1604": { "volumes": [{ "id": "1604A" }, { "id": "1604B" }, { "id": "1604C" }] },
-    "1615": { "volumes": [{ "id": "1615A" }, { "id": "1615B" }, { "id": "1615C" }] },
+    "1171": {
+      "note": "1171B scan 0001 is a slip 'fol. 338 - 394'; scan 0003 opens the instruction for Willem Tijmonsen (OBP folios 338-339).",
+      "volumes": [
+        { "id": "1171A", "folios": [1, 337] },
+        { "id": "1171B", "folios": [338, null] }
+      ]
+    },
+    "1179": {
+      "note": "EAD: 1179A 'Niet raadpleegbaar. Zeer beschadigde fragmenten', 1179B its Hague copy. OBP lists every document twice with the same folios (IDs 9427-9458 and 9459-9490); which run indexes which copy is not stated, so no rule.",
+      "volumes": [{ "id": "1179A" }, { "id": "1179B" }]
+    },
+    "1457": {
+      "note": "1457A closes with the missive to the bewindhebbers (OBP 546-562); 1457B scan 0009 opens the ship list 20 May-29 December 1689 (OBP 562-563), so folio 562 is shared. 1457B ends with the 1689 works accounts (OBP 945-949); 1457C scan 0005 opens the measurement of the ship China (OBP 950-965).",
+      "volumes": [
+        { "id": "1457A", "folios": [1, 562] },
+        { "id": "1457B", "folios": [562, 949] },
+        { "id": "1457C", "folios": [950, null] }
+      ]
+    },
+    "1604": {
+      "note": "1604B is the journal of Gerrit de Heere's visitation of Ceylon (OBP 226-607): scan 0007 opens it, scan 0405 closes it in September 1698. 1604C scan 0007 opens the Jaffna land deeds (OBP 608-621).",
+      "volumes": [
+        { "id": "1604A", "folios": [1, 225] },
+        { "id": "1604B", "folios": [226, 607] },
+        { "id": "1604C", "folios": [608, null] }
+      ]
+    },
+    "1615": {
+      "note": "1615A closes with De Heere's letters to the Kandyan court (OBP 467-470); 1615B is the Tutucorin journal from 8 September 1699 (OBP 471-514, scans 0006-0053); 1615C scan 0004 opens 'Ses stux copie resolutien' (OBP 515-547).",
+      "volumes": [
+        { "id": "1615A", "folios": [1, 470] },
+        { "id": "1615B", "folios": [471, 514] },
+        { "id": "1615C", "folios": [515, null] }
+      ]
+    },
     "2352": {
       "note": "EAD 'Band 1. Pag. 1 - 300' etc. Foliation runs on across volumes: 2352A scan 0200 is folio 295, 2352B scan 0005 is folio 305.",
       "volumes": [
@@ -17,8 +47,20 @@
         { "id": "2352E", "folios": [1201, 1566] }
       ]
     },
-    "4022": { "volumes": [{ "id": "4022A" }, { "id": "4022B" }] },
-    "4025": { "volumes": [{ "id": "4025A" }, { "id": "4025B" }] },
+    "4022": {
+      "note": "EAD: 4022A 'Eerste deel', 4022B 'Tweede deel'; only 4022A is digitised. 4022A ends at scan 0778 in October 1685, inside the Cape journal (OBP 239-318), so the boundary falls within that row.",
+      "volumes": [
+        { "id": "4022A", "folios": [1, 300] },
+        { "id": "4022B", "folios": [301, null] }
+      ]
+    },
+    "4025": {
+      "note": "EAD: 4025A 'Eerste deel', 4025B 'Tweede deel'; only 4025A is digitised. 4025A ends in the ship consumption accounts (OBP 573-586); OBP starts a new 'Origineel register' at folio 587, taken as the start of 4025B (not checked on scans).",
+      "volumes": [
+        { "id": "4025A", "folios": [1, 586] },
+        { "id": "4025B", "folios": [587, null] }
+      ]
+    },
     "7872": {
       "note": "EAD 7872A '1762 december 8 - 1763 december 7', 7872B '1764 januari 4 - 1764 december 26'.",
       "volumes": [
@@ -26,8 +68,27 @@
         { "id": "7872B", "years": [1764, 1764] }
       ]
     },
-    "9013": { "volumes": [{ "id": "9013A" }, { "id": "9013B" }] },
-    "9014": { "volumes": [{ "id": "9014A" }, { "id": "9014B" }] },
-    "9015": { "volumes": [{ "id": "9015A" }, { "id": "9015B" }, { "id": "9015C" }] }
+    "9013": {
+      "note": "9013A ends in the outgoing letters (OBP 1348-1892); 9013B scan 0004 opens the Cochin journal at 1 January (OBP 1893-2098).",
+      "volumes": [
+        { "id": "9013A", "folios": [1, 1892] },
+        { "id": "9013B", "folios": [1893, null] }
+      ]
+    },
+    "9014": {
+      "note": "9014B scan 0006 is the concept ola to the king of Calicoilang of 3 April 1732 (OBP folios 1768-1770).",
+      "volumes": [
+        { "id": "9014A", "folios": [1, 1767] },
+        { "id": "9014B", "folios": [1768, null] }
+      ]
+    },
+    "9015": {
+      "note": "Foliation restarts in 9015B. 9015A scan 1435 closes the 1732 journal at folio 1409 (OBP IDs 164065-164068); 9015B scan 0005 opens the register of Malabar letters (ID 164069, folios 1-2). The letter book is split across B and C as OBP 3-720 and 721-1105.",
+      "volumes": [
+        { "id": "9015A", "ids": [164065, 164068] },
+        { "id": "9015B", "ids": [164069, null], "folios": [1, 720] },
+        { "id": "9015C", "ids": [164069, null], "folios": [721, null] }
+      ]
+    }
   }
 }
