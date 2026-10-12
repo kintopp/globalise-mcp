@@ -34,7 +34,7 @@ import {
   inspectPageImageInputSchema,
   inspectPageImageOutputSchema,
 } from '../src/tools/page-image.js';
-import { check, finish } from './test-utils.js';
+import { check, checkEvery, finish } from './test-utils.js';
 
 // Stable, known-good document used throughout the repo's docs; ..._0107 exists.
 const DOC = 'NL-HaNA_1.04.02_9966_0106';
@@ -54,8 +54,8 @@ async function main() {
   const filtered = searchOutputSchema.parse(
     await searchTranscriptions(searchTranscriptionsInputSchema.parse({ query: 'peper', inventoryNumber: '9966', size: 2 })),
   );
-  check(
-    filtered.results.length > 0 && filtered.results.every((r) => r.inventoryNumber === '9966'),
+  checkEvery(
+    filtered.results, (r) => r.inventoryNumber === '9966',
     `every filtered result is in inventory 9966 (got ${JSON.stringify(filtered.results.map((r) => r.inventoryNumber))})`,
   );
 
@@ -67,11 +67,11 @@ async function main() {
   );
   check(Boolean(matchAll.note && /scan|cap|lower bound/i.test(matchAll.note)), `matchAll note mentions the scan cap (got: ${matchAll.note})`);
   check(matchAll.total.relation === 'gte', `matchAll total is a lower bound (relation=${matchAll.total.relation})`);
-  check(
-    matchAll.results.length > 0 && matchAll.results.every((r) => {
+  checkEvery(
+    matchAll.results, (r) => {
       const codes = r.languages.map((l) => l.code);
       return codes.includes('nld') && codes.includes('msa');
-    }),
+    },
     'every matchAll result page carries both nld and msa',
   );
 

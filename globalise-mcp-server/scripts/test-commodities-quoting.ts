@@ -10,14 +10,11 @@
  * Run with: npm run test:commodities-quoting
  */
 import { DatabaseSync } from 'node:sqlite';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { getReferenceDatabasePath, isReferenceDatabaseAvailable } from '../src/utils/database.js';
 import { parseCommoditiesTsv, type CommodityRow } from './commodities-tsv.js';
 import { check, finish } from './test-utils.js';
 
-const TSV = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'sources', 'commodities.tsv');
-const rows = await parseCommoditiesTsv(TSV);
+const rows = await parseCommoditiesTsv();
 
 const wrapped = (v: string | null): boolean => !!v && (v.startsWith('"') || v.endsWith('"'));
 const doubled = (v: string | null): boolean => !!v && v.includes('""');
@@ -27,13 +24,13 @@ console.log('A1. parser yields the full glossary');
 check(rows.length === 3508, `parsed 3508 commodity rows (got ${rows.length})`);
 
 console.log('A2. no structural wrapping quotes remain');
-check(rows.filter((r) => r.definition.startsWith('"')).length === 0, 'no definition starts with a stray quote');
-check(rows.filter((r) => wrapped(r.pref_nl)).length === 0, 'no pref_nl is wrapped in quotes');
-check(rows.filter((r) => wrapped(r.pref_en)).length === 0, 'no pref_en is wrapped in quotes');
-check(rows.filter((r) => wrapped(r.definition_source_desc)).length === 0, 'no definition_source_desc is wrapped in quotes');
+check(!rows.some((r) => r.definition.startsWith('"')), 'no definition starts with a stray quote');
+check(!rows.some((r) => wrapped(r.pref_nl)), 'no pref_nl is wrapped in quotes');
+check(!rows.some((r) => wrapped(r.pref_en)), 'no pref_en is wrapped in quotes');
+check(!rows.some((r) => wrapped(r.definition_source_desc)), 'no definition_source_desc is wrapped in quotes');
 
 console.log('A3. no doubled quotes in labels / source-note (un-doubling complete)');
-check(rows.filter((r) => [r.pref_nl, r.pref_en, r.alt_labels, r.definition_source_desc].some(doubled)).length === 0,
+check(!rows.some((r) => [r.pref_nl, r.pref_en, r.alt_labels, r.definition_source_desc].some(doubled)),
   'labels and definition_source_desc contain no doubled quotes');
 
 console.log('A4. cited examples decoded correctly (issue #418)');
@@ -57,13 +54,13 @@ console.log('B. the shipped reference.sqlite matches the parser');
 if (!isReferenceDatabaseAvailable()) {
   check(false, 'reference DB present (run npm run build first)');
 } else {
+  const fields = ['definition', 'pref_nl', 'pref_en', 'alt_labels', 'definition_source_desc'] as const;
   const db = new DatabaseSync(getReferenceDatabasePath(), { readOnly: true });
-  const shipped = db.prepare('SELECT uuid, definition, pref_nl, pref_en, alt_labels, definition_source_desc FROM commodities')
-    .all() as Array<Pick<CommodityRow, 'uuid' | 'definition' | 'pref_nl' | 'pref_en' | 'alt_labels' | 'definition_source_desc'>>;
+  const shipped = db.prepare(`SELECT uuid, ${fields.join(', ')} FROM commodities`)
+    .all() as Array<Pick<CommodityRow, 'uuid' | (typeof fields)[number]>>;
   db.close();
   check(shipped.length === rows.length, `shipped row count (${shipped.length}) equals parsed (${rows.length})`);
   const parsed = new Map(rows.map((r) => [r.uuid, r]));
-  const fields = ['definition', 'pref_nl', 'pref_en', 'alt_labels', 'definition_source_desc'] as const;
   const stale = shipped.filter((s) => {
     const p = parsed.get(s.uuid);
     return !p || fields.some((f) => p[f] !== s[f]);

@@ -66,20 +66,15 @@ function parseCropPixelsRegion(region: string): [number, number, number, number]
   return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), parseInt(m[4], 10)];
 }
 
-/** Parse a bare `x,y,w,h` IIIF pixel region into its four integers, or null. */
-function parsePixelRegion(region: string): [number, number, number, number] | null {
-  const m = region.match(/^(\d+),(\d+),(\d+),(\d+)$/);
-  if (!m) return null;
-  return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), parseInt(m[4], 10)];
-}
-
 /**
  * Either pixel form — `crop_pixels:x,y,w,h` or bare `x,y,w,h` — as four
  * integers. The two always travel together (the prefix is cosmetic; step 6 of
  * the inspect handler strips it), so callers that measure a region want both.
  */
 function parseAnyPixelRegion(region: string): [number, number, number, number] | null {
-  return parseCropPixelsRegion(region) ?? parsePixelRegion(region);
+  const m = region.match(/^(?:crop_pixels:)?(\d+),(\d+),(\d+),(\d+)$/);
+  if (!m) return null;
+  return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10), parseInt(m[4], 10)];
 }
 
 /** Strip the `crop_pixels:` prefix, returning a plain IIIF pixel region (`x,y,w,h`). */

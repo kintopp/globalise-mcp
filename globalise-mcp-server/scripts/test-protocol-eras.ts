@@ -41,7 +41,10 @@ const EXPECTED_TOOLS = [
 const MODERN: ClientOptions = { versionNegotiation: { mode: { pin: '2026-07-28' } } };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function waitForHealth(child: ChildProcess, timeoutMs: number): Promise<void> {
+interface Health { status?: string; version?: string; commit?: string }
+
+/** Poll /health until it answers 200; resolves with its body. */
+async function waitForHealth(child: ChildProcess, timeoutMs: number): Promise<Health> {
   // A stale server on the port would answer /health while our child dies with EADDRINUSE.
   let exited = false;
   child.on('exit', () => {
@@ -53,9 +56,10 @@ async function waitForHealth(child: ChildProcess, timeoutMs: number): Promise<vo
     try {
       const res = await fetch(`http://localhost:${PORT}/health`);
       if (res.status === 200) {
+        const body = (await res.json()) as Health;
         await sleep(100);
         if (exited) throw new Error('HTTP server exited before /health was ready (port in use?)');
-        return;
+        return body;
       }
     } catch {
       // not up yet
@@ -122,12 +126,9 @@ async function main() {
       stderr += String(d);
     });
     const exited = new Promise<number | null>((resolve) => proc.on('exit', (code) => resolve(code)));
-    await waitForHealth(proc, 10_000);
+    const health = await waitForHealth(proc, 10_000);
 
     console.log('C0. /health');
-    const health = (await (await fetch(`http://localhost:${PORT}/health`)).json()) as {
-      status?: string; version?: string; commit?: string;
-    };
     check(health.status === 'ok', 'health endpoint responds ok');
     check(typeof health.version === 'string' && health.version.length > 0, 'health reports a version');
     check(typeof health.commit === 'string' && health.commit.length > 0, 'health reports a commit');

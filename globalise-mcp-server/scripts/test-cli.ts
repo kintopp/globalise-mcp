@@ -21,7 +21,7 @@
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { check, finish } from './test-utils.js';
+import { check, checkEvery, finish } from './test-utils.js';
 
 const SERVER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(SERVER_ROOT, 'scripts', 'cli.mjs');
@@ -78,7 +78,7 @@ async function main() {
       'includes search + retrieve + navigate',
     );
     check(!names.has('globalise_view_document_ui'), 'excludes the viewer/stateful tool');
-    check(tools.every((t) => t.inputSchema && typeof t.inputSchema === 'object'), 'each entry carries an inputSchema');
+    checkEvery(tools, (t) => !!t.inputSchema && typeof t.inputSchema === 'object', 'each entry carries an inputSchema');
   }
 
   // ── 2. retrieve happy path + --fields projection (single-object JSON) ──────────
@@ -102,7 +102,7 @@ async function main() {
     check(r.code === 0, 'exit 0');
     const rows = safe(() => jsonlRows(r.stdout), []);
     check(rows.length >= 1 && rows.length <= 3, `1–3 JSONL rows (got ${rows.length})`);
-    check(rows.every((row) => 'id' in row && 'document' in row), 'each row is valid JSON with id + document');
+    checkEvery(rows, (row) => 'id' in row && 'document' in row, 'each row is valid JSON with id + document');
     check(/\bshown\b/.test(r.stderr), 'stderr carries a count/pagination summary');
   }
 
@@ -228,7 +228,7 @@ async function main() {
     check(r.code === 0, 'exit 0');
     const rows = safe(() => jsonlRows(r.stdout), []);
     check(rows.length >= 1 && rows.length <= 3, `1–3 JSONL rows (got ${rows.length})`);
-    check(rows.every((row) => 'id' in row), 'each row is valid JSON with an id');
+    checkEvery(rows, (row) => 'id' in row, 'each row is valid JSON with an id');
     check(/\bshown\b.*\bof\b/.test(r.stderr), 'stderr carries the total.value-derived summary');
   }
 

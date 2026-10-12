@@ -10,6 +10,7 @@
  * Run with: npm run test:inventory-scope
  */
 
+import { isDeepStrictEqual } from 'node:util';
 import {
   parseInventoryRange,
   expandInventoryRanges,
@@ -17,12 +18,12 @@ import {
   resolveInventoryScope,
 } from '../src/utils/inventory-scope.js';
 import { searchTranscriptions, searchTranscriptionsInputSchema } from '../src/tools/search.js';
-import { check, finish, throwsToolError } from './test-utils.js';
+import { check, finish, throwsToolError, withStubbedFetch } from './test-utils.js';
 
 const range = (spec: string) => { const r = parseInventoryRange(spec); return [r.from, r.to]; };
-const eq = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+const eq = isDeepStrictEqual;
 // Upstream reads the scope as an OR-list, so order is free but duplicates are not.
-const sameSet = (a: string[], b: string[]) => a.length === b.length && eq([...a].sort(), [...b].sort());
+const sameSet = (a: string[], b: string[]) => eq([...a].sort(), [...b].sort());
 
 console.log('1. parseInventoryRange');
 check(eq(range('1053-4454'), [1053, 4454]), 'plain A-B');
@@ -56,25 +57,19 @@ check(resolveInventoryScope(['9966'], undefined, ['1501'])!.length === 0, 'disjo
 
 console.log('5. search_transcriptions short-circuits an empty scope');
 {
-  let upstreamCalls = 0;
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = (async () => {
-    upstreamCalls++;
+  // Inventory 9966 is not among the inventories dated 1610-1615.
+  const { calls, value: out, error } = await withStubbedFetch(() => {
     throw new Error('upstream must not be called for an empty scope');
-  }) as typeof fetch;
-  try {
-    // Inventory 9966 is not among the inventories dated 1610-1615.
-    const out = await searchTranscriptions(searchTranscriptionsInputSchema.parse({
-      query: 'peper', inventoryNumber: '9966', yearFrom: 1610, yearTo: 1615,
-    }));
-    check(upstreamCalls === 0, `no upstream request (got ${upstreamCalls})`);
+  }, () => searchTranscriptions(searchTranscriptionsInputSchema.parse({
+    query: 'peper', inventoryNumber: '9966', yearFrom: 1610, yearTo: 1615,
+  })));
+  check(calls === 0, `no upstream request (got ${calls})`);
+  if (!out) {
+    check(false, `empty scope must not reach upstream (threw: ${error instanceof Error ? error.message : JSON.stringify(error)})`);
+  } else {
     check(out.total.value === 0 && out.results.length === 0, 'reports zero results');
     check(out.pagination.hasMore === false, 'reports no further pages');
     check(/nothing was searched/.test(out.note ?? ''), `note says nothing was searched (got: ${out.note})`);
-  } catch (e) {
-    check(false, `empty scope must not reach upstream (${upstreamCalls} upstream calls; threw: ${e instanceof Error ? e.message : JSON.stringify(e)})`);
-  } finally {
-    globalThis.fetch = realFetch;
   }
 }
 

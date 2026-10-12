@@ -47,7 +47,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getReferenceDatabasePath } from '../src/utils/database.js';
 import { runInTransaction, stampDataVersion, writeGzipArtifact } from './db-build-utils.js';
-import { parseCommoditiesTsv, type CommodityRow } from './commodities-tsv.js';
+import { COMMODITIES_TSV, parseCommoditiesTsv, type CommodityRow } from './commodities-tsv.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -56,7 +56,6 @@ const DATA_DIR = join(__dirname, '..', 'data');
 const SOURCES_DIR = join(DATA_DIR, 'sources');
 const DB_PATH = getReferenceDatabasePath();
 
-const COMMODITIES_TSV = join(SOURCES_DIR, 'commodities.tsv');
 const MEASURES_JSON = join(SOURCES_DIR, 'weights-measures.json');
 
 // Data version stamped into the built DB (PRAGMA user_version). Independent of
@@ -342,7 +341,9 @@ async function main(): Promise<void> {
     unlinkSync(DB_PATH);
   }
 
+  console.log('Parsing commodities TSV...');
   const rows = await parseCommoditiesTsv(COMMODITIES_TSV);
+  console.log(`  Parsed ${rows.length} commodity rows`);
   const measures = parseMeasures();
 
   console.log('');

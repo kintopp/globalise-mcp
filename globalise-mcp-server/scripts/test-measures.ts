@@ -30,7 +30,7 @@ import {
 } from '../src/tools/measures.js';
 import { isReferenceDatabaseAvailable, closeDatabase, getReferenceDatabasePath } from '../src/utils/database.js';
 import { ToolError } from '../src/utils/errors.js';
-import { check, finish } from './test-utils.js';
+import { check, checkEvery, finish } from './test-utils.js';
 
 /** Parse args through the tool schema (applies defaults) and run the lookup. */
 async function call(args: Record<string, unknown>): Promise<LookupMeasureOutput> {
@@ -81,8 +81,7 @@ async function main() {
 
   console.log('6. conversions shape: every ratio is a non-empty string');
   const baharConversions = baharHit?.conversions ?? [];
-  const everyRatioOk = baharConversions.length > 0 && baharConversions.every((c) => typeof c.ratio === 'string' && c.ratio.length > 0);
-  check(everyRatioOk, 'every conversion on the Bahar unit has a non-empty ratio string');
+  checkEvery(baharConversions, (c) => typeof c.ratio === 'string' && c.ratio.length > 0, 'every conversion on the Bahar unit has a non-empty ratio string');
 
   console.log('7. no-match query');
   const empty = await call({ query: 'xyzzyqwerty', size: 1 });
@@ -103,8 +102,8 @@ async function main() {
 
   console.log('10. conversions: context is populated, varies, and is retrieved from both sides');
   const allConversions = bahar.results.flatMap((r) => r.conversions);
-  check(
-    allConversions.length > 0 && allConversions.every((c) => typeof c.context === 'string' && c.context.length > 0),
+  checkEvery(
+    allConversions, (c) => typeof c.context === 'string' && c.context.length > 0,
     `every conversion in the bahar result set carries a non-empty context (${allConversions.length} ratios)`,
   );
   const baharContexts = new Set((baharHit?.conversions ?? []).map((c) => c.context));

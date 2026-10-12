@@ -30,7 +30,7 @@ import {
 } from '../src/tools/archival-index.js';
 import { isDatabaseAvailable, closeDatabase, getDatabasePath } from '../src/utils/database.js';
 import { ToolError } from '../src/utils/errors.js';
-import { check, finish } from './test-utils.js';
+import { check, checkEvery, finish } from './test-utils.js';
 
 type GmResult = Extract<FindArchivalDocumentsOutput['results'][number], { type: 'gm' }>;
 const isGm = (r: FindArchivalDocumentsOutput['results'][number]): r is GmResult => r.type === 'gm';
@@ -72,10 +72,10 @@ async function main() {
 
   console.log('2. one-sided filters on source "all" skip the other source with a note');
   const gmOnly = await call({ source: 'all', chamber: 'Amsterdam', size: 5, includeAggregations: false });
-  check(gmOnly.results.length > 0 && gmOnly.results.every((r) => r.type === 'gm'), 'chamber on "all" → GM results only');
+  checkEvery(gmOnly.results, (r) => r.type === 'gm', 'chamber on "all" → GM results only');
   check(Boolean(gmOnly.note?.includes('OBP')), 'chamber on "all" → note names the skipped OBP source');
   const obpOnly = await call({ source: 'all', settlement: 'Batavia', size: 5, includeAggregations: false });
-  check(obpOnly.results.length > 0 && obpOnly.results.every((r) => r.type === 'obp'), 'settlement on "all" → OBP results only');
+  checkEvery(obpOnly.results, (r) => r.type === 'obp', 'settlement on "all" → OBP results only');
   check(Boolean(obpOnly.note?.includes('GM')), 'settlement on "all" → note names the skipped GM source');
 
   console.log('2b. folio is an OBP-only filter requiring an inventoryNumber (finding 2)');
@@ -106,7 +106,7 @@ async function main() {
     size: 5,
     includeAggregations: false,
   });
-  check(folioAll.results.length > 0 && folioAll.results.every((r) => r.type === 'obp'), 'folio on "all" → OBP results only (GM skipped)');
+  checkEvery(folioAll.results, (r) => r.type === 'obp', 'folio on "all" → OBP results only (GM skipped)');
   check(
     Boolean(folioAll.note?.includes('folio') && folioAll.note?.includes('GM')),
     'folio on "all" → note names folio and the skipped GM source',
@@ -122,7 +122,7 @@ async function main() {
   // Previously {source:'gm', settlement:''} threw "settlement is OBP-only"; now
   // the empty filter is a no-op and the GM query runs.
   const gmEmptySettlement = await call({ source: 'gm', settlement: '', size: 1, includeAggregations: false });
-  check(gmEmptySettlement.results.length > 0 && gmEmptySettlement.results.every((r) => r.type === 'gm'),
+  checkEvery(gmEmptySettlement.results, (r) => r.type === 'gm',
     'empty settlement on source "gm" no longer errors');
 
   console.log('2d. empty inventoryNumber array is treated as absent (audit finding #7)');
@@ -273,8 +273,8 @@ async function main() {
     gmHeadRows.length === 10 && gmHeadRows.every((r) => r.description.trim() !== ''),
     'first page of an unfiltered GM listing has no blank-description rows',
   );
-  check(
-    gmHeadRows.every((r) => r.inventoryNumber.trim() !== ''),
+  checkEvery(
+    gmHeadRows, (r) => r.inventoryNumber.trim() !== '',
     'first page of an unfiltered GM listing has no blank-inventoryNumber rows',
   );
   check(
@@ -289,8 +289,8 @@ async function main() {
     size: 6, includeAggregations: false,
   });
   const gmDecadeRows = gmDecade.results.filter(isGm);
-  check(
-    gmDecadeRows.length > 0 && gmDecadeRows.every((r) => r.description.trim() !== ''),
+  checkEvery(
+    gmDecadeRows, (r) => r.description.trim() !== '',
     'chamber+year query returns rows, none of them blank stubs',
   );
 

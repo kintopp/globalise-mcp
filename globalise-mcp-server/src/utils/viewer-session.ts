@@ -16,6 +16,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import type { CropLocalSize } from './iiif.js';
 
 /** A command the iframe drains and executes; also the navigate_viewer input shape. */
 export interface ViewerCommand {
@@ -23,12 +24,6 @@ export interface ViewerCommand {
   region?: string;
   relativeTo?: string;
   relativeToSize?: CropLocalSize;
-}
-
-/** Actual pixel dimensions of an inspected crop (for crop-local coordinates). */
-export interface CropLocalSize {
-  width: number;
-  height: number;
 }
 
 export interface ViewerQueue {
@@ -53,7 +48,7 @@ export function evictIdle<T extends { lastAccess: number }>(map: Map<string, T>,
  * it never holds the process open (a bare setInterval would keep the event
  * loop alive and hang a graceful exit).
  */
-export function sweepTtlMap<T extends { lastAccess: number }>(map: Map<string, T>, ttlMs = 1_800_000): void {
+function sweepTtlMap<T extends { lastAccess: number }>(map: Map<string, T>, ttlMs = 1_800_000): void {
   setInterval(() => evictIdle(map, ttlMs, Date.now()), 60_000).unref();
 }
 
@@ -73,23 +68,14 @@ export function mintOrRemount(
   dims?: CropLocalSize,
 ): string {
   const now = Date.now();
+  const content = { documentId, imageWidth: dims?.width, imageHeight: dims?.height, lastAccess: now };
   const existing = requested ? viewerQueues.get(requested) : undefined;
-  if (requested && existing) {
-    existing.documentId = documentId;
-    existing.imageWidth = dims?.width;
-    existing.imageHeight = dims?.height;
-    existing.lastAccess = now;
-    return requested;
+  if (existing) {
+    Object.assign(existing, content);
+    return requested!;
   }
   const viewUUID = randomUUID();
-  viewerQueues.set(viewUUID, {
-    commands: [],
-    createdAt: now,
-    lastAccess: now,
-    documentId,
-    imageWidth: dims?.width,
-    imageHeight: dims?.height,
-  });
+  viewerQueues.set(viewUUID, { commands: [], createdAt: now, ...content });
   return viewUUID;
 }
 

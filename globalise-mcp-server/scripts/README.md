@@ -9,21 +9,15 @@
 - **build-mcpb.ts** — packs the `.mcpb` bundle. `npm run build:mcpb`.
 
 ## Tests
-Run by `npm test` (offline chain): test-fts.ts, test-api-client.ts,
-test-cache.ts, test-document-id.ts, test-iiif-region.ts, test-vision-sizing.ts,
-test-image-dimensions.ts, test-archival-download.ts, test-inventory-scope.ts,
-test-viewer-session.ts, test-archival-index.ts, test-commodities.ts,
-test-commodities-quoting.ts, test-measures.ts, test-version-sync.ts,
-test-viewer-build.ts, test-viewer-protocol.ts, test-viewer-render.ts,
-test-response-size.ts, test-protocol-eras.ts, smoke-test.ts
-(+ test-utils.ts shared helpers). The chain also runs two
+Run by `npm test` (offline chain, order in package.json's `test` script):
+every `test-*.ts` except the three listed below, then smoke-test.ts.
+test-utils.ts holds the shared helpers. The chain also runs two
 typecheck-only gates that have no script file: `test:viewer-typecheck`
 (`tsc -p apps/document-viewer`) and `test:cli-typecheck`
 (`tsc -p scripts/tsconfig.cli.json`).
 Out of the default chain (network / built dist / bundle):
 test-live-api.ts (`test:live`), test-cli.ts (`test:cli`),
 test-mcpb-bundle.ts (`test:mcpb`).
-<!-- Keep this list in step with package.json's "test" chain. -->
 
 ## CLI
 - **cli.mjs** — the `glob-mcp` headless MCP client. `npm run cli`. Typechecked via

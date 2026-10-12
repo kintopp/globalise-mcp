@@ -43,8 +43,8 @@ function compareSemver(a: string, b: string): number {
   return pa[0] - pb[0] || pa[1] - pb[1] || pa[2] - pb[2];
 }
 
-let newestTag = '';
-let hasGit = true;
+// null: no git checkout; '': git ran but saw no v* tags.
+let newestTag: string | null;
 try {
   newestTag = execSync("git tag -l 'v*' --sort=-version:refname", {
     cwd: ROOT,
@@ -54,10 +54,10 @@ try {
     .split('\n')[0]
     .trim();
 } catch {
-  hasGit = false;
+  newestTag = null;
 }
 
-if (!hasGit) {
+if (newestTag === null) {
   console.log('  (no git checkout, e.g. an exported tree: tag-equality guard skipped)');
 } else if (!newestTag) {
   // Releases exist since v0.9.0, so a tagless checkout means tags were not

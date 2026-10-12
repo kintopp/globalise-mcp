@@ -6,6 +6,10 @@
 
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+export const COMMODITIES_TSV = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'sources', 'commodities.tsv');
 
 export type CommodityRow = {
   uuid: string;
@@ -26,8 +30,7 @@ function strOrNull(val: string | undefined): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
-export async function parseCommoditiesTsv(path: string): Promise<CommodityRow[]> {
-  console.log('Parsing commodities TSV...');
+export async function parseCommoditiesTsv(path = COMMODITIES_TSV): Promise<CommodityRow[]> {
   const rows: CommodityRow[] = [];
 
   return new Promise((resolve, reject) => {
@@ -61,10 +64,7 @@ export async function parseCommoditiesTsv(path: string): Promise<CommodityRow[]>
           definition_source_url: strOrNull(record['definitionSource_url']),
         });
       })
-      .on('end', () => {
-        console.log(`  Parsed ${rows.length} commodity rows`);
-        resolve(rows);
-      })
+      .on('end', () => resolve(rows))
       .on('error', reject);
   });
 }
