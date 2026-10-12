@@ -14,6 +14,12 @@
  *   9. GM scan URLs are normalized to a 4-digit scan tail
  *  10. resolveInventoriesByYear (the search tool's year filter) — overlap
  *      semantics (strict, undated rows never match), numeric ordering, empty windows
+ *  11. lettered volumes — the OBP source writes 9014A/9014B as "9014", a number
+ *      with no scans. Ways this can fail: a base number reported with no hint of
+ *      its volumes; a volume filter missing rows that may lie in it, or matching
+ *      rows that cannot; a folio rule misplacing a row (2352: foliation continues
+ *      across volumes, A = 1-300, B = 301-600, verified on the scans); the year
+ *      filter of search_transcriptions sending a scanless base number upstream.
  *
  * Plain Node script (no framework). Imports the tool directly from src via
  * tsx — no build needed, but the local SQLite database must exist.
@@ -323,6 +329,31 @@ async function main() {
   check(all.length >= 4900 && all.length <= 5100, `unbounded window resolves to every indexed inventory (got ${all.length})`);
   check(isDeepStrictEqual(await resolveInventoriesByYear(undefined, undefined), all), 'a repeated resolution returns the same inventories');
   await expectStructuredError({ yearFrom: 1750, yearTo: 1700, size: 1 }, 'reversed year window is rejected by find_archival_documents too');
+
+  console.log('11. Lettered volumes (EAD 1.04.02: 9014A/B, 2352A-E, 7872A/B, …)');
+  type ObpResult = Extract<FindArchivalDocumentsOutput['results'][number], { type: 'obp' }>;
+  const obpRows = async (inventoryNumber: string) =>
+    (await call({ source: 'obp', inventoryNumber, size: 500, includeAggregations: false })).results as ObpResult[];
+  const LETTERED_BASES = ['1171', '1179', '1457', '1604', '1615', '2352', '4022', '4025', '7872', '9013', '9014', '9015'];
+  const unflagged = [];
+  for (const base of LETTERED_BASES) {
+    const rows = (await call({ source: 'all', inventoryNumber: base, size: 500, includeAggregations: false })).results;
+    unflagged.push(...rows.filter((r) => r.inventoryNumber === base && !r.volumeCandidates?.length));
+  }
+  check(unflagged.length === 0, `no row reports a scanless base number without volume candidates (bad: ${unflagged.slice(0, 3).map((r) => r.id).join(', ') || 'none'})`);
+  const r9014A = await obpRows('9014A');
+  check(r9014A.length > 0 && r9014A.every((r) => r.volumeCandidates?.includes('9014A')), 'filtering on 9014A returns the 9014 rows that may lie in it');
+  const r2352B = await obpRows('2352B');
+  const placedB = r2352B.filter((r) => r.inventoryNumber === '2352B');
+  check(placedB.length > 0 && placedB.every((r) => r.folioStart! >= 301 && r.folioEnd! <= 600 && r.volumeCandidates === null),
+    'rows placed in 2352B lie within folios 301-600 and carry no candidates');
+  check(r2352B.every((r) => r.inventoryNumber === '2352B' || r.volumeCandidates?.includes('2352B')), 'a volume filter returns only rows placed in or possibly in that volume');
+  check((await obpRows('2352A')).every((r) => (r.folioStart ?? 0) <= 300), '2352A never returns a row starting past its last folio (300)');
+  check((await obpRows('7872B')).every((r) => (r.yearEarliest ?? 0) >= 1763), '7872B (1764) never returns a row that ends before 1763');
+  check((await obpRows('1543')).every((r) => r.volumeCandidates === null), 'an unsplit inventory carries no volume candidates');
+  const allInv = new Set(all);
+  check(LETTERED_BASES.every((b) => !allInv.has(b)), 'the year filter never resolves to a scanless base number');
+  check(['9014A', '9014B', '2352A', '2352B', '7872B'].every((v) => allInv.has(v)), 'the year filter resolves to the lettered volumes instead');
 
   closeDatabase();
 

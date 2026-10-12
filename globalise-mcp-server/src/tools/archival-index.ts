@@ -39,6 +39,8 @@ export const findArchivalDocumentsInputSchema = z.object({
     .describe('Include aggregation counts for settlements, years, inventories (default: true)'),
 });
 
+const VOLUME_CANDIDATES_DESCRIPTION = 'Set when this document lies in one of several lettered volumes (e.g. 9014A, 9014B) and the source does not say which: inventoryNumber is then the bare base number, which has no scans of its own — look in these volumes instead. Null otherwise.';
+
 // OBP document result type
 const obpDocumentSchema = z.object({
   type: z.literal('obp'),
@@ -56,6 +58,8 @@ const obpDocumentSchema = z.object({
   locationTanap: z.string().nullable(),
   geographicalCoverage: z.string().nullable(),
   documentType: z.string().nullable(),
+  volumeCandidates: z.array(z.string()).nullable()
+    .describe(VOLUME_CANDIDATES_DESCRIPTION),
 });
 
 // Links to the published RGP (Rijks Geschiedkundige Publicatiën) edition of a
@@ -92,6 +96,7 @@ const gmDocumentSchema = z.object({
   htrAvailable: z.boolean(),
   rgpVolume: z.string().nullable(),
   rgpPage: z.string().nullable(),
+  volumeCandidates: z.array(z.string()).nullable().describe(VOLUME_CANDIDATES_DESCRIPTION),
   publishedEdition: publishedEditionSchema.nullable()
     .describe('Links to the published RGP edition — the scholarly Generale Missiven series (Rijks Geschiedkundige Publicatiën), a selective, edited text distinct from the HTR transcription (Retroboeken scans + GitHub plain text). Null if this missive was not published in the RGP edition in this form (~41% are not).'),
 });
@@ -152,6 +157,7 @@ type ObpDbRow = {
   location_tanap: string | null;
   geographical_coverage: string | null;
   document_type: string | null;
+  volume_candidates: string | null;
 }
 
 type GmDbRow = {
@@ -174,6 +180,7 @@ type GmDbRow = {
   htr_available: number;
   rgp_volume: string | null;
   rgp_page: string | null;
+  volume_candidates: string | null;
 }
 
 type WhereClause = {
@@ -200,7 +207,10 @@ function buildCommonConditions(
   if (input.inventoryNumber) {
     const invNumbers = Array.isArray(input.inventoryNumber) ? input.inventoryNumber : [input.inventoryNumber];
     const placeholders = invNumbers.map((_, i) => `@inv${i}`).join(', ');
-    conditions.push(`inventory_number IN (${placeholders})`);
+    // A row whose volume is unknown matches each of its candidate volumes.
+    const candidateMatches = invNumbers
+      .map((_, i) => ` OR instr('|' || volume_candidates || '|', '|' || @inv${i} || '|') > 0`).join('');
+    conditions.push(`(inventory_number IN (${placeholders})${candidateMatches})`);
     for (let i = 0; i < invNumbers.length; i++) {
       params[`inv${i}`] = invNumbers[i];
     }
@@ -317,6 +327,7 @@ function mapObpRow(row: ObpDbRow) {
     locationTanap: row.location_tanap,
     geographicalCoverage: row.geographical_coverage,
     documentType: row.document_type,
+    volumeCandidates: row.volume_candidates?.split('|') ?? null,
   };
 }
 
@@ -410,6 +421,7 @@ function mapGmRow(row: GmDbRow) {
     htrAvailable: row.htr_available === 1,
     rgpVolume: row.rgp_volume,
     rgpPage: row.rgp_page,
+    volumeCandidates: row.volume_candidates?.split('|') ?? null,
     publishedEdition: buildPublishedEdition(row.rgp_volume, row.rgp_page),
   };
 }
@@ -542,12 +554,12 @@ export async function resolveInventoriesByYear(yearFrom?: number, yearTo?: numbe
   addYearOverlap(conditions, params, yearFrom, yearTo, { nullTolerant: false });
   const { where } = toWhereClause(conditions, params);
   const rows = state.prepare(
-    `SELECT inventory_number FROM (
-       SELECT inventory_number FROM obp_documents ${where}
-       UNION SELECT inventory_number FROM generale_missiven ${where}
-     ) ORDER BY CAST(inventory_number AS INTEGER), inventory_number`,
-  ).all(params) as { inventory_number: string }[];
-  const result = rows.map((r) => r.inventory_number);
+    `SELECT DISTINCT inventory_number, volume_candidates FROM obp_documents ${where}
+     UNION SELECT inventory_number, volume_candidates FROM generale_missiven ${where}`,
+  ).all(params) as { inventory_number: string; volume_candidates: string | null }[];
+  // A bare base number of lettered volumes has no scans; search its volumes.
+  const inventories = new Set(rows.flatMap((r) => r.volume_candidates?.split('|') ?? [r.inventory_number]));
+  const result = [...inventories].sort((a, b) => parseInt(a, 10) - parseInt(b, 10) || a.localeCompare(b));
   state.yearScopes.set(key, result);
   return result;
 }

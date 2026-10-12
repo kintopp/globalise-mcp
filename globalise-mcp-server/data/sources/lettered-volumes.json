@@ -1,0 +1,33 @@
+{
+  "description": "Base inventory numbers that exist in archive 1.04.02 only as lettered volumes. The OBP index stores inventory numbers as integers, so rows of e.g. 9014A and 9014B are both recorded as 9014; some Generale Missiven rows do the same but name the volume in their scan URL. Volumes and rules are taken from the Nationaal Archief EAD of 1.04.02. An OBP rule assigns a row only when its whole folio or year span falls inside one volume; otherwise the row keeps its base number and lists the volumes as candidates.",
+  "source": "https://www.nationaalarchief.nl/onderzoeken/archief/1.04.02/download/xml",
+  "inventories": {
+    "1171": { "volumes": [{ "id": "1171A" }, { "id": "1171B" }] },
+    "1179": { "volumes": [{ "id": "1179A" }, { "id": "1179B" }] },
+    "1457": { "volumes": [{ "id": "1457A" }, { "id": "1457B" }, { "id": "1457C" }] },
+    "1604": { "volumes": [{ "id": "1604A" }, { "id": "1604B" }, { "id": "1604C" }] },
+    "1615": { "volumes": [{ "id": "1615A" }, { "id": "1615B" }, { "id": "1615C" }] },
+    "2352": {
+      "note": "EAD 'Band 1. Pag. 1 - 300' etc. Foliation runs on across volumes: 2352A scan 0200 is folio 295, 2352B scan 0005 is folio 305.",
+      "volumes": [
+        { "id": "2352A", "folios": [1, 300] },
+        { "id": "2352B", "folios": [301, 600] },
+        { "id": "2352C", "folios": [601, 900] },
+        { "id": "2352D", "folios": [901, 1200] },
+        { "id": "2352E", "folios": [1201, 1566] }
+      ]
+    },
+    "4022": { "volumes": [{ "id": "4022A" }, { "id": "4022B" }] },
+    "4025": { "volumes": [{ "id": "4025A" }, { "id": "4025B" }] },
+    "7872": {
+      "note": "EAD 7872A '1762 december 8 - 1763 december 7', 7872B '1764 januari 4 - 1764 december 26'.",
+      "volumes": [
+        { "id": "7872A", "years": [1762, 1763] },
+        { "id": "7872B", "years": [1764, 1764] }
+      ]
+    },
+    "9013": { "volumes": [{ "id": "9013A" }, { "id": "9013B" }] },
+    "9014": { "volumes": [{ "id": "9014A" }, { "id": "9014B" }] },
+    "9015": { "volumes": [{ "id": "9015A" }, { "id": "9015B" }, { "id": "9015C" }] }
+  }
+}
