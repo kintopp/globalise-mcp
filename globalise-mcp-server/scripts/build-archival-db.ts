@@ -6,13 +6,14 @@
  * This script:
  * 1. Parses the OBP indexes CSV (~314K rows)
  * 2. Parses the Generale Missiven CSV (~950 rows)
- * 3. Creates SQLite database with FTS5 full-text search
- * 4. Creates indexes for common query patterns
+ * 3. Resolves lettered volumes in both (data/sources/lettered-volumes.json)
+ * 4. Creates SQLite database with FTS5 full-text search
+ * 5. Creates indexes for common query patterns
  */
 
 import { DatabaseSync } from 'node:sqlite';
 import { parse } from 'csv-parse';
-import { createReadStream, existsSync, unlinkSync } from 'fs';
+import { createReadStream, existsSync, readFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getDatabasePath } from '../src/utils/database.js';
@@ -29,14 +30,17 @@ const DB_PATH = getDatabasePath();
 
 const OBP_CSV = join(SOURCES_DIR, 'obp-indexes.csv');
 const GM_CSV = join(SOURCES_DIR, 'generale-missiven.csv');
+const VOLUMES_JSON = join(SOURCES_DIR, 'lettered-volumes.json');
 
 // Data version stamped into the built DB (PRAGMA user_version). Independent of
 // the server's semver and of reference.sqlite's counter — bump it only when a
 // rebuild changes the shipped finding-aid bytes (new source release, schema
 // change, corrected rows). 1 = the OBP v2 (2025) + Generale Missiven build.
 // 2 = the same sources with the GM rows the source marks deleted excluded
-// (see DELETED_ENTRY_RE).
-const DATA_VERSION = 2;
+// (see DELETED_ENTRY_RE). 3 = OBP rows of lettered volumes (9014A, 2352B, …)
+// reassigned or given volume_candidates, and likewise GM rows (see
+// resolveObpVolumes, resolveGmVolumes).
+const DATA_VERSION = 3;
 
 // Batch size for inserts
 const BATCH_SIZE = 5000;
@@ -55,6 +59,7 @@ type ObpRow = {
   location_tanap: string | null;
   geographical_coverage: string | null;
   document_type: string | null;
+  volume_candidates: string | null;
 }
 
 type GmRow = {
@@ -76,6 +81,7 @@ type GmRow = {
   htr_available: number;
   rgp_volume: string | null;
   rgp_page: string | null;
+  volume_candidates: string | null;
 }
 
 function parseIntOrNull(val: string | undefined): number | null {
@@ -118,6 +124,7 @@ async function parseObpCsv(): Promise<ObpRow[]> {
           location_tanap: parseStringOrNull(record['LOCATION (TANAP)']),
           geographical_coverage: parseStringOrNull(record['GEOGRAPHICAL COVERAGE OF INV. NUMBER']),
           document_type: parseStringOrNull(record['DOCUMENT TYPE (TANAP)']),
+          volume_candidates: null,
         });
       })
       .on('end', () => {
@@ -126,6 +133,68 @@ async function parseObpCsv(): Promise<ObpRow[]> {
       })
       .on('error', reject);
   });
+}
+
+type VolumeRule = { id: string; folios?: [number, number]; years?: [number, number] };
+type LetteredVolumes = Record<string, { volumes: VolumeRule[] }>;
+
+function loadLetteredVolumes(): LetteredVolumes {
+  return (JSON.parse(readFileSync(VOLUMES_JSON, 'utf8')) as { inventories: LetteredVolumes }).inventories;
+}
+
+/**
+ * The OBP source stores inventory numbers as integers, so rows of lettered
+ * volumes (9014A, 9014B) all read "9014" — a number with no scans of its own.
+ * A row moves to a volume only when a rule places its whole span inside it;
+ * otherwise it keeps the base number and lists every volume as a candidate.
+ */
+function resolveObpVolumes(rows: ObpRow[], inventories: LetteredVolumes): void {
+  // Compare a row's [lo, hi] span with a volume's range: inside it, or overlapping it.
+  const test = (lo: number | null, hi: number | null, range: [number, number] | undefined, inside: boolean) => {
+    if (!range || lo === null) return false;
+    const end = hi ?? lo;
+    return inside ? lo >= range[0] && end <= range[1] : lo <= range[1] && end >= range[0];
+  };
+  const matches = (row: ObpRow, v: VolumeRule, inside: boolean) =>
+    test(row.folio_start, row.folio_end, v.folios, inside) ||
+    test(row.year_earliest, row.year_latest, v.years, inside);
+  let assigned = 0;
+  let flagged = 0;
+  for (const row of rows) {
+    const entry = inventories[row.inventory_number];
+    if (!entry) continue;
+    const inside = entry.volumes.filter((v) => matches(row, v, true));
+    if (inside.length === 1) {
+      row.inventory_number = inside[0].id;
+      assigned++;
+    } else {
+      // A span straddling a volume boundary narrows to the volumes it touches.
+      const overlapping = entry.volumes.filter((v) => matches(row, v, false));
+      row.volume_candidates = (overlapping.length ? overlapping : entry.volumes).map((v) => v.id).join('|');
+      flagged++;
+    }
+  }
+  console.log(`  Lettered volumes: ${assigned} OBP rows reassigned, ${flagged} given volume candidates`);
+}
+
+/** GM rows on a lettered base number take the volume their scan URL names. */
+function resolveGmVolumes(rows: GmRow[], inventories: LetteredVolumes): void {
+  let assigned = 0;
+  let flagged = 0;
+  for (const row of rows) {
+    const entry = inventories[row.inventory_number];
+    if (!entry) continue;
+    const fromUrl = row.scan_url_first?.match(/\/invnr\/([^/]+)\//)?.[1];
+    const volume = entry.volumes.find((v) => v.id === fromUrl);
+    if (volume) {
+      row.inventory_number = volume.id;
+      assigned++;
+    } else {
+      row.volume_candidates = entry.volumes.map((v) => v.id).join('|');
+      flagged++;
+    }
+  }
+  console.log(`  Lettered volumes: ${assigned} GM rows reassigned, ${flagged} given volume candidates`);
 }
 
 /**
@@ -187,6 +256,7 @@ async function parseGmCsv(): Promise<GmRow[]> {
           htr_available: htrAvailable,
           rgp_volume: parseStringOrNull(record['RGP Deel waarin de missive is opgenomen']),
           rgp_page: parseStringOrNull(record['RGP pagina waarop de missive begint']),
+          volume_candidates: null,
         });
       })
       .on('end', () => {
@@ -219,7 +289,8 @@ function createSchema(db: DatabaseSync): void {
       settlement TEXT,
       location_tanap TEXT,
       geographical_coverage TEXT,
-      document_type TEXT
+      document_type TEXT,
+      volume_candidates TEXT
     );
   `);
 
@@ -243,7 +314,8 @@ function createSchema(db: DatabaseSync): void {
       scan_url_last TEXT,
       htr_available INTEGER DEFAULT 0,
       rgp_volume TEXT,
-      rgp_page TEXT
+      rgp_page TEXT,
+      volume_candidates TEXT
     );
   `);
 
@@ -257,11 +329,11 @@ function insertObpData(db: DatabaseSync, rows: ObpRow[]): void {
     INSERT INTO obp_documents (
       id_csv, id_tanap, description, inventory_number, section,
       folio_start, folio_end, year_earliest, year_latest,
-      settlement, location_tanap, geographical_coverage, document_type
+      settlement, location_tanap, geographical_coverage, document_type, volume_candidates
     ) VALUES (
       @id_csv, @id_tanap, @description, @inventory_number, @section,
       @folio_start, @folio_end, @year_earliest, @year_latest,
-      @settlement, @location_tanap, @geographical_coverage, @document_type
+      @settlement, @location_tanap, @geographical_coverage, @document_type, @volume_candidates
     )
   `);
 
@@ -288,13 +360,13 @@ function insertGmData(db: DatabaseSync, rows: GmRow[]): void {
       folio_start, folio_end, scan_start, scan_end,
       year_earliest, year_latest, description,
       date_display, date_numeric, scan_url_first, scan_url_last,
-      htr_available, rgp_volume, rgp_page
+      htr_available, rgp_volume, rgp_page, volume_candidates
     ) VALUES (
       @id_csv, @id_tanap, @inventory_number, @chamber,
       @folio_start, @folio_end, @scan_start, @scan_end,
       @year_earliest, @year_latest, @description,
       @date_display, @date_numeric, @scan_url_first, @scan_url_last,
-      @htr_available, @rgp_volume, @rgp_page
+      @htr_available, @rgp_volume, @rgp_page, @volume_candidates
     )
   `);
 
@@ -391,6 +463,9 @@ async function main(): Promise<void> {
   }
 
   const [obpRows, gmRows] = await Promise.all([parseObpCsv(), parseGmCsv()]);
+  const letteredVolumes = loadLetteredVolumes();
+  resolveObpVolumes(obpRows, letteredVolumes);
+  resolveGmVolumes(gmRows, letteredVolumes);
 
   console.log('');
 
