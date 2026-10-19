@@ -49,7 +49,7 @@ Most of the tools listed below were designed to reproduce functionality provided
 
 - **`globalise_navigate`** — Moves one page forward or backward from a given page, so you can read through a volume in sequence instead of jumping between scattered search results. It returns the neighbouring page in full — transcription, metadata, and links — and tells you when you have reached the beginning or end of the run.
 
-- **`globalise_find_archival_documents`** — Searches a local TANAP index of finding-aid entries (the catalogue level that sits above the page transcriptions) so the right inventories can be located before reading any pages. It covers two bodies of material: the OBP digitised indexes and the Generale Missiven, many of which link to their scholarly published edition (the RGP series) at the Huygens Institute.
+- **`globalise_find_archival_documents`** — Searches a local TANAP index of finding-aid entries (the catalogue level that sits above the page transcriptions) so the right inventories can be located before reading any pages. It covers two bodies of material: the OBP digitised indexes and the Generale Missiven, many of which link to their scholarly published edition (the RGP series) at the Huygens Institute. An entry that lies in one of several lettered volumes (such as 9014A and 9014B) without the source saying which lists those volumes as candidates, and an inventory filter on any of them finds it.
 
 - **`globalise_lookup_commodity`** — Looks up a trade good in a local glossary of VOC commodities, returning the historical term used, an English label, and a provenance and confidence-labelled definition. It serves as the bridge between a modern vocabulary and the words to search for in the historical transcriptions; some entries also list period spelling variants. Every result can return a link to the concept's page in the GLOBALISE SKOSMOS thesaurus.
 
@@ -69,7 +69,7 @@ A local SQLite database of more than 228,000 finding-aid entries derived from th
 
 **Editorial process:**
 
-The original finding aids are re-used effectively unchanged: no entry has been added, removed, or reworded, and every description remains exactly as published. The *Generale Missiven* file is identical to the CSV distributed on the Dataverse (see below); the *OBP* indexes are distributed as a spreadsheet (version 2, 2025) and were exported with all sixteen columns and all 227,526 rows intact. What has changed is their structure. The build script only loads the subset of columns the search tool actually uses — thirteen of the sixteen *OBP* columns and eighteen of the twenty-four *Generale Missiven* columns — setting aside internal bookkeeping such as the typoscript folio strings, the scan filenames, and a manual-check notes column. It then converts folio, scan, and year figures from text into numbers so they can be filtered and sorted, treating blanks as "unknown" rather than as zero. The Dutch `HTR van IJsberg beschikbaar?` column is read as a true/false flag. Finally, it creates a full-text index over the descriptions and a set of ordinary indexes over inventory number, settlement, and year. The two collections are kept as separate tables and searched as one, so a single query reaches both the papers and the dispatches. The two sources carry different licences — the *OBP* indexes are CC-BY-4.0 and the *Generale Missiven* overview is CC-BY-SA-4.0 — so the combined database is redistributed under the more restrictive of the two, CC-BY-SA-4.0.
+The original finding aids are re-used effectively unchanged: no entry has been added, removed, or reworded, and every description remains exactly as published. The one correction, to inventory numbers, is described below. The *Generale Missiven* file is identical to the CSV distributed on the Dataverse (see below); the *OBP* indexes are distributed as a spreadsheet (version 2, 2025) and were exported with all sixteen columns and all 227,526 rows intact. What has changed is their structure. The build script only loads the subset of columns the search tool actually uses — thirteen of the sixteen *OBP* columns and eighteen of the twenty-four *Generale Missiven* columns — setting aside internal bookkeeping such as the typoscript folio strings, the scan filenames, and a manual-check notes column. It then converts folio, scan, and year figures from text into numbers so they can be filtered and sorted, treating blanks as "unknown" rather than as zero. The Dutch `HTR van IJsberg beschikbaar?` column is read as a true/false flag. One correction is made to the data itself. Both sources record the lettered volumes of an inventory (9014A, 9014B, …) under its bare number, which has no scans of its own. The build moves 855 *OBP* and 5 *Generale Missiven* entries to the volume they belong to, using the folio and date ranges in the Nationaal Archief's inventory of fonds 1.04.02 and volume boundaries checked against the scans (`data/sources/lettered-volumes.json`). The 84 entries it cannot place keep the bare number and list their candidate volumes. Finally, it creates a full-text index over the descriptions and a set of ordinary indexes over inventory number, settlement, and year. The two collections are kept as separate tables and searched as one, so a single query reaches both the papers and the dispatches. The two sources carry different licences — the *OBP* indexes are CC-BY-4.0 and the *Generale Missiven* overview is CC-BY-SA-4.0 — so the combined database is redistributed under the more restrictive of the two, CC-BY-SA-4.0.
 
 Local:
 - Generale Missiven ([generale-missiven.csv](./globalise-mcp-server/data/sources/generale-missiven.csv))
@@ -126,7 +126,7 @@ When using the transcriptions, please cite:
 
 **APA (7th ed.)**
 
-> Bosse, A. (2026). *GLOBALISE MCP Server* (Version 0.10.0) [Software]. Research and Infrastructure Support (RISE), University of Basel. https://github.com/kintopp/globalise-mcp
+> Bosse, A. (2026). *GLOBALISE MCP Server* (Version 0.11.0) [Software]. Research and Infrastructure Support (RISE), University of Basel. https://github.com/kintopp/globalise-mcp
 
 **BibTeX**
 ```bibtex
@@ -134,7 +134,7 @@ When using the transcriptions, please cite:
   author    = {Bosse, Arno},
   title     = {{GLOBALISE MCP Server}},
   year      = {2026},
-  version   = {0.10.0},
+  version   = {0.11.0},
   publisher = {Research and Infrastructure Support (RISE), University of Basel},
   url       = {https://github.com/kintopp/globalise-mcp},
   orcid     = {0000-0003-3681-1289},
