@@ -55,7 +55,9 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
   // browser origin. Collapse a wildcard allowlist to the string form.
   const corsOrigin = allowedOrigins.includes('*') ? '*' : allowedOrigins;
   app.use(cors({ origin: corsOrigin }));
-  app.use(express.json({ limit: '1mb' }));
+  // inflate: false rejects Content-Encoding'd bodies (415): MCP clients never
+  // compress requests, and it keeps zlib/Brotli decoding off attacker input.
+  app.use(express.json({ limit: '1mb', inflate: false }));
 
   // Origin validation on MCP endpoints (spec MUST: 403 on invalid origins).
   // Separate from CORS, which only sets response headers and rejects nothing.
