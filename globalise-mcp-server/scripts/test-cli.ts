@@ -12,25 +12,16 @@
  * Deliberately NOT in the default `npm test` chain — it needs a healthy upstream,
  * mirroring test:live / test:mcpb.
  */
-import { check, checkEvery, finish, helpExampleArgv, runCli } from './test-utils.js';
-
-// Stable, known-good document used throughout the repo's docs (..._0107 exists).
-const DOC = 'NL-HaNA_1.04.02_9966_0106';
-const VERBS = ['search', 'find', 'commodity', 'measure', 'retrieve', 'navigate'];
-
-const jsonlRows = (s: string): any[] =>
-  s.trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
-
-function safe<T>(fn: () => T, fallback: T): T {
-  try { return fn(); } catch { return fallback; }
-}
+import {
+  FIXTURE_DOC as DOC, check, checkEvery, finish, helpExampleArgv, jsonlRows, parseJson, runCli,
+} from './test-utils.js';
 
 async function main() {
   console.log('1. retrieve <DOC> --fields id,inventoryNumber');
   {
     const r = await runCli(['retrieve', DOC, '--fields', 'id,inventoryNumber']);
     check(r.code === 0, 'exit 0');
-    const obj = safe(() => JSON.parse(r.stdout.trim()), null) as any;
+    const obj = parseJson(r.stdout);
     check(obj && typeof obj.id === 'string' && obj.id.includes(DOC), `id contains the doc (got ${obj?.id})`);
     check(obj && obj.inventoryNumber === '9966', `inventoryNumber === 9966 (got ${obj?.inventoryNumber})`);
     check(
@@ -43,7 +34,7 @@ async function main() {
   {
     const r = await runCli(['search', 'peper', '--max', '3', '--fields', 'id,document']);
     check(r.code === 0, 'exit 0');
-    const rows = safe(() => jsonlRows(r.stdout), []);
+    const rows = jsonlRows(r.stdout);
     check(rows.length >= 1 && rows.length <= 3, `1–3 JSONL rows (got ${rows.length})`);
     checkEvery(rows, (row) => 'id' in row && 'document' in row, 'each row is valid JSON with id + document');
     check(/\bshown\b/.test(r.stderr), 'stderr carries a count/pagination summary');
@@ -60,7 +51,10 @@ async function main() {
   }
 
   console.log('4. every help example runs and returns output (catches stale document IDs)');
-  for (const verb of VERBS) {
+  const verbs: string[] = (parseJson((await runCli(['tools', '--compact'])).stdout) ?? []).map((m: any) => m.verb);
+  check(verbs.length > 0, 'verb list read from tools --compact');
+  // Sequential on purpose: the example calls hit the live upstream.
+  for (const verb of verbs) {
     const argv = helpExampleArgv((await runCli([verb, '--help'])).stdout);
     if (!argv) { check(false, `${verb}: no example in --help`); continue; }
     const r = await runCli(argv);

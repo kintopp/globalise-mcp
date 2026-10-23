@@ -6,6 +6,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { API_CONFIG } from '../src/utils/api-client.js';
 
 let failures = 0;
 
@@ -64,6 +65,9 @@ export function finish(suiteName: string): void {
   console.log(`\n${suiteName} passed.`);
 }
 
+/** A stable page used in the docs and CLI examples (its neighbours _0105/_0107 exist). */
+export const FIXTURE_DOC = 'NL-HaNA_1.04.02_9966_0106';
+
 const SERVER_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(SERVER_ROOT, 'scripts', 'cli.mjs');
 
@@ -101,6 +105,18 @@ export function runCli(
     child.stdin?.end(input);
   });
 }
+
+/** `fn()`, or `fallback` if it throws — for parsing CLI output inside a check. */
+export function safe<T>(fn: () => T, fallback: T): T {
+  try { return fn(); } catch { return fallback; }
+}
+
+/** CLI stdout as one JSON value, or null. */
+export const parseJson = (stdout: string): any => safe(() => JSON.parse(stdout.trim()), null);
+
+/** CLI stdout as JSONL rows; [] if any line isn't JSON. */
+export const jsonlRows = (stdout: string): any[] =>
+  safe(() => stdout.trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)), []);
 
 /** Read the worked example out of `<verb> --help` as an argv (quotes stripped, `glob-mcp` dropped). */
 export function helpExampleArgv(helpText: string): string[] | null {
@@ -146,7 +162,7 @@ export async function startUpstreamStub(
       return json(res, 200, { total: { value: total, relation: 'eq' }, results, aggs: {} });
     }
     if (req.method === 'GET' && u.pathname === '/brinta/globalise/indices') {
-      return json(res, 200, { 'globalise-2024.03.18-test': { text: 'text', langIso: 'keyword', invNr: 'keyword', document: 'keyword' } });
+      return json(res, 200, { [API_CONFIG.DEFAULT_INDEX]: { text: 'text', langIso: 'keyword', invNr: 'keyword', document: 'keyword' } });
     }
     const m = u.pathname.match(/^\/projects\/globalise\/urn:globalise:(NL-HaNA_1\.04\.02_(\d+)_(\d{4}))$/);
     if (req.method === 'GET' && m) {
@@ -172,6 +188,7 @@ export async function startUpstreamStub(
   return {
     url: `http://127.0.0.1:${port}`,
     requests,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    // The spawned server keeps its connection alive; drop it so close() returns promptly.
+    close: () => new Promise<void>((resolve) => { server.close(() => resolve()); server.closeAllConnections(); }),
   };
 }

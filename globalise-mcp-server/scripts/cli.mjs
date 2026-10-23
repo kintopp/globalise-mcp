@@ -48,14 +48,12 @@ class UsageError extends Error {}
 // `pos`   = which input param the first positional maps to.
 // `list`  = key in structuredContent holding the result array (list tools).
 // `total` = key holding the count object {value, relation} for the pagination summary.
-// `cap`   = the param --max/-n resolves to; a verb without one rejects --max.
-// `page`  = "offset": --offset resolves to `from`; a verb without one rejects --offset.
-//           GLOBALISE has no token/resumption paging.
+// List verbs page with from/size (PAGING); single-object verbs reject --max/--offset.
 const VERBS = {
-  search:    { tool: "globalise_search_transcriptions",  pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
-  find:      { tool: "globalise_find_archival_documents", pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
-  commodity: { tool: "globalise_lookup_commodity",        pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
-  measure:   { tool: "globalise_lookup_measure",          pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
+  search:    { tool: "globalise_search_transcriptions",  pos: "query",             list: "results", total: "total" },
+  find:      { tool: "globalise_find_archival_documents", pos: "query",             list: "results", total: "total" },
+  commodity: { tool: "globalise_lookup_commodity",        pos: "query",             list: "results", total: "total" },
+  measure:   { tool: "globalise_lookup_measure",          pos: "query",             list: "results", total: "total" },
   retrieve:  { tool: "globalise_retrieve_document",       pos: "documentId",        single: true },
   // NB: navigate's ID param is `currentDocumentId`, NOT `documentId` (that name is unique to
   // retrieve). The schemas are .strict(), so the wrong name *errors* rather than being ignored.
@@ -99,9 +97,10 @@ for (const v of Object.keys(VERBS)) {
 // purpose — it's only meaningful on the `tools` verb (handled by argv inspection before tokenize).
 const GLOBAL_BOOL = new Set(["json", "table", "quiet", "show-call", "help", "stdin"]);
 const GLOBAL_VALUE = new Set(["http", "fields", "protocol"]);
-// Short flag aliases. `max` and `offset` are resolved per verb (cfg.cap / cfg.page) in buildToolArgs.
+// Short flag aliases; PAGING's keys are then resolved per verb in buildToolArgs.
 const FLAG_ALIASES = { n: "max", h: "help" };
-const PAGE_PARAM = { offset: "from" };
+// CLI paging flag → tool param, on list verbs only. GLOBALISE has no token/resumption paging.
+const PAGING = { max: "size", offset: "from" };
 
 // The commonest flag slip is punctuation or case, not spelling: `--inventory-number`.
 function nearestFlag(key, candidates) {
@@ -227,12 +226,9 @@ function buildToolArgs(verb, verbCfg, schema, flags, positionals) {
   for (const [key, raw] of Object.entries(flags)) {
     if (GLOBAL_BOOL.has(key) || GLOBAL_VALUE.has(key)) continue;
     let name = key;
-    if (key === "max") {
-      if (!verbCfg.cap) throw new UsageError(`--max/-n is not a flag for "${verb}" — it returns a single page (see \`glob-mcp ${verb} --help\`)`);
-      name = verbCfg.cap;
-    } else if (key === "offset") {
-      if (!verbCfg.page) throw new UsageError(`--offset is not a flag for "${verb}" — it returns a single page (see \`glob-mcp ${verb} --help\`)`);
-      name = PAGE_PARAM[verbCfg.page];
+    if (key in PAGING) {
+      if (!verbCfg.list) throw new UsageError(`--${key === "max" ? "max/-n" : key} is not a flag for "${verb}" — it returns a single page (see \`glob-mcp ${verb} --help\`)`);
+      name = PAGING[key];
     }
     args[name] = coerce(raw, propType(props[name]), name);
   }
@@ -248,12 +244,11 @@ function buildToolArgs(verb, verbCfg, schema, flags, positionals) {
 // Check resolved args against the tool's live inputSchema BEFORE --show-call or callTool, so an
 // unknown flag or a missing required param is a usage error (exit 2), and the dry-run never
 // prints a call the server's strict schema would reject.
-function validateToolArgs(verb, schema, args, { requireRequired = true } = {}) {
+function validateToolArgs(verb, schema, args) {
   const props = Object.keys(schema?.properties ?? {});
   for (const key of Object.keys(args)) {
     if (!props.includes(key)) throw unknownFlagError(key, verb, props);
   }
-  if (!requireRequired) return;
   for (const req of schema?.required ?? []) {
     if (args[req] === undefined) {
       throw new UsageError(`"${verb}" requires <${req}> (positional or --${req}) — see \`glob-mcp ${verb} --help\``);
@@ -347,21 +342,18 @@ function renderTable(rows, fields) {
 // Every GLOBALISE list tool returns total as {value, relation}. relation 'gte' means the
 // count is a lower bound (the matchAll path sets it unconditionally; the ordinary search
 // path passes Elasticsearch's own relation through), so '≥' is NOT matchAll-exclusive.
-// `pagination.hasMore` decides the --offset hint: it is set on a size-capped page and on a 'gte'
-// total, where comparing against the total can't tell.
-function paginationSummary(verbCfg, data, list, flags) {
+// The --offset hint follows `pagination.hasMore`, which also covers a size-capped page and a
+// 'gte' total, where comparing against the total can't tell.
+function paginationSummary(verbCfg, data, list) {
   const parts = [];
-  const offset = Number(data.pagination?.from ?? flags.offset ?? flags.from ?? 0) || 0;
+  const offset = data.pagination?.from ?? 0;
   const totalObj = verbCfg.total ? data[verbCfg.total] : undefined;
   const total = totalObj && typeof totalObj === "object" ? totalObj.value : totalObj;
   const gte = totalObj && typeof totalObj === "object" && totalObj.relation === "gte";
   parts.push(typeof total === "number"
     ? `${list.length} shown (offset ${offset}) of ${gte ? "≥" : ""}${total}`
     : `${list.length} shown (offset ${offset})`);
-  const hasMore = typeof data.pagination?.hasMore === "boolean"
-    ? data.pagination.hasMore
-    : !gte && typeof total === "number" && offset + list.length < total;
-  if (hasMore) parts.push(`pass --offset ${offset + list.length} for more`);
+  if (data.pagination?.hasMore) parts.push(`pass --offset ${offset + list.length} for more`);
   return parts.join("; ");
 }
 
@@ -416,7 +408,7 @@ function renderResult(res, verbCfg, flags) {
   } else {
     for (const row of list) process.stdout.write(JSON.stringify(project(row, fields)) + "\n");
   }
-  if (!quiet) process.stderr.write(paginationSummary(verbCfg, data, list, flags) + "\n");
+  if (!quiet) process.stderr.write(paginationSummary(verbCfg, data, list) + "\n");
   emitMeta();
 }
 
@@ -520,10 +512,7 @@ function verbHelp(verb, cfg, tool) {
       const enums = enumValues(prop);
       lines.push(`  --${name} <${propType(prop)}>${req}  ${desc}${enums ? "  " + enums : ""}`);
     }
-    const aliases = [];
-    if (cfg.cap) aliases.push(`--max, -n  → ${cfg.cap}`);
-    if (cfg.page) aliases.push(`--offset → ${PAGE_PARAM[cfg.page]}`);
-    if (aliases.length) lines.push("", "Aliases:  " + aliases.join("   ·   "));
+    if (cfg.list) lines.push("", `Aliases:  --max, -n  → ${PAGING.max}   ·   --offset → ${PAGING.offset}`);
   }
   if (meta.example) lines.push("", "Example:", "  " + meta.example);
   if (!tool) lines.push(
@@ -575,8 +564,7 @@ function toolsCompact(toolMap) {
     }
     const result = cfg.single ? "single" : (cfg.list ?? null);
     const entry = { verb, tool: name, positional: cfg.pos ?? null, result, args };
-    if (cfg.cap) entry.cap = cfg.cap;
-    if (cfg.page) entry.page = cfg.page;
+    if (cfg.list) entry.page = "offset";
     return entry;
   });
 }
@@ -691,7 +679,7 @@ async function main() {
     // Re-tokenize using the tool's schema, dropping the verb itself from positionals.
     const boolSet = boolSetFor(tool.inputSchema);
     const props = Object.keys(tool.inputSchema?.properties ?? {});
-    const cliKeys = new Set([...GLOBAL_BOOL, ...GLOBAL_VALUE, "max", "offset"]);
+    const cliKeys = new Set([...GLOBAL_BOOL, ...GLOBAL_VALUE, ...Object.keys(PAGING)]);
     const { flags, positionals } = tokenize(argv, boolSet, (key) =>
       cliKeys.has(key) || props.includes(key) ? null : unknownFlagError(key, verb, props));
 
@@ -700,9 +688,8 @@ async function main() {
     if (flags.stdin === true) {
       if (!cfg.pos) throw new UsageError(`--stdin needs a verb with a positional argument; ${verb} has none`);
       if (process.stdin.isTTY) throw new UsageError("--stdin set but stdin is a TTY — pipe input (e.g. `printf 'peper\\n' | glob-mcp search --stdin`)");
-      // Unknown flags fail before the first line; required params are checked per line,
-      // since each line supplies the positional.
-      validateToolArgs(verb, tool.inputSchema, buildToolArgs(verb, cfg, tool.inputSchema, flags, []), { requireRequired: false });
+      // Fail on bad flags before reading stdin; the placeholder stands in for each line's positional.
+      validateToolArgs(verb, tool.inputSchema, buildToolArgs(verb, cfg, tool.inputSchema, flags, ["x"]));
       const lines = await readStdinLines();
       let failures = 0;
       for (const line of lines) {
