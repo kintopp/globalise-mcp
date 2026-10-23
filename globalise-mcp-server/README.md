@@ -179,8 +179,9 @@ printf 'peper\nfoelie\n' | npm run --silent cli -- commodity --stdin --max 2 --f
 **Piping:** `npm run` prints a `> globalise-mcp-server@x.y.z cli` banner to **stdout**, which would
 corrupt the JSONL stream. When piping into `jq` or a file, either pass `--silent` *before* the script
 name (`npm run --silent cli -- …`, as above) or call `node scripts/cli.mjs …` directly — both leave
-stdout pure, with counts and notes on stderr. `npm run test:cli` smoke-tests the CLI — out of the
-default `npm test` chain, since it needs `dist/` + DBs + network.
+stdout pure, with counts and notes on stderr. `npm test` covers the CLI offline (`test:cli-offline`,
+with the upstream stubbed via `BROCCOLI_BASE_URL`); `npm run test:cli` runs it against the live
+upstream and is out of the default chain, since it needs network.
 
 ## Environment Variables
 
@@ -205,8 +206,8 @@ npm run build                 # Viewer UI → tsc → stamp dist/version.txt →
 npm run dev                   # tsc watch mode (npm run dev:ui rebuilds the viewer)
 npm run lint                  # eslint over src/ and scripts/ — not part of npm test
 npm run inspector             # Build + run against MCP Inspector
-npm test                      # 22-step offline suite: typechecks, FTS, DB tools, viewer, response sizing, version sync, smoke, HTTP shutdown
-npm run test:cli              # CLI client end to end (needs dist/, the DBs and network)
+npm test                      # 24-step offline suite: typechecks, FTS, DB tools, viewer, CLI, response sizing, version sync, smoke, HTTP shutdown
+npm run test:cli              # CLI against the live upstream (needs dist/, the DBs and network)
 npm run test:live             # Opt-in live upstream tests; fails with 403 when local upstream access is denied
 npm run build:mcpb            # Pack the extension bundle: build, stage, smoke-test, validate the manifest
 npm run build:db              # Regenerate data/archival-index.sqlite from data/sources/ (slow)

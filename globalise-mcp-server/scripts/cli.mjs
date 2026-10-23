@@ -48,12 +48,14 @@ class UsageError extends Error {}
 // `pos`   = which input param the first positional maps to.
 // `list`  = key in structuredContent holding the result array (list tools).
 // `total` = key holding the count object {value, relation} for the pagination summary.
-// `page`  = "offset" (from/size). GLOBALISE has no token/resumption paging.
+// `cap`   = the param --max/-n resolves to; a verb without one rejects --max.
+// `page`  = "offset": --offset resolves to `from`; a verb without one rejects --offset.
+//           GLOBALISE has no token/resumption paging.
 const VERBS = {
-  search:    { tool: "globalise_search_transcriptions",  pos: "query",             list: "results", total: "total", page: "offset" },
-  find:      { tool: "globalise_find_archival_documents", pos: "query",             list: "results", total: "total", page: "offset" },
-  commodity: { tool: "globalise_lookup_commodity",        pos: "query",             list: "results", total: "total", page: "offset" },
-  measure:   { tool: "globalise_lookup_measure",          pos: "query",             list: "results", total: "total", page: "offset" },
+  search:    { tool: "globalise_search_transcriptions",  pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
+  find:      { tool: "globalise_find_archival_documents", pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
+  commodity: { tool: "globalise_lookup_commodity",        pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
+  measure:   { tool: "globalise_lookup_measure",          pos: "query",             list: "results", total: "total", cap: "size", page: "offset" },
   retrieve:  { tool: "globalise_retrieve_document",       pos: "documentId",        single: true },
   // NB: navigate's ID param is `currentDocumentId`, NOT `documentId` (that name is unique to
   // retrieve). The schemas are .strict(), so the wrong name *errors* rather than being ignored.
@@ -70,22 +72,21 @@ const VIEWER_TOOLS = new Set([
   "globalise_poll_viewer_commands",
 ]);
 
-// Curated help copy (authored one-liner + a worked example per verb), kept CLI-tailored: each
-// summary echoes the tool's front-loaded description lead but adds terminal-specific flag and
-// pagination hints the MCP descriptions don't carry. The per-command *flag* list stays
-// schema-derived (always current); only this prose framing is hand-written.
+// Curated help: a one-line summary + a worked example per verb. Keep summaries to what a terminal
+// user needs to pick a command; query syntax and filters live in the tool descriptions and the
+// schema-derived flag list, which can't drift. test-cli-offline dry-runs every example.
 const VERB_HELP = {
-  search:    { summary: "Full-text search across ~4.8M VOC transcription pages (Elasticsearch syntax: bare space=OR, AND/NOT, * ? wildcards, ~N fuzzy, \"phrases\"). Filter by --inventoryNumber, --inventoryRange 1053-4454, --yearFrom/--yearTo (via the archival index), --languages; --matchAll for multilingual pages.",
+  search:    { summary: "Full-text search across ~4.8M VOC transcription pages (Elasticsearch query syntax).",
                example: `glob-mcp search "peper" --inventoryNumber 9966 --max 5 --fields id,document` },
-  find:      { summary: "Scope by archival metadata before searching transcriptions — 228K+ finding-aid entries (OBP indexes + GM Generale Missiven). FTS5 query syntax (space=AND). --source obp|gm|all, --settlement (OBP), --chamber (GM).",
+  find:      { summary: "Scope by archival metadata (OBP indexes + Generale Missiven) before searching transcriptions.",
                example: `glob-mcp find "Amsterdam" --source gm --chamber Amsterdam --max 5` },
-  commodity: { summary: "Resolve a modern/English trade-good term to the Dutch word the corpus uses (coffee→koffie) + a sourced definition. FTS5 over labels+variants+definitions; omit query to page alphabetically (--max ≤100).",
+  commodity: { summary: "Resolve a trade-good term to the Dutch word the corpus uses (coffee→koffie), with a sourced definition.",
                example: `glob-mcp commodity "mace" --max 5 --fields prefLabelNl,prefLabelEn` },
-  measure:   { summary: "Look up VOC weights & measures (unit, type, spelling variants, period conversion ratios). NOT a precise converter — ratios are context-bound. FTS5; omit query to page alphabetically (--max ≤100).",
+  measure:   { summary: "Look up VOC weights & measures: type, spelling variants, period ratios. NOT a precise converter.",
                example: `glob-mcp measure "bahar" --max 5` },
-  retrieve:  { summary: "Fetch ONE page by document ID (NL-HaNA_{archive}_{inventory}_{scan}) or URN — full transcription, metadata, prev/next page IDs, transcriptions-viewer + National Archives page-scan links.",
+  retrieve:  { summary: "Fetch one page by document ID or URN: transcription, metadata, prev/next IDs, viewer + scan links.",
                example: `glob-mcp retrieve NL-HaNA_1.04.02_9966_0106 --fields id,inventoryNumber` },
-  navigate:  { summary: "Step to the previous/next page relative to a document ID (requires --direction next|previous). Returns the target page's full details.",
+  navigate:  { summary: "Step to the previous/next page from a document ID (requires --direction next|previous).",
                example: `glob-mcp navigate NL-HaNA_1.04.02_9966_0106 --direction next` },
 };
 // Invariant: every verb has curated help. Catches a verb added to VERBS but not VERB_HELP at load,
@@ -98,16 +99,34 @@ for (const v of Object.keys(VERBS)) {
 // purpose — it's only meaningful on the `tools` verb (handled by argv inspection before tokenize).
 const GLOBAL_BOOL = new Set(["json", "table", "quiet", "show-call", "help", "stdin"]);
 const GLOBAL_VALUE = new Set(["http", "fields", "protocol"]);
-// Short/friendly flag aliases → canonical schema name.
-//   --max/-n → size   (the result cap)        --offset → from   (the pagination offset)
-const FLAG_ALIASES = { max: "size", n: "size", offset: "from", h: "help" };
+// Short flag aliases. `max` and `offset` are resolved per verb (cfg.cap / cfg.page) in buildToolArgs.
+const FLAG_ALIASES = { n: "max", h: "help" };
+const PAGE_PARAM = { offset: "from" };
+
+// The commonest flag slip is punctuation or case, not spelling: `--inventory-number`.
+function nearestFlag(key, candidates) {
+  const squash = (s) => s.replace(/[-_]/g, "").toLowerCase();
+  return [...candidates].find((c) => c !== key && squash(c) === squash(key)) || null;
+}
+
+// The one "no such flag" message, shared by the tokenizer (a value-less typo) and
+// validateToolArgs (`--typo value`), so the same mistake reads the same either way.
+function unknownFlagError(key, verb, candidates) {
+  const near = nearestFlag(key, candidates);
+  return new UsageError(
+    `--${key} is not a flag for "${verb}".`
+    + (near ? ` Did you mean --${near}?` : "")
+    + ` Tool flags: ${[...candidates].map((c) => `--${c}`).join(", ")} (see \`glob-mcp ${verb} --help\`)`,
+  );
+}
 
 // ── Tiny arg tokenizer ────────────────────────────────────────────────────────
 // parseArgs can't disambiguate `--flag value` from a boolean without a per-flag
 // spec, and we only know booleans after listTools(). So we hand-roll: a flag is
 // boolean if it's in `boolSet`; otherwise it consumes the next token as its value.
 // `--key=value` always works; repeated keys collect into an array.
-function tokenize(args, boolSet) {
+// `unknown(key)`, when given, builds the error for a value-less flag the tool doesn't have.
+function tokenize(args, boolSet, unknown) {
   const flags = {};
   const positionals = [];
   for (let i = 0; i < args.length; i++) {
@@ -137,6 +156,7 @@ function tokenize(args, boolSet) {
         // would otherwise silently swallow --json). The `--key=value` form is
         // the escape hatch for any value that must start with `--`.
         if (next === undefined || next.startsWith("--")) {
+          if (unknown) { const err = unknown(key); if (err) throw err; }
           throw new UsageError(`--${key} requires a value (use --${key}=<value> if the value starts with --)`);
         }
         val = next;
@@ -200,13 +220,21 @@ function boolSetFor(schema) {
 }
 
 // Map tokenized flags + positionals → tool arguments (coerced per schema).
-function buildToolArgs(verbCfg, schema, flags, positionals) {
+function buildToolArgs(verb, verbCfg, schema, flags, positionals) {
   const props = schema?.properties ?? {};
   /** @type {Record<string, unknown>} */
   const args = {};
   for (const [key, raw] of Object.entries(flags)) {
     if (GLOBAL_BOOL.has(key) || GLOBAL_VALUE.has(key)) continue;
-    args[key] = coerce(raw, propType(props[key]), key);
+    let name = key;
+    if (key === "max") {
+      if (!verbCfg.cap) throw new UsageError(`--max/-n is not a flag for "${verb}" — it returns a single page (see \`glob-mcp ${verb} --help\`)`);
+      name = verbCfg.cap;
+    } else if (key === "offset") {
+      if (!verbCfg.page) throw new UsageError(`--offset is not a flag for "${verb}" — it returns a single page (see \`glob-mcp ${verb} --help\`)`);
+      name = PAGE_PARAM[verbCfg.page];
+    }
+    args[name] = coerce(raw, propType(props[name]), name);
   }
   // First positional → the verb's primary param (if the flag wasn't already set).
   // An empty positional is dropped, not coerced: search's `query` is .min(1) (it
@@ -217,6 +245,22 @@ function buildToolArgs(verbCfg, schema, flags, positionals) {
   return args;
 }
 
+// Check resolved args against the tool's live inputSchema BEFORE --show-call or callTool, so an
+// unknown flag or a missing required param is a usage error (exit 2), and the dry-run never
+// prints a call the server's strict schema would reject.
+function validateToolArgs(verb, schema, args, { requireRequired = true } = {}) {
+  const props = Object.keys(schema?.properties ?? {});
+  for (const key of Object.keys(args)) {
+    if (!props.includes(key)) throw unknownFlagError(key, verb, props);
+  }
+  if (!requireRequired) return;
+  for (const req of schema?.required ?? []) {
+    if (args[req] === undefined) {
+      throw new UsageError(`"${verb}" requires <${req}> (positional or --${req}) — see \`glob-mcp ${verb} --help\``);
+    }
+  }
+}
+
 // ── Transport / connection ───────────────────────────────────────────────────
 const PROTOCOLS = ["legacy", "auto", "2026-07-28"];
 
@@ -224,12 +268,21 @@ async function connect(httpUrl, protocol = "legacy") {
   const transport = httpUrl
     ? new StreamableHTTPClientTransport(new URL(httpUrl))
     : new StdioClientTransport({
-        command: "node",
+        // The CLI's own Node, not whichever `node` is first on PATH.
+        command: process.execPath,
         args: ["dist/index.js"],
         cwd: SERVER_ROOT,
         // Explicit intent (redundant: the server is structured-ON unless STRUCTURED_CONTENT==='false').
         env: { ...process.env, STRUCTURED_CONTENT: "true" },
+        // Keep the server's per-call log lines out of our stderr; surface them only on a failed connect.
+        stderr: "pipe",
       });
+  // Typed as a bare Stream by the SDK; with stderr:"pipe" it is a PassThrough.
+  const serverStderr = /** @type {import("node:stream").Readable | null} */ (
+    transport instanceof StdioClientTransport ? transport.stderr : null);
+  const serverErr = [];
+  const onServerErr = (/** @type {Buffer} */ c) => serverErr.push(c.toString());
+  serverStderr?.on("data", onServerErr);
   /** @type {import("@modelcontextprotocol/client").VersionNegotiationOptions | undefined} */
   const versionNegotiation =
     protocol === "auto" ? { mode: "auto" } : protocol === "2026-07-28" ? { mode: { pin: "2026-07-28" } } : undefined;
@@ -237,7 +290,16 @@ async function connect(httpUrl, protocol = "legacy") {
     { name: "globalise-mcp-cli", version: "0.1" },
     versionNegotiation ? { versionNegotiation } : undefined,
   );
-  await client.connect(transport);
+  try {
+    await client.connect(transport);
+  } catch (err) {
+    const tail = serverErr.join("").trim();
+    throw new Error(tail ? `${err?.message ?? err}\n${tail}` : String(err?.message ?? err), { cause: err });
+  }
+  // Discard rather than merely detach: the transport pipes the child's stderr with backpressure,
+  // so an unread stream would eventually block the server mid-batch.
+  serverStderr?.off("data", onServerErr);
+  serverStderr?.resume();
   return client;
 }
 
@@ -285,18 +347,21 @@ function renderTable(rows, fields) {
 // Every GLOBALISE list tool returns total as {value, relation}. relation 'gte' means the
 // count is a lower bound (the matchAll path sets it unconditionally; the ordinary search
 // path passes Elasticsearch's own relation through), so '≥' is NOT matchAll-exclusive.
+// `pagination.hasMore` decides the --offset hint: it is set on a size-capped page and on a 'gte'
+// total, where comparing against the total can't tell.
 function paginationSummary(verbCfg, data, list, flags) {
   const parts = [];
-  const offset = Number(flags.from ?? 0) || 0;
+  const offset = Number(data.pagination?.from ?? flags.offset ?? flags.from ?? 0) || 0;
   const totalObj = verbCfg.total ? data[verbCfg.total] : undefined;
   const total = totalObj && typeof totalObj === "object" ? totalObj.value : totalObj;
   const gte = totalObj && typeof totalObj === "object" && totalObj.relation === "gte";
-  if (typeof total === "number") {
-    parts.push(`${list.length} shown (offset ${offset}) of ${gte ? "≥" : ""}${total}`);
-    if (!gte && offset + list.length < total) parts.push(`pass --offset ${offset + list.length} for more`);
-  } else {
-    parts.push(`${list.length} shown (offset ${offset})`);
-  }
+  parts.push(typeof total === "number"
+    ? `${list.length} shown (offset ${offset}) of ${gte ? "≥" : ""}${total}`
+    : `${list.length} shown (offset ${offset})`);
+  const hasMore = typeof data.pagination?.hasMore === "boolean"
+    ? data.pagination.hasMore
+    : !gte && typeof total === "number" && offset + list.length < total;
+  if (hasMore) parts.push(`pass --offset ${offset + list.length} for more`);
   return parts.join("; ");
 }
 
@@ -314,6 +379,11 @@ function renderResult(res, verbCfg, flags) {
     }
     if (typeof data?.note === "string" && data.note) {
       process.stderr.write("note: " + data.note + "\n");
+    }
+    // retrieve/navigate drop trailing lines to fit the response budget without adding a note.
+    const text = data?.text ?? data?.targetDocument?.text;
+    if (text?.truncated === true && Array.isArray(text.lines)) {
+      process.stderr.write(`note: transcription truncated to fit the response size cap — ${text.lines.length} of ${text.totalLines} lines shown\n`);
     }
   };
 
@@ -396,8 +466,8 @@ function topUsage() {
     "  --http <url>     target a running server (else stdio-spawns dist/index.js); env: GLOBALISE_MCP_HTTP",
     "  --protocol <era> MCP protocol era: legacy (default) | auto | 2026-07-28",
     "  --fields a,b,c   project to these top-level keys on every row (biggest token saver)",
-    "  --max N  (-n)    result cap → size  (search/find ≤500; commodity/measure ≤100)",
-    "  --offset N       pagination offset → from",
+    "  --max N  (-n)    result cap → size  (list commands; search/find ≤500, commodity/measure ≤100)",
+    "  --offset N       pagination offset → from  (list commands)",
     "  --json           full structuredContent payload, pretty-printed",
     "  --table          terse human-readable table",
     "  --quiet          suppress the stderr count/summary line",
@@ -450,7 +520,10 @@ function verbHelp(verb, cfg, tool) {
       const enums = enumValues(prop);
       lines.push(`  --${name} <${propType(prop)}>${req}  ${desc}${enums ? "  " + enums : ""}`);
     }
-    if ("size" in props) lines.push("", "Aliases:  --max, -n  → size   ·   --offset → from");
+    const aliases = [];
+    if (cfg.cap) aliases.push(`--max, -n  → ${cfg.cap}`);
+    if (cfg.page) aliases.push(`--offset → ${PAGE_PARAM[cfg.page]}`);
+    if (aliases.length) lines.push("", "Aliases:  " + aliases.join("   ·   "));
   }
   if (meta.example) lines.push("", "Example:", "  " + meta.example);
   if (!tool) lines.push(
@@ -502,6 +575,7 @@ function toolsCompact(toolMap) {
     }
     const result = cfg.single ? "single" : (cfg.list ?? null);
     const entry = { verb, tool: name, positional: cfg.pos ?? null, result, args };
+    if (cfg.cap) entry.cap = cfg.cap;
     if (cfg.page) entry.page = cfg.page;
     return entry;
   });
@@ -616,17 +690,24 @@ async function main() {
 
     // Re-tokenize using the tool's schema, dropping the verb itself from positionals.
     const boolSet = boolSetFor(tool.inputSchema);
-    const { flags, positionals } = tokenize(argv, boolSet);
+    const props = Object.keys(tool.inputSchema?.properties ?? {});
+    const cliKeys = new Set([...GLOBAL_BOOL, ...GLOBAL_VALUE, "max", "offset"]);
+    const { flags, positionals } = tokenize(argv, boolSet, (key) =>
+      cliKeys.has(key) || props.includes(key) ? null : unknownFlagError(key, verb, props));
 
     // Batch mode: read the primary positional from stdin, one invocation per line
     // over this single connection. Other flags (--fields/--json/--max/…) apply per line.
     if (flags.stdin === true) {
       if (!cfg.pos) throw new UsageError(`--stdin needs a verb with a positional argument; ${verb} has none`);
       if (process.stdin.isTTY) throw new UsageError("--stdin set but stdin is a TTY — pipe input (e.g. `printf 'peper\\n' | glob-mcp search --stdin`)");
+      // Unknown flags fail before the first line; required params are checked per line,
+      // since each line supplies the positional.
+      validateToolArgs(verb, tool.inputSchema, buildToolArgs(verb, cfg, tool.inputSchema, flags, []), { requireRequired: false });
       const lines = await readStdinLines();
       let failures = 0;
       for (const line of lines) {
-        const toolArgs = buildToolArgs(cfg, tool.inputSchema, flags, [line]);
+        const toolArgs = buildToolArgs(verb, cfg, tool.inputSchema, flags, [line]);
+        validateToolArgs(verb, tool.inputSchema, toolArgs);
         if (flags["show-call"] === true) {
           process.stdout.write(JSON.stringify({ tool: cfg.tool, arguments: toolArgs }) + "\n");
           continue;
@@ -649,7 +730,8 @@ async function main() {
 
     // The verb is always the first bare token; drop it so the rest map to tool params.
     const restPositionals = positionals[0] === verb ? positionals.slice(1) : positionals;
-    const toolArgs = buildToolArgs(cfg, tool.inputSchema, flags, restPositionals);
+    const toolArgs = buildToolArgs(verb, cfg, tool.inputSchema, flags, restPositionals);
+    validateToolArgs(verb, tool.inputSchema, toolArgs);
 
     if (flags["show-call"] === true) {
       process.stdout.write(JSON.stringify({ tool: cfg.tool, arguments: toolArgs }, null, 2) + "\n");

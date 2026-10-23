@@ -5,7 +5,8 @@
 import { LRUCache } from './cache.js';
 
 export const API_CONFIG = {
-  BROCCOLI_BASE_URL: 'https://gloccoli.tt.di.huc.knaw.nl',
+  // Overridable so offline tests can point the server at a local stub of the upstream.
+  BROCCOLI_BASE_URL: (process.env.BROCCOLI_BASE_URL || 'https://gloccoli.tt.di.huc.knaw.nl').replace(/\/+$/, ''),
   FRONTEND_BASE_URL: 'https://transcriptions.globalise.huygens.knaw.nl',
   DEFAULT_INDEX: 'globalise-2024.03.18-test',
   TIMEOUT_MS: 30000, // 30 seconds default timeout
