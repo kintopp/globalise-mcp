@@ -209,12 +209,12 @@ npm run inspector             # Build + run against MCP Inspector
 npm test                      # 27-step offline suite: typechecks, FTS, DB tools, viewer, CLI, response sizing, version sync, smoke, HTTP shutdown
 npm run test:cli              # CLI against the live upstream (needs dist/, the DBs and network)
 npm run test:live             # Opt-in live upstream tests; fails with 403 when local upstream access is denied
-npm run build:mcpb            # Pack the extension bundle: build, stage, smoke-test, validate the manifest
+npm run build:mcpb            # Pack the extension bundle: clean `dist/`, build, stage, smoke-test, validate the manifest
 npm run build:db              # Regenerate data/archival-index.sqlite from data/sources/ (slow)
 npm run build:db:commodities  # Regenerate data/reference.sqlite
 ```
 
-CI (`.github/workflows/ci.yml`) runs `lint → build → test → build:mcpb` on every push.
+CI (`.github/workflows/ci.yml`) runs `lint → build → test → build:mcpb → test:mcpb → data-freshness check (non-blocking)` on every push.
 
 ## License
 

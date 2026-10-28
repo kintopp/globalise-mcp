@@ -7,6 +7,10 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token: this workflow only builds and tests.
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: globalise-mcp-server
@@ -45,6 +49,10 @@ jobs:
       # Prove the Claude Desktop bundle still packs (manifest validity +
       # staging), so a packaging break surfaces here, not on release day.
       - run: npm run build:mcpb
+      # Launch the staged bundle the way Claude Desktop does: handshake, tool
+      # parity with manifest.json, and a first-run index download from a
+      # localhost server (no network).
+      - run: npm run test:mcpb
       # The committed .gz must be what data/sources/ builds; a source edit
       # without a rebuild would otherwise auto-deploy. Compares decompressed
       # bytes (gzip headers record the writing OS), ignoring header bytes

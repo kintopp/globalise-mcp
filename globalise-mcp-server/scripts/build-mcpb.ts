@@ -26,9 +26,10 @@
  * There is only one variant.
  *
  * Prerequisite: `npm run build` (compiles dist/ and materializes reference.sqlite).
- * `npm run build:mcpb` chains both. Run from globalise-mcp-server/.
+ * `npm run build:mcpb` cleans dist/ first and chains both; running this script
+ * directly stages whatever dist/ holds, including stale files. Run from globalise-mcp-server/.
  *
- * Usage: npm run build:mcpb   (or: npx tsx scripts/build-mcpb.ts)
+ * Usage: npm run build:mcpb
  */
 
 import { spawnSync } from 'node:child_process';
@@ -70,6 +71,10 @@ interface PackageJson {
   engines?: Record<string, string>;
   dependencies?: Record<string, string>;
 }
+
+// Pinned for reproducible packs; bump here and in package.json's validate:mcpb together.
+// Not a devDependency: its prompt-library tree carries audit advisories the build never reaches.
+const MCPB_CLI = '@anthropic-ai/mcpb@2.1.2';
 
 const pkg = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf-8')) as PackageJson;
 
@@ -243,10 +248,10 @@ function packBundle(): string {
   const outFile = join(BUILD_DIR, 'globalise-voc-research.mcpb');
 
   // `mcpb validate` checks the manifest against the schema before we pack.
-  run('npx', ['-y', '@anthropic-ai/mcpb', 'validate', stagedManifest], PACKAGE_ROOT);
+  run('npx', ['-y', MCPB_CLI, 'validate', stagedManifest], PACKAGE_ROOT);
 
   // `mcpb pack <dir> [output]` zips the staging tree (also re-validates).
-  run('npx', ['-y', '@anthropic-ai/mcpb', 'pack', STAGE_DIR, outFile], PACKAGE_ROOT);
+  run('npx', ['-y', MCPB_CLI, 'pack', STAGE_DIR, outFile], PACKAGE_ROOT);
 
   return outFile;
 }
@@ -262,7 +267,7 @@ function main(): void {
   const outFile = packBundle();
 
   console.log('\n--- bundle info ---');
-  run('npx', ['-y', '@anthropic-ai/mcpb', 'info', outFile], PACKAGE_ROOT);
+  run('npx', ['-y', MCPB_CLI, 'info', outFile], PACKAGE_ROOT);
 
   console.log('\nDone.');
   console.log(`  bundle:        ${outFile} (${sizeMb(outFile)})`);

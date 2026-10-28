@@ -7,7 +7,8 @@ manual `claude_desktop_config.json` editing is required of the end user.
 
 - Spec: <https://github.com/anthropics/mcpb> (`MANIFEST.md`, `README.md`, `examples/`)
 - Manifest version targeted: **`0.3`**
-- CLI used to validate/pack: **`@anthropic-ai/mcpb`** (run via `npx`)
+- CLI used to validate/pack: **`@anthropic-ai/mcpb`**, pinned to an exact version in the
+  `npx` calls (`MCPB_CLI` in `scripts/build-mcpb.ts`)
 
 ## One bundle: the index is fetched on first use
 
@@ -120,7 +121,7 @@ npm run test:mcpb
 #    Desktop) and confirm the install dialog. Dropping it into the Claude
 #    Desktop *window* attaches it to the chat instead of installing it.
 #    Inspect a built bundle with:
-npx -y @anthropic-ai/mcpb info mcpb-build/globalise-voc-research.mcpb
+npx -y @anthropic-ai/mcpb@2.1.2 info mcpb-build/globalise-voc-research.mcpb
 ```
 
 ### Testing the first-run download in Claude Desktop
@@ -142,10 +143,10 @@ downloads the index into the configured **Data directory** (default
 `~/.globalise-mcp`). Both a gzipped `.gz` and a raw `.sqlite` are accepted —
 gzip is auto-detected.
 
-`build:mcpb` is reproducible: it wipes `mcpb-build/`, re-stages, runs
-`npm ci --omit=dev` for a clean production `node_modules`, stamps the manifest
-`version` from `package.json` (single source of truth), and re-validates inside
-`mcpb pack`.
+`build:mcpb` is reproducible: it deletes `dist/` and rebuilds it, wipes
+`mcpb-build/`, re-stages, runs `npm ci --omit=dev` for a clean production
+`node_modules`, stamps the manifest `version` from `package.json` (single
+source of truth), and re-validates inside `mcpb pack`.
 
 > `mcpb-build/` is a generated artifact directory (the `.mcpb` plus the staged
 > tree). It is gitignored, not committed.
