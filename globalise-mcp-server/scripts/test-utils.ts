@@ -45,6 +45,30 @@ export async function withStubbedFetch<T>(
   }
 }
 
+/**
+ * Like withStubbedFetch, but `respond` receives the request URL and init, and
+ * every URL is recorded — for tests that assert on what was sent upstream.
+ */
+export async function withRecordingFetch<T>(
+  respond: (url: string, init?: RequestInit) => Response,
+  fn: () => Promise<T>,
+): Promise<{ urls: string[]; value?: T; error?: unknown }> {
+  const urls: string[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    urls.push(url);
+    return respond(url, init);
+  }) as typeof fetch;
+  try {
+    return { urls, value: await fn() };
+  } catch (error) {
+    return { urls, error };
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 /** Assert that `fn` throws a ToolError-shaped error (message + suggestion). */
 export function throwsToolError(fn: () => unknown, label: string): void {
   try {

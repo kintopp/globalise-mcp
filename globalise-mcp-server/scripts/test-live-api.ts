@@ -66,7 +66,10 @@ async function main() {
     ),
   );
   check(Boolean(matchAll.note && /scan|cap|lower bound/i.test(matchAll.note)), `matchAll note mentions the scan cap (got: ${matchAll.note})`);
-  check(matchAll.total.relation === 'gte', `matchAll total is a lower bound (relation=${matchAll.total.relation})`);
+  check(
+    matchAll.total.relation === 'gte' || (matchAll.total.relation === 'eq' && /scanned all \d+ candidates/.test(matchAll.note ?? '')),
+    `matchAll total is a lower bound, or exact with the all-scanned note (relation=${matchAll.total.relation})`,
+  );
   checkEvery(
     matchAll.results, (r) => {
       const codes = r.languages.map((l) => l.code);
