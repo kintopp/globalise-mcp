@@ -11,7 +11,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'fs';
 import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import { Readable, PassThrough } from 'stream';
@@ -62,6 +62,45 @@ const DB_PATH = expandPathVars(process.env.ARCHIVAL_DB_PATH || DEFAULT_DB_PATH);
 const DEFAULT_REFERENCE_DB_PATH = join(__dirname, '..', '..', 'data', 'reference.sqlite');
 const REFERENCE_DB_PATH = expandPathVars(process.env.REFERENCE_DB_PATH || DEFAULT_REFERENCE_DB_PATH);
 
+/**
+ * Data version stamped into the built archival DB (PRAGMA user_version) and the
+ * minimum this server accepts at runtime. Independent of the server's semver
+ * and of reference.sqlite's counter — bump it only when a rebuild changes the
+ * shipped finding-aid bytes (new source release, schema change, corrected
+ * rows). 1 = the OBP v2 (2025) + Generale Missiven build.
+ * 2 = the same sources with the GM rows the source marks deleted excluded
+ * (see DELETED_ENTRY_RE). 3 = OBP rows of lettered volumes (9014A, 2352B, …)
+ * reassigned or given volume_candidates, and likewise GM rows (see
+ * resolveObpVolumes, resolveGmVolumes).
+ */
+export const ARCHIVAL_DATA_VERSION = 3;
+
+function userVersion(conn: Db): number {
+  return (conn.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+}
+
+/**
+ * PRAGMA user_version of a SQLite file, or null when it is not a readable
+ * SQLite DB (HTML error page, truncated file) or lacks `requiredTable`.
+ */
+export function readDataVersion(path: string, requiredTable?: string): number | null {
+  let conn: DatabaseSync | undefined;
+  try {
+    conn = new DatabaseSync(path, { readOnly: true });
+    if (requiredTable) {
+      const row = conn
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+        .get(requiredTable);
+      if (!row) return null;
+    }
+    return userVersion(conn);
+  } catch {
+    return null;
+  } finally {
+    conn?.close();
+  }
+}
+
 // Lazy-initialized database instances
 let db: Db | null = null;
 let referenceDb: Db | null = null;
@@ -101,6 +140,11 @@ export function getDatabase(): Db {
   // syscalls. 256MB ceiling comfortably covers the whole file; safe on a
   // read-only connection.
   conn.exec('PRAGMA mmap_size = 268435456');
+
+  const version = userVersion(conn);
+  if (version < ARCHIVAL_DATA_VERSION) {
+    console.error(`[archival-db] index at ${DB_PATH} has data version ${version}; this server expects ${ARCHIVAL_DATA_VERSION}`);
+  }
 
   db = conn;
   return db;
@@ -218,27 +262,69 @@ export function takeProvisionReport(): ProvisionReport | null {
 /** Shared in-flight download so concurrent tool calls trigger only one fetch. */
 let provisionPromise: Promise<void> | null = null;
 
+/** Identity of the file last accepted, so a replaced file is re-checked. */
+let acceptedStamp: string | null = null;
+
+function fileStamp(path: string): string {
+  const s = statSync(path);
+  return `${s.ino}:${s.size}:${s.mtimeMs}`;
+}
+
 /**
- * Ensure the archival index exists at DB_PATH, downloading it once if it is
- * absent and ARCHIVAL_DB_URL is configured. A no-op when:
- *   - the file already exists (full bundle, or already provisioned), or
- *   - no ARCHIVAL_DB_URL is set — the caller then reports
- *     databaseInfo.available:false, preserving the graceful-degradation path.
- * Rejects only when a *configured* download fails, so the tool can surface why.
+ * Ensure a usable archival index at DB_PATH. With ARCHIVAL_DB_URL set, a missing
+ * file, or one that is not a SQLite DB with obp_documents at data version
+ * >= ARCHIVAL_DATA_VERSION, is (re)downloaded. A failed refresh keeps a readable
+ * stale file for the session with a warning; only a missing or unreadable file
+ * rejects. Without a URL it never downloads (dev checkouts), warning once if stale.
  */
 export function ensureDatabaseFile(): Promise<void> {
-  if (existsSync(DB_PATH)) return Promise.resolve();
+  if (db) return Promise.resolve();
 
   const url = process.env.ARCHIVAL_DB_URL;
-  if (!url) return Promise.resolve();
+  const exists = existsSync(DB_PATH);
+  let staleVersion: number | null = null;
+
+  if (exists) {
+    const stamp = fileStamp(DB_PATH);
+    if (stamp === acceptedStamp) return Promise.resolve();
+    staleVersion = readDataVersion(DB_PATH, 'obp_documents');
+    if (staleVersion !== null && staleVersion >= ARCHIVAL_DATA_VERSION) {
+      acceptedStamp = stamp;
+      return Promise.resolve();
+    }
+    if (!url) {
+      console.error(
+        `[archival-db] index at ${DB_PATH} has data version ${staleVersion ?? 'unreadable'}, ` +
+        `need ${ARCHIVAL_DATA_VERSION}; run 'npm run build:db'`
+      );
+      acceptedStamp = stamp;
+      return Promise.resolve();
+    }
+    console.error(
+      `[archival-db] cached index is stale or invalid (data version ${staleVersion ?? 'unreadable'}, ` +
+      `need ${ARCHIVAL_DATA_VERSION}); refreshing`
+    );
+  } else if (!url) {
+    return Promise.resolve();
+  }
 
   if (!provisionPromise) {
     // The memo dedupes concurrent callers of one in-flight fetch; it is not a
     // permanent cache. Released on BOTH outcomes, or a deleted index never
-    // re-downloads. Callers already awaiting still get the result; later ones
-    // hit the existsSync early-return above. Not `.finally()` — its derived
-    // promise re-rejects with no handler, which is fatal on Node 24.
-    const inFlight = downloadArchivalDb(url, DB_PATH);
+    // re-downloads. Not `.finally()` — its derived promise re-rejects with no
+    // handler, which is fatal on Node 24.
+    const inFlight = downloadArchivalDb(url, DB_PATH).then(
+      () => { acceptedStamp = fileStamp(DB_PATH); },
+      (error: unknown) => {
+        if (staleVersion === null) throw error;
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(
+          `[archival-db] refresh failed (${message}); using the existing index ` +
+          `(data version ${staleVersion}, need ${ARCHIVAL_DATA_VERSION}) for this session`
+        );
+        acceptedStamp = fileStamp(DB_PATH);
+      },
+    );
     const release = () => { if (provisionPromise === inFlight) provisionPromise = null; };
     provisionPromise = inFlight;
     inFlight.then(release, release);
@@ -283,7 +369,7 @@ export function formatMb(bytes: number): string {
 }
 
 async function downloadArchivalDb(url: string, target: string): Promise<void> {
-  console.error(`[archival-db] index not present; downloading from ${url} ...`);
+  console.error(`[archival-db] index not present or outdated; downloading from ${url} ...`);
 
   const startedAt = Date.now();
 
@@ -366,6 +452,13 @@ async function downloadArchivalDb(url: string, target: string): Promise<void> {
       ? [source, monitor, createGunzip(), createWriteStream(tmp)]
       : [source, monitor, createWriteStream(tmp)];
     await pipeline(stages);
+    const v = readDataVersion(tmp, 'obp_documents');
+    if (v === null) {
+      throw new Error('the downloaded file is not a valid archival index (not a SQLite database with obp_documents)');
+    }
+    if (v < ARCHIVAL_DATA_VERSION) {
+      throw new Error(`the download provided data version ${v}; this server needs ${ARCHIVAL_DATA_VERSION} or newer`);
+    }
     renameSync(tmp, target);
   } catch (error) {
     if (existsSync(tmp)) unlinkSync(tmp);

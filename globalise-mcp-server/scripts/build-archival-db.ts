@@ -16,7 +16,7 @@ import { parse } from 'csv-parse';
 import { createReadStream, existsSync, readFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { getDatabasePath } from '../src/utils/database.js';
+import { ARCHIVAL_DATA_VERSION, getDatabasePath } from '../src/utils/database.js';
 import { runInTransaction, stampDataVersion, writeGzipArtifact } from './db-build-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,15 +32,7 @@ const OBP_CSV = join(SOURCES_DIR, 'obp-indexes.csv');
 const GM_CSV = join(SOURCES_DIR, 'generale-missiven.csv');
 const VOLUMES_JSON = join(SOURCES_DIR, 'lettered-volumes.json');
 
-// Data version stamped into the built DB (PRAGMA user_version). Independent of
-// the server's semver and of reference.sqlite's counter — bump it only when a
-// rebuild changes the shipped finding-aid bytes (new source release, schema
-// change, corrected rows). 1 = the OBP v2 (2025) + Generale Missiven build.
-// 2 = the same sources with the GM rows the source marks deleted excluded
-// (see DELETED_ENTRY_RE). 3 = OBP rows of lettered volumes (9014A, 2352B, …)
-// reassigned or given volume_candidates, and likewise GM rows (see
-// resolveObpVolumes, resolveGmVolumes).
-const DATA_VERSION = 3;
+// The data version is bumped in src/utils/database.ts, which is also the runtime floor.
 
 // Batch size for inserts
 const BATCH_SIZE = 5000;
@@ -453,7 +445,7 @@ function optimizeDatabase(db: DatabaseSync): void {
   db.exec('ANALYZE');
   db.exec('VACUUM');
   console.log('  Database optimized');
-  stampDataVersion(db, DATA_VERSION);
+  stampDataVersion(db, ARCHIVAL_DATA_VERSION);
 }
 
 async function main(): Promise<void> {
