@@ -195,7 +195,8 @@ export async function viewDocumentUi(input: ViewDocumentUiInput): Promise<ViewDo
   return {
     id: documentUrn,
     iiifImageUrl,
-    transcription: response.views?.self?.lines || [],
+    // Copy: fitResultToBudget trims in place and must not shorten the cached array.
+    transcription: [...(response.views?.self?.lines ?? [])],
     metadata: {
       inventory: inventoryNumber,
       scan: scanNumber,

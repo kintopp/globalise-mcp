@@ -123,7 +123,8 @@ export async function getDocument(options: GetDocumentOptions): Promise<GetDocum
   // every transcription's token cost and was dropped in R9)
   if (includeText && response.views?.self?.lines) {
     output.text = {
-      lines: response.views.self.lines,
+      // Copy: fitResultToBudget trims in place and must not shorten the cached array.
+      lines: [...response.views.self.lines],
     };
   }
 
