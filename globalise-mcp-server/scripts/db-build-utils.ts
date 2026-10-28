@@ -151,7 +151,11 @@ async function downloadDb(dbPath: string, url: string, check: DbCheck, token?: s
     if (head) yield head;
     for (let r = await reader.read(); !r.done; r = await reader.read()) yield r.value;
   }
-  await writeDb(dbPath, Readable.from(chunks()), gzipped, check);
+  try {
+    await writeDb(dbPath, Readable.from(chunks()), gzipped, check);
+  } finally {
+    reader.cancel().catch(() => {});
+  }
 }
 
 export interface EnsureDbOptions {

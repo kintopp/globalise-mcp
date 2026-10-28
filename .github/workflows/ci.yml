@@ -57,7 +57,7 @@ jobs:
           npm run build:db && npm run build:db:commodities
           for f in archival-index reference; do
             gunzip -c data/$f.sqlite.gz > /tmp/$f.after
-            if cmp -l /tmp/$f.before /tmp/$f.after 2>&1 | awk '$1 < 97 || $1 > 100' | grep -q .; then
+            cmp -s -n 96 /tmp/$f.before /tmp/$f.after && cmp -s -i 100 /tmp/$f.before /tmp/$f.after || {
               echo "::error::data/$f.sqlite.gz differs from a rebuild of data/sources — rebuild and commit"; exit 1
-            fi
+            }
           done
