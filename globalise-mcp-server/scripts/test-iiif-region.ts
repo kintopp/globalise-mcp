@@ -14,7 +14,10 @@ import {
   regionPixelDims,
   buildIiifRegionUrl,
 } from '../src/utils/iiif.js';
-import { VISION_FALLBACK_WIDTH } from '../src/utils/vision-sizing.js';
+import { VISION_MAX_EDGE, VISION_MAX_TOKENS, padToPatch, visualTokens } from '../src/utils/vision-sizing.js';
+
+// Width a shape-blind request could safely use; a shape-aware fit must beat it.
+const ANY_SHAPE_WIDTH = 1220;
 import { resolveDeliverySize } from '../src/tools/page-image.js';
 import {
   projectToFullImage,
@@ -35,13 +38,14 @@ const acceptedRegions = [
   'square',
   '1473,1041,589,416',
   'pct:31.2,18.4,22.0,6.1',
+  'pct:0,0,100,100',
   'crop_pixels:1,2,3,4',
 ];
 for (const region of acceptedRegions) {
   check(IIIF_REGION_RE.test(region), `accepts '${region}'`);
 }
 
-const rejectedRegions = ['pct:1,2,3', 'pct:a,b,c,d', '-5,0,10,10', ''];
+const rejectedRegions = ['pct:1,2,3', 'pct:a,b,c,d', '-5,0,10,10', '', 'pct:.,.,.,.', 'pct:1.2.3,0,10,10', 'pct:1.,0,10,10'];
 for (const region of rejectedRegions) {
   check(!IIIF_REGION_RE.test(region), `rejects '${region}'`);
 }
@@ -181,7 +185,7 @@ console.log('4b. resolveDeliverySize');
   // A full portrait leaf is bounded by the vision budget, not its own pixels —
   // the case the old width-only clamp got wrong.
   const r = resolveDeliverySize('full', 1988, 3165, 4138);
-  check(r.size > VISION_FALLBACK_WIDTH && r.size < 1568,
+  check(r.size > ANY_SHAPE_WIDTH && r.size < 1568,
     `a portrait leaf is fitted to its shape: below the default, above the any-shape fallback (got: ${r.size})`);
   check(!!r.note?.includes('downscaled before the model sees it'), `note names the vision reason (got: ${r.note})`);
 }
@@ -196,20 +200,30 @@ console.log('4b. resolveDeliverySize');
   // and on ~70% of the corpus the default is above the deliverable ceiling, so
   // noting it every time would train the model to ignore notes.
   const r = resolveDeliverySize('full', undefined, 3165, 4138);
-  check(r.size > VISION_FALLBACK_WIDTH && r.size < 1568, `an omitted size is still fitted to the page (got: ${r.size})`);
+  check(r.size > ANY_SHAPE_WIDTH && r.size < 1568, `an omitted size is still fitted to the page (got: ${r.size})`);
   check(r.note === undefined, 'fitting an omitted size raises no note');
 }
 {
-  // Degraded path: info.json failed, so the shape is unknown. Falling back to
-  // the default would deliver the very size the corpus survey found breaches
-  // the many-image limit on most pages.
-  const r = resolveDeliverySize('full', undefined, undefined, undefined);
-  check(r.size === VISION_FALLBACK_WIDTH, `unknown dims fall back to the any-shape width (got: ${r.size})`);
-  check(r.size < 1568, 'the fallback is below the default, not equal to it');
+  // Degraded path: info.json failed, so the shape is unknown. The delivery must
+  // be a best fit inside a box that satisfies both vision limits for any shape.
+  for (const region of ['full', 'pct:0,0,5,100', 'square', '0,0,10000,10000']) {
+    const r = resolveDeliverySize(region, undefined, undefined, undefined);
+    check(r.bestFit === true, `${region}: unknown dims request a best fit`);
+    check(padToPatch(r.size) <= VISION_MAX_EDGE, `${region}: box edge within the vision limit (got: ${r.size})`);
+    check(visualTokens(r.size, r.size) <= VISION_MAX_TOKENS, `${region}: a square at the box size fits the token budget`);
+  }
 }
 {
-  const r = resolveDeliverySize('full', 400, undefined, undefined);
-  check(r.size === 400, `a smaller explicit size survives the fallback (got: ${r.size})`);
+  const r = resolveDeliverySize('pct:0,0,5,100', 600, undefined, undefined);
+  check(r.size === 600, `a smaller explicit size survives the fallback (got: ${r.size})`);
+}
+{
+  const r = resolveDeliverySize('0,0,300,200', undefined, undefined, undefined);
+  check(r.size === 300, `a small pixel region is not upscaled on the degraded path (got: ${r.size})`);
+}
+{
+  const r = resolveDeliverySize('1473,1041,589,416', 1988, 5892, 4167);
+  check(r.bestFit === undefined, 'known dims keep the plain width form');
 }
 
 // ---------------------------------------------------------------------------
@@ -232,6 +246,13 @@ const baseImageUrl = 'https://service.archief.nl/iip/aa/bb/x.jp2/full/max/0/defa
   check(
     url === 'https://service.archief.nl/iip/aa/bb/x.jp2/pct:25,25,10,10/400,/90/gray.jpg',
     `builds the region URL with rotation + quality (got: ${url})`,
+  );
+}
+{
+  const url = buildIiifRegionUrl(baseImageUrl, 'pct:0,0,5,100', 1500, 0, 'default', true);
+  check(
+    !!url?.endsWith('/pct:0,0,5,100/^!1500,1500/0/default.jpg'),
+    `best fit uses the IIIF 3 ^!S,S form (got: ${url})`,
   );
 }
 {

@@ -50,11 +50,11 @@ export function extractIiifImageUrl(response: DocumentResponse): string | undefi
  *   `x,y,w,h`, but distinguishable from a bare pixel region for callers that
  *   want to be unambiguous)
  */
-export const IIIF_REGION_RE = /^(full|square|\d+,\d+,\d+,\d+|pct:[0-9.]+,[0-9.]+,[0-9.]+,[0-9.]+|crop_pixels:\d+,\d+,\d+,\d+)$/;
+export const IIIF_REGION_RE = /^(full|square|\d+,\d+,\d+,\d+|pct:\d+(?:\.\d+)?,\d+(?:\.\d+)?,\d+(?:\.\d+)?,\d+(?:\.\d+)?|crop_pixels:\d+,\d+,\d+,\d+)$/;
 
 /** Parse a `pct:x,y,w,h` region into its four numbers, or null if not that shape. */
 export function parsePctRegion(region: string): [number, number, number, number] | null {
-  const m = region.match(/^pct:([0-9.]+),([0-9.]+),([0-9.]+),([0-9.]+)$/);
+  const m = region.match(/^pct:(\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/);
   if (!m) return null;
   return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])];
 }
@@ -221,11 +221,16 @@ export function regionPixelDims(region: string, imgW?: number, imgH?: number): R
  * `…/full/max/0/default.jpg` tail → `/{region}/{size},/{rotation}/{quality}.jpg`
  * (rijksmuseum URL form). Returns null if `imageUrl` doesn't end in the
  * expected `/full/{size}/{rotation}/default.{ext}` shape.
+ *
+ * `bestFit` requests `^!{size},{size}` (IIIF 3 best fit in a square box)
+ * instead of `{size},`. The `^` is required: this server 400s plain `!w,h` on
+ * non-square regions, and it permits upscaling of small regions.
  */
-export function buildIiifRegionUrl(imageUrl: string, region: string, size: number, rotation: number, quality: string): string | null {
+export function buildIiifRegionUrl(imageUrl: string, region: string, size: number, rotation: number, quality: string, bestFit = false): string | null {
   const m = imageUrl.match(/^(.+)\/full\/[^/]+\/\d+\/default\.\w+$/);
   if (!m) return null;
-  return `${m[1]}/${region}/${size},/${rotation}/${quality}.jpg`;
+  const sizeSegment = bestFit ? `^!${size},${size}` : `${size},`;
+  return `${m[1]}/${region}/${sizeSegment}/${rotation}/${quality}.jpg`;
 }
 
 // ── Reverse-channel geometry (plan 021, rijksmuseum geometry.ts parity) ──

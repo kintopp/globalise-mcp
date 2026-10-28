@@ -40,15 +40,11 @@ export const VISION_MAX_EDGE = 71 * VISION_PATCH;   // 1988
 export const VISION_MAX_TOKENS = 4784;
 
 /**
- * Delivery width when the page's shape can't be measured — `fetchIiifDims`
- * degrades to undefined on an info.json failure, and a `full` / `square` /
- * `pct:` region is then unmeasurable. This is the largest width that survives
- * *every* page in the corpus sample regardless of shape, so the guarantee
- * holds on the degraded path too. Softer than a shape-aware fit (−17% on a
- * leaf, −39% on an opening); the alternative is a request that can poison a
- * whole conversation.
+ * Best-fit box (`^!S,S`) used when the page's shape can't be measured
+ * (info.json failed). A square box bounds both edges for any shape; the square
+ * case is the token worst case, and 69² = 4761 ≤ VISION_MAX_TOKENS.
  */
-export const VISION_FALLBACK_WIDTH = 1220;
+export const VISION_FALLBACK_BOX = 69 * VISION_PATCH;   // 1932
 
 /** Width or height rounded up to the patch grid — what the encoder measures. */
 export function padToPatch(px: number): number {

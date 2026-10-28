@@ -8,7 +8,7 @@ import {
   VISION_PATCH,
   VISION_MAX_EDGE,
   VISION_MAX_TOKENS,
-  VISION_FALLBACK_WIDTH,
+  VISION_FALLBACK_BOX,
   padToPatch,
   visualTokens,
   maxInspectWidth,
@@ -88,11 +88,12 @@ for (const [label, w, h] of SHAPES) {
   check(!fitsBudget(got + 1, w, h), `${label}: ${got + 1}px does not — ${got} is the ceiling`);
 }
 
-// The fallback is used when the page's shape is unknown, so it must fit every
-// page shape the corpus has, not just the median one.
-for (const [label, w, h] of CORPUS_SHAPES) {
-  check(fitsBudget(VISION_FALLBACK_WIDTH, w, h), `${label}: the ${VISION_FALLBACK_WIDTH}px fallback fits the budget`);
-}
+// The fallback box is used when the page's shape is unknown: a square is the
+// token worst case, so a square at the box size must fit.
+check(
+  padToPatch(VISION_FALLBACK_BOX) <= VISION_MAX_EDGE && visualTokens(VISION_FALLBACK_BOX, VISION_FALLBACK_BOX) <= VISION_MAX_TOKENS,
+  'fallback box fits the budget for any shape',
+);
 
 // ---------------------------------------------------------------------------
 // 3. The bug this replaces: width alone does not determine the answer

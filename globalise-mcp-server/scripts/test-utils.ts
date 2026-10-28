@@ -133,13 +133,25 @@ export function helpExampleArgv(helpText: string): string[] | null {
  *   pointers are the neighbouring scans (none before 0001), with `lines` transcription lines
  *   of `lineChars` characters each. Any other path → 404.
  * - GET  /brinta/globalise/indices: one index whose searchable fields include langIso.
+ * - With `image`: the document's `anno[0]` also carries an Image `target` on this stub's
+ *   `/iip/<document>.jp2/...`, whose info.json is `image.info(document)` (404 when undefined)
+ *   and whose other paths are answered by `image.respond`. Without it, none of these exist.
  *
  * `requests` records every request path, so a test can tell the stub was actually used.
  */
 export async function startUpstreamStub(
-  { total = 42, lines = 3, lineChars = 20 }: { total?: number; lines?: number; lineChars?: number } = {},
+  { total = 42, lines = 3, lineChars = 20, image }: {
+    total?: number; lines?: number; lineChars?: number;
+    image?: {
+      /** Native dims served by info.json for this document; undefined → info.json 404. */
+      info: (document: string) => { width: number; height: number } | undefined;
+      /** Response for an image request; `path` is the part after `<document>.jp2/`. */
+      respond: (document: string, path: string) => { status: number; contentType: string; body: Buffer | string };
+    };
+  } = {},
 ): Promise<{ url: string; requests: string[]; close: () => Promise<void> }> {
   const requests: string[] = [];
+  let base = '';
   const json = (res: import('node:http').ServerResponse, status: number, body: unknown) => {
     res.writeHead(status, { 'content-type': 'application/json' });
     res.end(JSON.stringify(body));
@@ -164,6 +176,19 @@ export async function startUpstreamStub(
     if (req.method === 'GET' && u.pathname === '/brinta/globalise/indices') {
       return json(res, 200, { [API_CONFIG.DEFAULT_INDEX]: { text: 'text', langIso: 'keyword', invNr: 'keyword', document: 'keyword' } });
     }
+    const img = image && req.method === 'GET'
+      ? u.pathname.match(/^\/iip\/(NL-HaNA_1\.04\.02_\d+_\d{4})\.jp2\/(.+)$/)
+      : null;
+    if (image && img) {
+      const [, document, path] = img;
+      if (path === 'info.json') {
+        const dims = image.info(document);
+        return dims ? json(res, 200, dims) : json(res, 404, { error: 'not found' });
+      }
+      const r = image.respond(document, path);
+      res.writeHead(r.status, { 'content-type': r.contentType });
+      return res.end(r.body);
+    }
     const m = u.pathname.match(/^\/projects\/globalise\/urn:globalise:(NL-HaNA_1\.04\.02_(\d+)_(\d{4}))$/);
     if (req.method === 'GET' && m) {
       const [, document, inv, scan] = m;
@@ -177,6 +202,7 @@ export async function startUpstreamStub(
             naUrl: `https://www.nationaalarchief.nl/stub/${document}`, lang: [{ iso: 'nld', label: 'Dutch' }],
             ...(n > 1 ? { prevPageId: page(n - 1) } : {}), nextPageId: page(n + 1),
           } },
+          ...(image ? { target: [{ type: 'Image', source: `${base}/iip/${document}.jp2/full/max/0/default.jpg` }] } : {}),
         }],
         views: { self: { lines: Array.from({ length: lines }, (_, i) => `${i}:`.padEnd(lineChars, 'x')) } },
       });
@@ -185,8 +211,9 @@ export async function startUpstreamStub(
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
+  base = `http://127.0.0.1:${port}`;
   return {
-    url: `http://127.0.0.1:${port}`,
+    url: base,
     requests,
     // The spawned server keeps its connection alive; drop it so close() returns promptly.
     close: () => new Promise<void>((resolve) => { server.close(() => resolve()); server.closeAllConnections(); }),
