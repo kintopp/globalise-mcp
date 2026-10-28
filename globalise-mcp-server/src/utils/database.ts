@@ -75,6 +75,10 @@ const REFERENCE_DB_PATH = expandPathVars(process.env.REFERENCE_DB_PATH || DEFAUL
  */
 export const ARCHIVAL_DATA_VERSION = 3;
 
+function userVersion(conn: Db): number {
+  return (conn.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+}
+
 /**
  * PRAGMA user_version of a SQLite file, or null when it is not a readable
  * SQLite DB (HTML error page, truncated file) or lacks `requiredTable`.
@@ -89,7 +93,7 @@ export function readDataVersion(path: string, requiredTable?: string): number | 
         .get(requiredTable);
       if (!row) return null;
     }
-    return (conn.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+    return userVersion(conn);
   } catch {
     return null;
   } finally {
@@ -137,7 +141,7 @@ export function getDatabase(): Db {
   // read-only connection.
   conn.exec('PRAGMA mmap_size = 268435456');
 
-  const version = (conn.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+  const version = userVersion(conn);
   if (version < ARCHIVAL_DATA_VERSION) {
     console.error(`[archival-db] index at ${DB_PATH} has data version ${version}; this server expects ${ARCHIVAL_DATA_VERSION}`);
   }
@@ -281,10 +285,11 @@ export function ensureDatabaseFile(): Promise<void> {
   let staleVersion: number | null = null;
 
   if (exists) {
-    if (fileStamp(DB_PATH) === acceptedStamp) return Promise.resolve();
+    const stamp = fileStamp(DB_PATH);
+    if (stamp === acceptedStamp) return Promise.resolve();
     staleVersion = readDataVersion(DB_PATH, 'obp_documents');
     if (staleVersion !== null && staleVersion >= ARCHIVAL_DATA_VERSION) {
-      acceptedStamp = fileStamp(DB_PATH);
+      acceptedStamp = stamp;
       return Promise.resolve();
     }
     if (!url) {
@@ -292,7 +297,7 @@ export function ensureDatabaseFile(): Promise<void> {
         `[archival-db] index at ${DB_PATH} has data version ${staleVersion ?? 'unreadable'}, ` +
         `need ${ARCHIVAL_DATA_VERSION}; run 'npm run build:db'`
       );
-      acceptedStamp = fileStamp(DB_PATH);
+      acceptedStamp = stamp;
       return Promise.resolve();
     }
     console.error(
