@@ -206,7 +206,7 @@ npm run build                 # Viewer UI → tsc → stamp dist/version.txt →
 npm run dev                   # tsc watch mode (npm run dev:ui rebuilds the viewer)
 npm run lint                  # eslint over src/ and scripts/ — not part of npm test
 npm run inspector             # Build + run against MCP Inspector
-npm test                      # 27-step offline suite: typechecks, FTS, DB tools, viewer, CLI, response sizing, version sync, smoke, HTTP shutdown
+npm test                      # 28-step offline suite: typechecks, FTS, DB tools, viewer, CLI, response sizing, version sync, smoke, HTTP shutdown
 npm run test:cli              # CLI against the live upstream (needs dist/, the DBs and network)
 npm run test:live             # Opt-in live upstream tests; fails with 403 when local upstream access is denied
 npm run build:mcpb            # Pack the extension bundle: clean `dist/`, build, stage, smoke-test, validate the manifest
