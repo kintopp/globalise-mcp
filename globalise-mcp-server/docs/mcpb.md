@@ -12,12 +12,12 @@ manual `claude_desktop_config.json` editing is required of the end user.
 ## One bundle: the index is fetched on first use
 
 There is a **single** `.mcpb`. The ~112 MB archival finding-aid index is *not*
-baked in — the server downloads it once, lazily, and caches it on-device:
+baked in — the server downloads it lazily on first use and caches it on-device (re-downloading only when a newer bundle needs a newer data version):
 
 | | |
 |---|---|
 | `.mcpb` download | **~5.9 MB** |
-| Finding-aid index | **downloaded on first use of the index**, then cached |
+| Finding-aid index | **downloaded on first use of the index**, then cached; refreshed when an upgraded bundle needs newer data |
 | What triggers it | `globalise_find_archival_documents`, and `globalise_view_document_ui` (it enriches a page with archival context) |
 | First archival query | one-time ~26 MB fetch + decompress (~112 MB on disk) |
 | Commodities + measures glossaries | bundled, queried on-device |
