@@ -11,7 +11,7 @@
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getDatabasePath } from '../src/utils/database.js';
+import { ARCHIVAL_DATA_VERSION, getDatabasePath } from '../src/utils/database.js';
 import { ensureDb } from './db-build-utils.js';
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,6 +27,7 @@ ensureDb({
   packageRoot: PACKAGE_ROOT,
   urlEnv: 'ARCHIVAL_DB_URL',
   tokenEnv: 'ARCHIVAL_DB_TOKEN',
+  expectedVersion: ARCHIVAL_DATA_VERSION,
   unavailableHint: 'globalise_find_archival_documents will report databaseInfo.available: false',
 }).catch((error) => {
   console.error('ensure-archival-db failed:', error);

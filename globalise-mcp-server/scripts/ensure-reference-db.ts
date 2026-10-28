@@ -12,7 +12,7 @@
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getReferenceDatabasePath } from '../src/utils/database.js';
+import { getReferenceDatabasePath, REFERENCE_DATA_VERSION } from '../src/utils/database.js';
 import { ensureDb } from './db-build-utils.js';
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,6 +26,7 @@ ensureDb({
   packageRoot: PACKAGE_ROOT,
   urlEnv: 'REFERENCE_DB_URL',
   tokenEnv: 'REFERENCE_DB_TOKEN',
+  expectedVersion: REFERENCE_DATA_VERSION,
   unavailableHint: 'globalise_lookup_commodity will report databaseInfo.available: false',
 }).catch((error) => {
   console.error('ensure-reference-db failed:', error);

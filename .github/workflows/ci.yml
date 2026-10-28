@@ -45,3 +45,19 @@ jobs:
       # Prove the Claude Desktop bundle still packs (manifest validity +
       # staging), so a packaging break surfaces here, not on release day.
       - run: npm run build:mcpb
+      # The committed .gz must be what data/sources/ builds; a source edit
+      # without a rebuild would otherwise auto-deploy. Compares decompressed
+      # bytes (gzip headers record the writing OS), ignoring header bytes
+      # 97-100: the version number of the SQLite library that wrote the file.
+      # Non-blocking until it has passed on a Linux runner.
+      - name: Committed DB artifacts match their sources
+        continue-on-error: true
+        run: |
+          for f in archival-index reference; do gunzip -c data/$f.sqlite.gz > /tmp/$f.before; done
+          npm run build:db && npm run build:db:commodities
+          for f in archival-index reference; do
+            gunzip -c data/$f.sqlite.gz > /tmp/$f.after
+            cmp -s -n 96 /tmp/$f.before /tmp/$f.after && cmp -s -i 100 /tmp/$f.before /tmp/$f.after || {
+              echo "::error::data/$f.sqlite.gz differs from a rebuild of data/sources — rebuild and commit"; exit 1
+            }
+          done
