@@ -36,7 +36,7 @@ export const findArchivalDocumentsInputSchema = z.object({
   size: z.number().int().min(1).max(500).default(25)
     .describe('Results per page (1-500, default: 25)'),
   includeAggregations: z.boolean().default(true)
-    .describe('Include aggregation counts for settlements, years, inventories (default: true)'),
+    .describe('Include aggregation counts: top 20 settlements and inventories, records per decade (OBP), chambers (GM). Default: true.'),
 });
 
 const VOLUME_CANDIDATES_DESCRIPTION = 'Set when this document lies in one of several lettered volumes (e.g. 9014A, 9014B) and the source does not say which: inventoryNumber is then the bare base number, which has no scans of its own — look in these volumes instead. Null otherwise.';
@@ -112,15 +112,15 @@ export const findArchivalDocumentsOutputSchema = z.object({
     settlements: z.array(z.object({
       settlement: z.string(),
       count: z.number(),
-    })).optional(),
-    years: z.array(z.object({
-      year: z.number(),
+    })).optional().describe('Top 20 settlements by record count (not exhaustive).'),
+    decades: z.array(z.object({
+      decade: z.number(),
       count: z.number(),
-    })).optional(),
+    })).optional().describe('OBP records per decade (decade = start year, e.g. 1700 = 1700–1709), keyed on year_earliest so a wide-range record counts once, in its earliest decade; ascending. With yearFrom/yearTo, records overlapping the window may sit in an earlier decade.'),
     inventories: z.array(z.object({
       inventoryNumber: z.string(),
       count: z.number(),
-    })).optional(),
+    })).optional().describe('Top 20 inventories by record count (not exhaustive).'),
     chambers: z.array(z.object({
       chamber: z.string(),
       count: z.number(),
@@ -455,15 +455,15 @@ const getDbState = createConnectionState((state) => ({
   ftsProbe: state.prepare('SELECT rowid FROM obp_fts WHERE obp_fts MATCH @query LIMIT 1'),
   obpTotal: (state.prepare('SELECT COUNT(*) as count FROM obp_documents').get() as { count: number }).count,
   gmTotal: (state.prepare('SELECT COUNT(*) as count FROM generale_missiven').get() as { count: number }).count,
-  obpUnfilteredAggregations: undefined as Pick<Aggregations, 'settlements' | 'inventories'> | undefined,
+  obpUnfilteredAggregations: undefined as Pick<Aggregations, 'settlements' | 'inventories' | 'decades'> | undefined,
   gmUnfilteredAggregations: undefined as Pick<Aggregations, 'chambers'> | undefined,
   // Year window → inventory list, keyed "from:to"; paging a year-scoped search re-asks the same window.
   yearScopes: new Map<string, string[]>(),
 }));
 
-/** OBP aggregations (top settlements and inventories) for the given WHERE clause. */
-function computeObpAggregations(state: ConnectionState, { where, params }: WhereClause): Pick<Aggregations, 'settlements' | 'inventories'> {
-  const aggs: Pick<Aggregations, 'settlements' | 'inventories'> = {};
+/** OBP aggregations (top settlements and inventories, records per decade of `year_earliest`) for the given WHERE clause. */
+function computeObpAggregations(state: ConnectionState, { where, params }: WhereClause): Pick<Aggregations, 'settlements' | 'inventories' | 'decades'> {
+  const aggs: Pick<Aggregations, 'settlements' | 'inventories' | 'decades'> = {};
 
   const settlementRows = state.prepare(
     `SELECT settlement, COUNT(*) as count FROM obp_documents ${appendNotNull(where, 'settlement')} GROUP BY settlement ORDER BY count DESC LIMIT 20`
@@ -477,6 +477,13 @@ function computeObpAggregations(state: ConnectionState, { where, params }: Where
   ).all(params) as { inventory_number: string; count: number }[];
   if (invRows.length > 0) {
     aggs.inventories = invRows.map(r => ({ inventoryNumber: r.inventory_number, count: r.count }));
+  }
+
+  const decadeRows = state.prepare(
+    `SELECT (year_earliest / 10) * 10 AS decade, COUNT(*) AS count FROM obp_documents ${appendNotNull(where, 'year_earliest')} GROUP BY decade ORDER BY decade`
+  ).all(params) as { decade: number; count: number }[];
+  if (decadeRows.length > 0) {
+    aggs.decades = decadeRows;
   }
 
   return aggs;
