@@ -59,7 +59,7 @@ Most of the tools listed below were designed to reproduce functionality provided
 
 - **`globalise_inspect_page_image`** — Fetches a page scan, or a region of it, as an image for the AI assistant itself to look at. The assistant can also zoom into a page by itself when you ask about a specific detail.
 
-- **`globalise_navigate_viewer`** — Lets the AI assistant steer an open viewer: for example to zoom it to a region to direct your attention to a detail. When you ask the assistant about a passage it inspects, the viewer auto-zooms to match. An internal tool, `globalise_poll_viewer_commands`, is the viewer's own channel for passing the navigation commands to the open page.
+- **`globalise_navigate_viewer`** — Lets the AI assistant steer an open viewer: for example to zoom it to a region to direct your attention to a detail. When the assistant inspects a passage you highlighted, the viewer zooms to match. An internal tool, `globalise_poll_viewer_commands`, is the viewer's own channel for passing the navigation commands to the open page.
 
 ### Historical Finding Aids and Glossaries
 

@@ -41,7 +41,7 @@ Any page opens in the web viewer at
 | `globalise_retrieve_document` | Get one page by ID/URN: line-by-line transcription, metadata (languages, dates, license), prev/next IDs, viewer + scan links. | Remote |
 | `globalise_navigate` | Read sequentially — fetch the previous or next page relative to an ID. | Remote |
 | `globalise_view_document_ui` | Open the interactive split-view widget (zoomable IIIF scan + transcription, optional highlight) for a human to look at. Its result carries a `viewUUID` — pass it to `globalise_navigate_viewer` to steer that open viewer. | MCP Apps widget |
-| `globalise_inspect_page_image` | **Look at the page yourself.** Fetch a page scan or region as an image and read it — re-transcribe a user-highlighted passage (a "[Highlight: region pct:…]" message) as a second opinion on the HTR, or zoom into a detail on request. When a viewer is open for the page it also auto-zooms there. | Live IIIF image API |
+| `globalise_inspect_page_image` | **Look at the page yourself.** Fetch a page scan or region as an image and read it — re-transcribe a user-highlighted passage (a "[Highlight: region pct:…]" message) as a second opinion on the HTR, or zoom into a detail on request. Pass the highlight's or view result's `viewUUID` and the viewer zooms there too. | Live IIIF image API |
 | `globalise_navigate_viewer` | **Steer the open viewer.** Zoom/pan it to a region to direct the user's attention. Needs the `viewUUID` from `globalise_view_document_ui`. | In-memory session queue |
 
 > Internal: `globalise_poll_viewer_commands` is the viewer iframe's own command-polling channel — you never call it directly. It is marked app-only, but whether a host hides it is up to the host, so it may appear alongside the tools in the table above.
@@ -83,8 +83,9 @@ For a known page ID, skip straight to `retrieve_document`. For statistics only
 
 **Highlight → inspect loop.** In `globalise_view_document_ui`, a user can press
 `i` and drag a box over the scan; the viewer drops a `[Highlight: region
-pct:…]` message into the chat with no image attached — just coordinates. Call
-`globalise_inspect_page_image` with that same `documentId` and `region` to
+pct:… on document … in viewer …]` message into the chat with no image attached —
+just coordinates. Call `globalise_inspect_page_image` with that same
+`documentId` and `region`, and the UUID after `in viewer` as `viewUUID`, to
 fetch the actual crop and read it yourself, e.g. as a second opinion on a
 garbled HTR passage. You can also call it proactively (region defaults to
 `full`) to zoom into a detail the user asks about.
@@ -95,8 +96,9 @@ usually want those words translated from period Dutch into modern English.
 
 **Reverse channel (steer the viewer back).** The viewer runs a live session
 identified by the `viewUUID` in the `globalise_view_document_ui` result. When
-you `globalise_inspect_page_image` a non-full region and a viewer is open, it
-**auto-zooms** to that region (no extra call). To move the user's view without
+you `globalise_inspect_page_image` a non-full region with that `viewUUID`, the
+viewer **auto-zooms** to it (no extra call); without it, only a local server can
+find the viewer. To move the user's view without
 fetching bytes for your own analysis, call `globalise_navigate_viewer` with that
 `viewUUID` and a `navigate` command — the viewer zooms/pans to the region within
 a second or two. A `deliveryState` of `queued_waiting_for_viewer` is normal (the

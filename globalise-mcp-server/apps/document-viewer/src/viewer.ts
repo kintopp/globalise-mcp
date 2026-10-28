@@ -600,11 +600,11 @@ function resetView(): void {
 //
 // A select-mode toggle (☐ button + 'i' key) lets the user drag a box over the
 // scan; on release the region is converted to an IIIF `pct:x,y,w,h` string
-// and dropped into the chat as a `[Highlight: region …]` user message (via
+// and dropped into the chat as a `[Highlight: region … in viewer <uuid>]` user message (via
 // app.sendMessage, falling back to app.updateModelContext). No image moves on
 // this path — only coordinates. The assistant then calls
-// globalise_inspect_page_image with that documentId + region to fetch the
-// actual crop. Ported from rijksmuseum-mcp-plus/apps/artwork-viewer/src/viewer.ts
+// globalise_inspect_page_image with that documentId + region (and the
+// viewer UUID as viewUUID, so the right viewer zooms) to fetch the actual crop. Ported from rijksmuseum-mcp-plus/apps/artwork-viewer/src/viewer.ts
 // (plan 020) — see that file for the reference implementation this mirrors.
 
 function toggleSelectMode(): void {
@@ -765,17 +765,19 @@ function clearUserHighlight(): void {
  * Drop a `[Highlight: region …]` token into the chat via app.sendMessage,
  * falling back to app.updateModelContext if the host doesn't support
  * sendMessage. The bracketed format is load-bearing: the server tool's
- * description quotes it verbatim (index.ts).
+ * description quotes it verbatim (index.ts). It ends with `in viewer <uuid>`
+ * when a session exists; the model passes that back as viewUUID.
  */
 async function sendSelectionToChat(region: string): Promise<void> {
   if (!currentDocument) return;
-  const message = `[Highlight: region ${region} on document ${currentDocument.id}]`;
+  const viewerSuffix = viewUUID ? ` in viewer ${viewUUID}` : '';
+  const message = `[Highlight: region ${region} on document ${currentDocument.id}${viewerSuffix}]`;
   try {
     await app.sendMessage({ role: 'user', content: [{ type: 'text', text: message }] });
     app.sendLog({ level: 'info', data: `Highlight sent: ${region}` });
   } catch {
     app.updateModelContext({
-      content: [{ type: 'text', text: `Highlight: region ${region} on document ${currentDocument.id}` }],
+      content: [{ type: 'text', text: `Highlight: region ${region} on document ${currentDocument.id}${viewerSuffix}` }],
     });
     app.sendLog({ level: 'info', data: `Highlight added to context: ${region}` });
   }

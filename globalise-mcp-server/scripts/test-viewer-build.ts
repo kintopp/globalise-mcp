@@ -27,6 +27,7 @@ if (htmlExists) {
   // Strings the server side depends on: the highlight token is the format
   // globalise_inspect_page_image's description tells the model to look for.
   check(html.includes('[Highlight: region '), 'highlight chat-token format is present (plan 020)');
+  check(html.includes(' in viewer '), 'highlight token carries the viewer session (review plan 007)');
   check(html.includes('globalise_poll_viewer_commands'), 'poll-tool name is present (plan 021)');
 }
 

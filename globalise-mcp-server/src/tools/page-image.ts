@@ -25,7 +25,7 @@ import { maxInspectWidth, VISION_MAX_EDGE, VISION_FALLBACK_BOX } from '../utils/
 const DEFAULT_SIZE = 1568;
 import { fetchIiifDims } from '../utils/iiif-info.js';
 import { readImageDimensions } from '../utils/image-dimensions.js';
-import { viewerQueues } from '../utils/viewer-session.js';
+import { viewerQueues, resolveActiveViewer, implicitViewerDiscoveryAllowed, enqueueCommands } from '../utils/viewer-session.js';
 import { DocumentResponse } from '../utils/types.js';
 
 export const inspectPageImageInputSchema = z.object({
@@ -48,7 +48,7 @@ export const inspectPageImageInputSchema = z.object({
   quality: z.enum(['default', 'gray']).default('default')
     .describe("Image quality — 'gray' can help read faint ink or inscriptions"),
   viewUUID: z.string().optional()
-    .describe('Target a specific viewer session (from globalise_view_document_ui). When omitted, auto-discovers an open viewer for this page.'),
+    .describe('Viewer session to steer — from a highlight message ("… in viewer <uuid>") or a globalise_view_document_ui result. Pass it to auto-zoom that viewer. When omitted, a local (stdio) server finds an open viewer for this page; a remote (HTTP) server does not.'),
   navigateViewer: z.boolean().default(true)
     .describe("Auto-navigate the open viewer to the inspected region (no effect when region is 'full' or no viewer is open)."),
 });
@@ -167,32 +167,9 @@ export async function inspectPageImage(
   const documentUrn = normalizeDocumentId(input.documentId);
   const { inventoryNumber, scanNumber } = parseDocumentId(documentUrn);
 
-  // 1b. Resolve the active viewer for this page (plan 021) — prefer an
-  //     explicit viewUUID (must match this document), else the most recently
-  //     accessed queue for it. Recency tie-break `>=` so a later insertion in
-  //     the same millisecond wins (Map iterates in insertion order); safe for a
-  //     read like inspect, and if the caller just navigated via
-  //     navigate_viewer that queue is the most recent by construction.
-  let activeViewUUID: string | undefined;
-  if (input.viewUUID) {
-    const q = viewerQueues.get(input.viewUUID);
-    if (q && q.documentId === documentUrn) {
-      activeViewUUID = input.viewUUID;
-      q.lastAccess = Date.now();
-    }
-    // else: don't navigate the wrong viewer
-  } else {
-    let bestLastAccess = -Infinity;
-    for (const [uuid, q] of viewerQueues) {
-      if (q.documentId === documentUrn && q.lastAccess >= bestLastAccess) {
-        activeViewUUID = uuid;
-        bestLastAccess = q.lastAccess;
-      }
-    }
-    if (activeViewUUID) {
-      viewerQueues.get(activeViewUUID)!.lastAccess = Date.now();
-    }
-  }
+  // 1b. Resolve the viewer to steer (explicit UUID, or by document only over
+  //     stdio — see resolveActiveViewer).
+  const activeViewUUID = resolveActiveViewer(documentUrn, input.viewUUID, implicitViewerDiscoveryAllowed());
 
   // 2. Fetch the document JSON — SAME url + cacheKey as viewDocumentUi, so
   //    inspect-after-view is a documentCache hit.
@@ -280,7 +257,7 @@ export async function inspectPageImage(
     const queue = viewerQueues.get(activeViewUUID);
     if (queue) {
       const now = Date.now();
-      queue.commands.push({ action: 'navigate', region: iiifRegion });
+      enqueueCommands(queue, { action: 'navigate', region: iiifRegion });
       queue.lastAccess = now;
       if (computeDeliveryState(queue.lastPolledAt, now) === 'delivered_recently') {
         viewerNavigated = true;

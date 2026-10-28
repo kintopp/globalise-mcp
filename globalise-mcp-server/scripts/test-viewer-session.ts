@@ -7,12 +7,18 @@
  *   - a drain that returns commands without emptying the queue (replayed zooms)
  *     or without stamping lastPolledAt
  *   - eviction that removes fresh entries, or keeps idle ones
+ *   - implicit by-document discovery running when disallowed (cross-user steering
+ *     over HTTP), or choosing by insertion order instead of recency
+ *   - an explicit UUID for another document being honoured
+ *   - the command queue or session map growing past its caps, or the session cap
+ *     evicting by insertion order (dropping a polling viewer)
  *
  * Run with: npm run test:viewer-session
  */
 
 import {
-  viewerQueues, mintOrRemount, drainQueue, evictIdle,
+  viewerQueues, mintOrRemount, drainQueue, evictIdle, resolveActiveViewer,
+  implicitViewerDiscoveryAllowed, enqueueCommands, MAX_PENDING_COMMANDS, MAX_VIEWER_SESSIONS,
 } from '../src/utils/viewer-session.js';
 import { check, finish } from './test-utils.js';
 
@@ -104,6 +110,85 @@ console.log('4. evictIdle');
   check(m.has('fresh'), 'a recently used entry survives');
   check(m.has('boundary'), 'an entry idle for exactly the TTL survives');
   check(!m.has('idle'), 'an entry idle past the TTL is evicted');
+}
+
+// ---------------------------------------------------------------------------
+// 5. resolveActiveViewer
+// ---------------------------------------------------------------------------
+
+console.log('5. resolveActiveViewer');
+
+{
+  viewerQueues.clear();
+  const A2 = mintOrRemount(undefined, DOC_A);
+  const A1 = mintOrRemount(undefined, DOC_A);
+  const B1 = mintOrRemount(undefined, DOC_B);
+  viewerQueues.get(A1)!.lastAccess = 1000;
+  viewerQueues.get(A2)!.lastAccess = 2000;
+  viewerQueues.get(B1)!.lastAccess = 1500;
+
+  check(resolveActiveViewer(DOC_A, undefined, true) === A2, 'implicit discovery picks the most recently used viewer, not the last inserted');
+  check(resolveActiveViewer(DOC_A, undefined, false) === undefined, 'implicit discovery is off when disallowed');
+  check(resolveActiveViewer(DOC_A, A1, false) === A1, 'an explicit UUID still works when implicit discovery is disallowed');
+  check(resolveActiveViewer(DOC_A, B1, true) === undefined, 'an explicit UUID for another document is refused');
+  check(resolveActiveViewer(DOC_A, 'nope', true) === undefined, 'an unknown UUID is refused');
+  viewerQueues.clear();
+}
+
+// ---------------------------------------------------------------------------
+// 6. implicitViewerDiscoveryAllowed
+// ---------------------------------------------------------------------------
+
+console.log('6. implicitViewerDiscoveryAllowed');
+
+{
+  const original = process.env.TRANSPORT;
+  process.env.TRANSPORT = 'http';
+  check(implicitViewerDiscoveryAllowed() === false, 'disallowed over HTTP');
+  delete process.env.TRANSPORT;
+  check(implicitViewerDiscoveryAllowed() === true, 'allowed over stdio (default)');
+  if (original === undefined) delete process.env.TRANSPORT;
+  else process.env.TRANSPORT = original;
+}
+
+// ---------------------------------------------------------------------------
+// 7. enqueueCommands cap
+// ---------------------------------------------------------------------------
+
+console.log('7. enqueueCommands');
+
+{
+  viewerQueues.clear();
+  const q = viewerQueues.get(mintOrRemount(undefined, DOC_A))!;
+  const total = MAX_PENDING_COMMANDS + 5;
+  for (let i = 0; i < total; i++) enqueueCommands(q, { action: 'navigate', region: `pct:0,0,${i + 1},1` });
+  check(q.commands.length === MAX_PENDING_COMMANDS, 'the queue is capped');
+  check(q.commands[q.commands.length - 1].region === `pct:0,0,${total},1`, 'the newest command is kept');
+  check(q.commands[0].region === 'pct:0,0,6,1', 'the oldest commands are dropped first');
+  viewerQueues.clear();
+}
+
+// ---------------------------------------------------------------------------
+// 8. Session cap
+// ---------------------------------------------------------------------------
+
+console.log('8. session cap');
+
+{
+  viewerQueues.clear();
+  const uuids: string[] = [];
+  for (let i = 0; i < MAX_VIEWER_SESSIONS; i++) {
+    const u = mintOrRemount(undefined, DOC_A);
+    viewerQueues.get(u)!.lastAccess = i;
+    uuids.push(u);
+  }
+  viewerQueues.get(uuids[0])!.lastAccess = MAX_VIEWER_SESSIONS + 1;
+  const extra = mintOrRemount(undefined, DOC_A);
+  check(viewerQueues.size === MAX_VIEWER_SESSIONS, 'minting past the cap keeps the map at the cap');
+  check(viewerQueues.has(extra), 'the new session is present');
+  check(!viewerQueues.has(uuids[1]), 'the least recently used session is evicted');
+  check(viewerQueues.has(uuids[0]), 'a recently used (polling) session survives despite being the oldest insertion');
+  viewerQueues.clear();
 }
 
 finish('Viewer session tests');
