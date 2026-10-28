@@ -243,14 +243,14 @@ async function search(input: SearchInput): Promise<SearchOutput> {
       topInventoryNumbers: response.aggs.invNr
         ? Object.entries(response.aggs.invNr)
             .sort((a, b) => b[1] - a[1])
-            .map(([invNr, count]) => ({ inventoryNumber: invNr, count }))
             .slice(0, 10)
+            .map(([invNr, count]) => ({ inventoryNumber: invNr, count }))
         : undefined,
       topDocuments: response.aggs.document
         ? Object.entries(response.aggs.document)
             .sort((a, b) => b[1] - a[1])
-            .map(([doc, count]) => ({ document: doc, count }))
             .slice(0, 10)
+            .map(([doc, count]) => ({ document: doc, count }))
         : undefined,
       languages: response.aggs.langIso
         ? Object.entries(response.aggs.langIso).map(([code, count]) => ({
