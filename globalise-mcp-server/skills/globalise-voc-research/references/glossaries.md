@@ -8,8 +8,7 @@ both exist to get you from a modern word to what the corpus actually writes.
 
 `globalise_lookup_commodity` is a **local glossary** of ~3,500 VOC trade goods and
 trade-related concepts. Its reliable value is **(1) bilingual label resolution** —
-turn a modern/English term into the Dutch word the corpus uses (coffee → *koffie*,
-mace → *foelie*) — and **(2) a sourced, confidence-rated definition** per concept.
+turn a modern/English term into the Dutch word the corpus uses (coffee → *koffie*) — and **(2) a sourced, confidence-rated definition** per concept.
 Treat **period spelling variants (`altLabels`) as a bonus: only ~1 concept in 10 has
 any, and the big commodities (pepper, coffee, nutmeg) have none.**
 
@@ -17,7 +16,7 @@ any, and the big commodities (pepper, coffee, nutmeg) have none.**
 17th-c. Dutch with no spelling normalization, so one modern spelling finds almost
 nothing (`koffie` → 119 pages; the period `coffij` → 25,124). So:
 
-1. Look the term up → take the **Dutch `prefLabel`** and any `altLabels`.
+1. Look the term up → take the **Dutch `prefLabelNl`** and any `altLabels`.
 2. If it *has* `altLabels` (silk, *zijde*, has 23), OR them into the search.
 3. **If it has none (usual), reconstruct the period form** — the corpus prefers *c-*
    over *k-* and *-ij* over *-ie* (`koffie`→`coffij`) — **and add fuzzy `~1` / wildcards**
@@ -43,7 +42,11 @@ contexts" ≈ a guess).
   — so never tag a *variant* or *translation* "*WNT*-derived" or "*high*/*low*
   confidence". (`definitionSource: PoolParty` = "made by *Globalise*".)
 - **`prefLabelEn` is ~70% LLM-translated**, so often a mistranslation (`raapfoelie`
-  is gathered mace, not "rapeseed oil") — prefer the Dutch `prefLabel`.
+  is gathered mace, not "rapeseed oil") — prefer the Dutch `prefLabelNl`.
+- **An English query only reaches a concept whose `prefLabelEn` is translated.** Some core
+  goods keep an untranslated English label (`Foelie`, for mace). When an English term
+  returns only compounds or low-confidence hits, take the shared Dutch stem of the
+  compound hits (`foelieolie`, `foeliegruis` → `foelie`) and re-query with it.
 - **Expand source codes**: *WNT* = historical dictionary of Dutch (IVDNT); *AAT* =
   Getty Art & Architecture Thesaurus; *vocGlossarium* = Huygens VOC-Glossarium;
   *PoolParty* = the GLOBALISE thesaurus. Some definitions embed raw citations ("Cited

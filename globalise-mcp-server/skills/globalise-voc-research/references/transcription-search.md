@@ -84,7 +84,9 @@ querying them. There's no reliable way to match a literal `*` or `?`. Accents ar
 (exact) or `"gte"` (at least). Counts are exact even when large (`peper` →
 160,366, `"eq"`); the case that returns a floor is **`matchAll` across multiple
 languages**, which post-filters a capped 500-hit candidate window and adds a
-`note`. When you see `"gte"` or a note, treat the count as a lower bound.
+`note`. Trust `total.relation`: `"eq"` = exact (all candidates scanned), `"gte"` =
+floor. Pages beyond the window are unreachable — narrow the filters instead
+of paging past it.
 
 **No `topInventoryNumbers` facet under an `inventoryNumber` filter.** When that
 filter is active the response omits the `topInventoryNumbers` aggregation and

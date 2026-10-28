@@ -18,7 +18,7 @@ export const findArchivalDocumentsInputSchema = z.object({
   inventoryNumber: z.union([z.string(), z.array(z.string())]).optional()
     .describe('Filter by inventory number(s). Single: "1543" or multiple: ["1543", "1068"]'),
   settlement: z.string().optional()
-    .describe('Filter by settlement name (OBP only) — the VOC office the papers came *from* (origin), not the subject. Spellings are normalized to one canonical form per place, but it is unpredictable (e.g. "Malakka" NOT "Malacca"; "Ceylon" NOT the period "Ceijlon"), so run once with includeAggregations and copy the exact value from the breakdown. Examples: "Ceylon", "Batavia", "Malakka".'),
+    .describe('Filter by settlement name (OBP only) — the VOC office the papers came *from* (origin), not the subject. Exact match on one value. Mostly one spelling per place, but unpredictable (e.g. "Malakka" NOT "Malacca"; "Ceylon" NOT the period "Ceijlon"), and a few places are split across spellings (e.g. "Kanton" and "Canton"): run once with includeAggregations, copy every variant from the settlements breakdown (top 20; narrow with yearFrom/yearTo or inventoryNumber to surface a minor office), and run once per variant. Examples: "Ceylon", "Batavia", "Malakka".'),
   yearFrom: z.number().int().optional()
     .describe('Filter by earliest year (inclusive). Example: 1700'),
   yearTo: z.number().int().optional()

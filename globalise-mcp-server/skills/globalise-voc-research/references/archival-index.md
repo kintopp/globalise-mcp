@@ -15,7 +15,7 @@ physically sit in OBP inventory volumes, so the same missive is often catalogued
 
 - **OBP — Overgekomen Brieven en Papieren** (`source=obp`, ~227,526 entries).
   Digitized index entries / finding aids. Fields you can filter and read:
-  `settlement`, `year_earliest`/`year_latest`, `folio`, `inventory_number`,
+  `settlement`, `yearEarliest`/`yearLatest`, `folioStart`/`folioEnd`, `inventoryNumber`,
   `description`. **`settlement` is OBP-only** — and it's the VOC office the papers
   came *from* (origin), not the document's subject.
 - **GM — Generale Missiven** (`source=gm`, ~950 entries). The official summary
@@ -25,14 +25,15 @@ physically sit in OBP inventory volumes, so the same missive is often catalogued
   (`"Amsterdam"` / `"Zeeland"`) is also a usable **filter**. Folio filters require an
   `inventoryNumber`.
 
-`includeAggregations: true` adds settlement / year / inventory breakdowns (OBP)
-or chamber (GM) — cheap and useful for "what's in here?" questions.
+`includeAggregations: true` adds the **top 20**
+settlements and inventories and a **records-per-decade** list (OBP, keyed on
+`yearEarliest`), or chambers (GM) — cheap and useful for "what's in here?" questions.
 
 > ⚠️ **`source=all` double-counts the Generale Missiven.** Because GM ⊂ OBP, a
 > published-era missive is indexed **twice** — once as the richer GM row, once as a
 > plain OBP finding-aid row carrying the *same* inventory, folio and description.
-> When you list or **count** across `source=all`, dedup on `inventory_number` +
-> `folio` and keep the **GM** row (it adds `chamber`, dates, scan URLs, RGP refs).
+> When you list or **count** across `source=all`, dedup on `inventoryNumber` +
+> `folioStart` and keep the **GM** row (it adds `chamber`, dates, scan URLs, RGP refs).
 > Query a single `source` when you don't need both field sets.
 >
 > A few letters are also duplicated *within* `source=gm` (14 pairs share an
@@ -84,7 +85,7 @@ literal forms (modulo case/diacritics). Two consequences dominate everything:
 ### Trap 1 — period Dutch spelling vs. modern toponyms
 
 The free-text `description` is in 17th–18th-century Dutch orthography. The
-`settlement` field is **normalized to a single canonical spelling per place** —
+`settlement` field uses **mostly one spelling per place** —
 but *which* spelling is unpredictable, and it's almost never the description's
 period form. They diverge sharply:
 
@@ -93,8 +94,13 @@ period form. They diverge sharply:
   rows, **"Ceijlon"** on 0.
 - The canonical form isn't reliably the modern exonym, either: `settlement="Malakka"`
   → **6,967**, but `settlement="Malacca"` → **0**. Ceylon gets the English exonym;
-  Malakka keeps the Dutch one. **Don't guess the spelling** — run once with
-  `includeAggregations` and copy the exact settlement string from the breakdown.
+  Malakka keeps the Dutch one. **Don't guess the spelling, and don't assume there is only one:** a few
+  places are split (`Kanton` 1,183 rows / `Canton` 939; `Banjermassin` /
+  `Banjarmasin`). Run once with `includeAggregations` and copy **every**
+  variant from the settlements breakdown. It lists only the top 20, so for a
+  minor office first narrow the call (`yearFrom`/`yearTo`, `inventoryNumber`,
+  or a `query`) until it appears. `settlement` takes one value, so run once
+  per variant and add the totals.
 
 So `query="kaneel AND Ceylon"` returns **0** — not because AND is broken, but
 because almost no *description* pairs "kaneel" with the modern spelling "Ceylon".
@@ -131,7 +137,7 @@ extract) cover **~48%**. So topic-keyword search over `description` is
 **serendipitous** — you only hit documents a cataloguer happened to describe with
 that word, missing those filed generically as "Missive van den gouverneur…". The
 **reliable** discovery axes are the structured fields: `settlement`, year,
-`inventory_number`. Two consequences:
+`inventoryNumber`. Two consequences:
 
 - Descriptions name **specific goods**, not categories, so general terms score far
   lower here than in the page text — `specerijen` (spices): **234** OBP rows vs
@@ -145,11 +151,11 @@ that word, missing those filed generically as "Missive van den gouverneur…". T
 `search_transcriptions`, which does — see `references/transcription-search.md`). Its
 ordering is fixed:
 
-- **OBP:** `year_earliest`, then `inventory_number` (compared as **text**, so
-  "10435" sorts before "2393"), then `folio_start`.
-- **GM:** `date_numeric`, then `inventory_number`.
+- **OBP:** `yearEarliest`, then `inventoryNumber` (compared as **text**, so
+  "10435" sorts before "2393"), then `folioStart`.
+- **GM:** `dateNumeric`, then `inventoryNumber`.
 
-The OBP default *is* chronological-ish, but with a catch: it sorts by `year_earliest`
+The OBP default *is* chronological-ish, but with a catch: it sorts by `yearEarliest`
 ascending, and the records with the **lowest** floors are the **least date-precise**
 ones (wide inventory-level ranges). So an unfiltered first page (`from=0`, no query)
 surfaces the most date-ambiguous documents first. For a meaningful chronological
@@ -160,9 +166,9 @@ fast as `from=0`.
 
 ## Interpreting the year fields
 
-`year_earliest` / `year_latest` are **not always a precise date.**
+`yearEarliest` / `yearLatest` are **not always a precise date.**
 
-- ~86% of OBP rows are date-precise (`year_earliest == year_latest`).
+- ~86% of OBP rows are date-precise (`yearEarliest == yearLatest`).
 - A small minority (~300 rows) carry **wide inventory-level ranges**, e.g.
   `1600–1741`. A low floor like **1600 is an imprecise bound, not a real date and
   not a null sentinel** (only ~8 rows are exactly 1600; there are no nulls).
@@ -179,6 +185,10 @@ and OBP vs GM behave oppositely:
 
 - **The inventory number is the join.** Feed it into `search_transcriptions`'
   `inventoryNumber` filter (or `retrieve_document`) — the reliable bridge.
+- **Lettered volumes.** When a result has `volumeCandidates` (e.g.
+  `["1179A","1179B"]`), its `inventoryNumber` is a bare base number with **no
+  scans of its own**. Pass the candidate list as `inventoryNumber` to
+  `search_transcriptions` (it accepts an array). Never build a URN from the base number.
 - **OBP: folio ≠ scan number.** Foliation is the original numbering; scans add covers,
   blanks and dividers, so folio 372 is *not* scan `_0372` (in inv 1068, scan 0372 is
   just a "No. 2." divider). Never build a scan ID from an OBP folio — search the
