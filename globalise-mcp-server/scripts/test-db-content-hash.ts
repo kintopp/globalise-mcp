@@ -16,7 +16,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { check, finish } from './test-utils.js';
+import { check, finish, safe } from './test-utils.js';
 import { dbContentHash } from './db-content-hash.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'gl-hash-'));
@@ -72,9 +72,7 @@ check(dbContentHash(make('f', { blobByte: 8 })) !== hashA, 'a changed BLOB byte 
 check(dbContentHash(make('g', { extraColumn: true })) !== hashA, 'a schema change with identical rows changes the hash');
 check(dbContentHash(make('h', { userVersion: 9 })) !== hashA, 'a user_version change changes the hash');
 
-let threw = false;
-try { dbContentHash(join(dir, 'missing.sqlite')); } catch { threw = true; }
-check(threw, 'a missing file throws');
+check(safe(() => (dbContentHash(join(dir, 'missing.sqlite')), false), true), 'a missing file throws');
 
 rmSync(dir, { recursive: true, force: true });
 finish('db-content-hash');

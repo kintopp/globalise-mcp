@@ -33,14 +33,14 @@ export function dbContentHash(path: string): string {
     const schema = db
       .prepare(`SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name`)
       .all() as Row[];
-    for (const r of schema) feed([r.type, r.name, r.tbl_name, r.sql]);
+    for (const r of schema) feed(Object.values(r));
 
     for (const r of schema) {
       if (r.type !== 'table' || /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(String(r.sql))) continue;
       const name = String(r.name);
-      const cols = db.prepare(`PRAGMA table_info(${quote(name)})`).all() as Row[];
-      const order = cols.map((_, i) => i + 1).join(', ');
       feed([name]);
+      const width = db.prepare(`SELECT * FROM ${quote(name)}`).columns().length;
+      const order = Array.from({ length: width }, (_, i) => i + 1).join(', ');
       const stmt = db.prepare(`SELECT * FROM ${quote(name)} ORDER BY ${order}`);
       stmt.setReadBigInts(true);
       for (const row of stmt.iterate()) feed(Object.values(row as Row));
