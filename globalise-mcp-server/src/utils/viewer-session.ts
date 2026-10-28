@@ -94,9 +94,10 @@ export function resolveActiveViewer(
   return best;
 }
 
-/** Queue commands, dropping the oldest beyond MAX_PENDING_COMMANDS: only the latest zooms matter to an unpolled viewer. */
+/** Queue commands (refreshing lastAccess), dropping the oldest beyond MAX_PENDING_COMMANDS: only the latest zooms matter to an unpolled viewer. */
 export function enqueueCommands(queue: ViewerQueue, ...commands: ViewerCommand[]): void {
   queue.commands.push(...commands);
+  queue.lastAccess = Date.now();
   if (queue.commands.length > MAX_PENDING_COMMANDS) {
     queue.commands.splice(0, queue.commands.length - MAX_PENDING_COMMANDS);
   }
@@ -104,18 +105,16 @@ export function enqueueCommands(queue: ViewerQueue, ...commands: ViewerCommand[]
 
 /** Evict least-recently-used sessions to make room for one more. */
 function evictForNewSession(): void {
-  while (viewerQueues.size >= MAX_VIEWER_SESSIONS) {
-    let oldest: string | undefined;
-    let oldestAccess = Infinity;
-    for (const [uuid, q] of viewerQueues) {
-      if (q.lastAccess < oldestAccess) {
-        oldest = uuid;
-        oldestAccess = q.lastAccess;
-      }
+  if (viewerQueues.size < MAX_VIEWER_SESSIONS) return;
+  let oldest: string | undefined;
+  let oldestAccess = Infinity;
+  for (const [uuid, q] of viewerQueues) {
+    if (q.lastAccess < oldestAccess) {
+      oldest = uuid;
+      oldestAccess = q.lastAccess;
     }
-    if (oldest === undefined) return;
-    viewerQueues.delete(oldest);
   }
+  if (oldest !== undefined) viewerQueues.delete(oldest);
 }
 
 /**

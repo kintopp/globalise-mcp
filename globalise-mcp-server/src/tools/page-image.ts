@@ -258,7 +258,6 @@ export async function inspectPageImage(
     if (queue) {
       const now = Date.now();
       enqueueCommands(queue, { action: 'navigate', region: iiifRegion });
-      queue.lastAccess = now;
       if (computeDeliveryState(queue.lastPolledAt, now) === 'delivered_recently') {
         viewerNavigated = true;
       } else {

@@ -209,7 +209,6 @@ export async function navigateViewer(
 
   // 6. Queue the commands for the iframe to drain.
   enqueueCommands(queue, ...commands);
-  queue.lastAccess = Date.now();
 
   // 7. Response — delivery state + per-state narration.
   const now = Date.now();
