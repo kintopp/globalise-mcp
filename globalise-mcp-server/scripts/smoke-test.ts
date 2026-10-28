@@ -199,6 +199,14 @@ async function main() {
     'structuredContent mirrors the text-channel result (R8)',
   );
 
+  const aggResult = await client.callTool({
+    name: 'globalise_find_archival_documents',
+    arguments: { source: 'obp', settlement: 'Ceylon', size: 1 },
+  });
+  check(!aggResult.isError, 'aggregation-bearing call succeeded (output schema validated)');
+  const aggSc = aggResult.structuredContent as { aggregations?: { decades?: unknown } } | undefined;
+  check(Array.isArray(aggSc?.aggregations?.decades), 'OBP call returns decades aggregation');
+
   console.log('4b. tools/call globalise_lookup_commodity (reference DB)');
   // A real call is the only thing that exercises the SDK's validation of
   // structuredContent against the tool's output schema.
@@ -263,7 +271,7 @@ async function main() {
         return [];
       }
     });
-  check(logLines.length === 4, `one log line per tool call (got: ${logLines.length})`);
+  check(logLines.length === 5, `one log line per tool call (got: ${logLines.length})`);
   const okLine = logLines.find((l) => l.tool === 'globalise_find_archival_documents' && l.ok === true);
   check(okLine !== undefined, 'success call logged with ok: true');
   check(typeof okLine?.ms === 'number', 'log line carries ms timing');

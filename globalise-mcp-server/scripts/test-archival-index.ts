@@ -207,6 +207,16 @@ async function main() {
     'repeated unfiltered call returns identical aggregations',
   );
 
+  const decades = agg1.aggregations?.decades ?? [];
+  check(decades.length > 0, 'decades aggregation present');
+  checkEvery(decades, (d) => d.decade % 10 === 0, 'decade keys are decade start years');
+  check(decades.every((d, i) => i === 0 || decades[i - 1].decade < d.decade), 'decades strictly ascending');
+  const ceylon = await call({ settlement: 'Ceylon', size: 1 });
+  check(
+    (ceylon.aggregations?.decades ?? []).reduce((n, d) => n + d.count, 0) === ceylon.total.value,
+    'Ceylon decade counts sum to the OBP total',
+  );
+
   console.log('6. RGP published-edition links');
   const RETRO = 'https://resources.huygens.knaw.nl/retroboeken/generalemissiven/';
   const GH = 'https://raw.githubusercontent.com/globalise-huygens/globalise-generale-missiven-rgp/main';
