@@ -111,7 +111,7 @@ export const searchTranscriptionsInputSchema = z.object({
   matchAll: z.boolean()
     .optional()
     .default(false)
-    .describe('With 2+ languages: require pages to contain ALL of them (bilingual/multilingual). Post-filters a capped candidate window (500 raw hits), so totals are a lower bound — see the note field in the response.'),
+    .describe('With 2+ languages: require pages to contain ALL of them (bilingual/multilingual). Post-filters the first 500 raw hits (one candidate window, independent of from/size); total is a lower bound unless the note says all candidates were scanned.'),
   from: z.number()
     .min(0, 'Pagination offset must be 0 or greater')
     .optional()
@@ -239,13 +239,16 @@ async function search(input: SearchInput): Promise<SearchOutput> {
   let aggregations: SearchOutput['aggregations'];
   if (input.includeAggregations && response.aggs) {
     aggregations = {
+      // Sort by count: JS enumerates integer-like keys in numeric order, not JSON order.
       topInventoryNumbers: response.aggs.invNr
         ? Object.entries(response.aggs.invNr)
+            .sort((a, b) => b[1] - a[1])
             .map(([invNr, count]) => ({ inventoryNumber: invNr, count }))
             .slice(0, 10)
         : undefined,
       topDocuments: response.aggs.document
         ? Object.entries(response.aggs.document)
+            .sort((a, b) => b[1] - a[1])
             .map(([doc, count]) => ({ document: doc, count }))
             .slice(0, 10)
         : undefined,
@@ -357,7 +360,7 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
   const searchResult = await search({
     query: input.query,
     from: useMatchAll ? 0 : input.from,
-    size: useMatchAll ? Math.min(input.size * 10, MATCH_ALL_SCAN_CAP) : input.size,
+    size: useMatchAll ? MATCH_ALL_SCAN_CAP : input.size,
     fragmentSize: input.fragmentSize,
     sortBy: input.sortBy,
     sortOrder: input.sortOrder,
@@ -379,10 +382,11 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
     return languages!.every(code => docLangCodes.includes(code));
   });
 
+  const exhausted = searchResult.total.value <= scanned;
   const pageResults = matched.slice(input.from, input.from + input.size);
 
   return {
-    total: { value: matched.length, relation: 'gte' },
+    total: { value: matched.length, relation: exhausted ? 'eq' : 'gte' },
     results: pageResults,
     aggregations: aggregateResults(matched),
     pagination: {
@@ -392,7 +396,12 @@ export async function searchTranscriptions(input: SearchTranscriptionsInput): Pr
     },
     note: joinNotes(
       scopeNote,
-      `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); total and aggregations describe the matching pages within that window — the total is a lower bound and pages beyond the scanned window are unreachable.`,
+      exhausted
+        ? `matchAll scanned all ${scanned} candidates; total and aggregations are exact.`
+        : `matchAll post-filtered the first ${scanned} candidates (cap: ${MATCH_ALL_SCAN_CAP}); total and aggregations describe the matching pages within that window — the total is a lower bound and pages beyond the scanned window are unreachable.`,
+      input.from >= matched.length && matched.length > 0 && !exhausted
+        ? `No matching pages at from=${input.from}: only ${matched.length} matches lie within the ${MATCH_ALL_SCAN_CAP}-candidate window — narrow the query or filters to reach others.`
+        : undefined,
     ),
   };
 }
