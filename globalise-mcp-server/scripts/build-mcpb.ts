@@ -71,6 +71,10 @@ interface PackageJson {
   dependencies?: Record<string, string>;
 }
 
+// Pinned for reproducible packs; bump here and in package.json's validate:mcpb together.
+// Not a devDependency: its prompt-library tree carries audit advisories the build never reaches.
+const MCPB_CLI = '@anthropic-ai/mcpb@2.1.2';
+
 const pkg = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf-8')) as PackageJson;
 
 /** Run a command, inheriting stdio, and abort the build on a non-zero exit. */
@@ -243,10 +247,10 @@ function packBundle(): string {
   const outFile = join(BUILD_DIR, 'globalise-voc-research.mcpb');
 
   // `mcpb validate` checks the manifest against the schema before we pack.
-  run('npx', ['-y', '@anthropic-ai/mcpb', 'validate', stagedManifest], PACKAGE_ROOT);
+  run('npx', ['-y', MCPB_CLI, 'validate', stagedManifest], PACKAGE_ROOT);
 
   // `mcpb pack <dir> [output]` zips the staging tree (also re-validates).
-  run('npx', ['-y', '@anthropic-ai/mcpb', 'pack', STAGE_DIR, outFile], PACKAGE_ROOT);
+  run('npx', ['-y', MCPB_CLI, 'pack', STAGE_DIR, outFile], PACKAGE_ROOT);
 
   return outFile;
 }
@@ -262,7 +266,7 @@ function main(): void {
   const outFile = packBundle();
 
   console.log('\n--- bundle info ---');
-  run('npx', ['-y', '@anthropic-ai/mcpb', 'info', outFile], PACKAGE_ROOT);
+  run('npx', ['-y', MCPB_CLI, 'info', outFile], PACKAGE_ROOT);
 
   console.log('\nDone.');
   console.log(`  bundle:        ${outFile} (${sizeMb(outFile)})`);
