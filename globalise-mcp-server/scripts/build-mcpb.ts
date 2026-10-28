@@ -26,9 +26,10 @@
  * There is only one variant.
  *
  * Prerequisite: `npm run build` (compiles dist/ and materializes reference.sqlite).
- * `npm run build:mcpb` chains both. Run from globalise-mcp-server/.
+ * `npm run build:mcpb` cleans dist/ first and chains both; running this script
+ * directly stages whatever dist/ holds, including stale files. Run from globalise-mcp-server/.
  *
- * Usage: npm run build:mcpb   (or: npx tsx scripts/build-mcpb.ts)
+ * Usage: npm run build:mcpb
  */
 
 import { spawnSync } from 'node:child_process';
