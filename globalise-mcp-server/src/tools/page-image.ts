@@ -14,7 +14,7 @@ import {
   regionPixelDims, buildIiifRegionUrl, computeDeliveryState,
   type RegionBoundsIssue,
 } from '../utils/iiif.js';
-import { maxInspectWidth, VISION_MAX_EDGE, VISION_FALLBACK_WIDTH } from '../utils/vision-sizing.js';
+import { maxInspectWidth, VISION_MAX_EDGE, VISION_FALLBACK_BOX } from '../utils/vision-sizing.js';
 
 /**
  * Delivery width when the caller doesn't name one. Kept below VISION_MAX_EDGE:
@@ -42,7 +42,7 @@ export const inspectPageImageInputSchema = z.object({
   // an ordinary call from a caller who explicitly over-asked, and the note
   // would fire on most calls — which teaches the model to ignore it.
   size: z.number().int().min(200).max(VISION_MAX_EDGE).optional()
-    .describe(`Width of the returned image in pixels (200-${VISION_MAX_EDGE}). Omit it to fit the page automatically (up to ${DEFAULT_SIZE}) — recommended. Whatever you pass is clamped per page shape so the crop is never upscaled and never exceeds what the model accepts intact: a larger size is downscaled before the model sees it, so to read a small hand request a tighter region, not a bigger size. Sizes align to multiples of 28 for clean coordinate handling.`),
+    .describe(`Width of the returned image in pixels (its longer edge when the page's dimensions are unavailable) (200-${VISION_MAX_EDGE}). Omit it to fit the page automatically (up to ${DEFAULT_SIZE}) — recommended. Whatever you pass is clamped per page shape so the crop is never upscaled and never exceeds what the model accepts intact: a larger size is downscaled before the model sees it, so to read a small hand request a tighter region, not a bigger size. Sizes align to multiples of 28 for clean coordinate handling.`),
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).default(0)
     .describe('Clockwise rotation in degrees'),
   quality: z.enum(['default', 'gray']).default('default')
@@ -87,6 +87,19 @@ export type InspectPageImageResult =
 /** Full-image fetches repeat in exploration sessions (rijksmuseum caches these too). */
 const fullImageCache = new LRUCache<unknown>(20, 300000);    // 20 crops, 5 min
 
+/** Reject anything that is not a JPEG/PNG within the vision edge limit. */
+function checkImageBytes(image: { base64: string; mimeType: string }): { base64: string; mimeType: string } {
+  const buf = Buffer.from(image.base64, 'base64');
+  const dims = readImageDimensions(buf);
+  if (!dims) {
+    throw new Error(`the IIIF server returned non-image content (content-type ${image.mimeType}, ${buf.length} bytes)`);
+  }
+  if (Math.max(dims.width, dims.height) > VISION_MAX_EDGE) {
+    throw new Error(`the IIIF server returned ${dims.width}×${dims.height}px, above the ${VISION_MAX_EDGE}px vision limit — request a smaller size or a tighter region`);
+  }
+  return { base64: image.base64, mimeType: buf[0] === 0xff ? 'image/jpeg' : 'image/png' };
+}
+
 /**
  * How wide a crop to actually fetch, and why it differs from what was asked.
  *
@@ -107,15 +120,24 @@ export function resolveDeliverySize(
   requested: number | undefined,
   imgW?: number,
   imgH?: number,
-): { size: number; note?: string } {
-  const dims = regionPixelDims(region, imgW, imgH);
-
-  // Shape unknown (info.json failed on a full/square/pct: region). Fall back to
-  // the width that is safe on any shape rather than to DEFAULT_SIZE, which the
-  // corpus survey found breaches the many-image limit on ~70% of pages.
-  if (!dims) {
-    return { size: Math.min(requested ?? DEFAULT_SIZE, VISION_FALLBACK_WIDTH) };
+): { size: number; note?: string; bestFit?: true } {
+  // Shape unknown (info.json failed): a width can't bound the height, and even
+  // a pixel region may be clipped by the server. Request a best fit in a square
+  // box instead, which is safe on any shape. Pixel regions never enlarge.
+  if (!imgW || !imgH) {
+    let size = Math.min(requested ?? DEFAULT_SIZE, VISION_FALLBACK_BOX);
+    const explicit = regionPixelDims(region);
+    if (explicit) size = Math.min(size, Math.max(explicit.width, explicit.height));
+    return {
+      size,
+      bestFit: true,
+      note: `Page dimensions unavailable: delivered as a best fit within ${size}×${size}px.`,
+    };
   }
+
+  const dims = regionPixelDims(region, imgW, imgH);
+  // Defensive: dims are known, so every region shape resolves.
+  if (!dims) return { size: Math.min(requested ?? DEFAULT_SIZE, VISION_FALLBACK_BOX) };
 
   const visionMax = maxInspectWidth(dims.width, dims.height);
   const ceiling = Math.min(dims.width, visionMax);
@@ -207,10 +229,10 @@ export async function inspectPageImage(
     : input.region;
 
   // 7. Clamp the delivery to what this page's shape can carry intact.
-  const { size: effectiveSize, note } = resolveDeliverySize(iiifRegion, input.size, width, height);
+  const { size: effectiveSize, note, bestFit } = resolveDeliverySize(iiifRegion, input.size, width, height);
 
   // 8. Build the IIIF region URL.
-  const fetchUrl = buildIiifRegionUrl(imageUrl, iiifRegion, effectiveSize, input.rotation, input.quality);
+  const fetchUrl = buildIiifRegionUrl(imageUrl, iiifRegion, effectiveSize, input.rotation, input.quality, bestFit);
   if (!fetchUrl) {
     return { ok: false, error: `Unexpected IIIF URL shape for ${documentUrn} — cannot build a region crop URL` };
   }
@@ -224,13 +246,16 @@ export async function inspectPageImage(
   let image: { base64: string; mimeType: string };
   try {
     if (iiifRegion === 'full') {
-      const imgCacheKey = `img:${documentUrn}:${effectiveSize}:${input.rotation}:${input.quality}`;
-      image = await fullImageCache.getOrFetch(imgCacheKey, () => apiGetBinary(fetchUrl)) as { base64: string; mimeType: string };
+      const imgCacheKey = `img:${documentUrn}:${effectiveSize}${bestFit ? 'fit' : 'w'}:${input.rotation}:${input.quality}`;
+      image = await fullImageCache.getOrFetch(imgCacheKey, () => apiGetBinary(fetchUrl).then(checkImageBytes)) as { base64: string; mimeType: string };
     } else {
-      image = await apiGetBinary(fetchUrl);
+      image = await apiGetBinary(fetchUrl).then(checkImageBytes);
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // ApiError is a plain object, not an Error: String() would give "[object Object]".
+    const apiError = (error as { error?: unknown } | null)?.error;
+    const message = error instanceof Error ? error.message
+      : typeof apiError === 'string' ? apiError : String(error);
     return { ok: false, error: `Failed to fetch image: ${message}` };
   }
   const fetchTimeMs = Math.round(performance.now() - fetchStart);
