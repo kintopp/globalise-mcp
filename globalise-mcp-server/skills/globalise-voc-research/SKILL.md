@@ -194,7 +194,7 @@ server **trims and flags it**; it never drops data silently:
   the rest:** higher `from`, narrower filters, or lower `size` / `fragmentSize`.
 - **Single pages** (`retrieve_document`, `navigate`) drop **tail transcription lines**
   of an unusually dense page, setting `text.truncated:true` + `text.totalLines`. Rare.
-  On `truncated`, open `view_document_ui` (**exempt** — always renders the full page)
+  On `truncated`, open `view_document_ui` (it trims only pages about twice as dense, and its summary says when it did)
   or fetch the scan.
 
 ## Operational notes
@@ -210,7 +210,7 @@ server **trims and flags it**; it never drops data silently:
 
 - ✅ Scope with `find_archival_documents` before searching transcriptions.
 - ✅ Put **places in the `settlement` filter**, content words in `query`.
-- ✅ Read the exact **settlement spelling from the aggregation** (`includeAggregations`) — it's `Malakka`, not `Malacca`.
+- ✅ Read the exact **settlement spelling(s) from the aggregation** (`includeAggregations`, top 20) — it's `Malakka`, not `Malacca`, and `Kanton` *and* `Canton`.
 - ✅ Use **period spellings or prefixes** (`Ceijlon*`, `Makass*`) for free-text places.
 - ✅ **Resolve commodity terms** with `lookup_commodity` — get the Dutch label, then (most have no `altLabels`) reconstruct period spellings + fuzzy `~1` rather than betting on the modern form.
 - ✅ Check the response **`note`** when results look off (auto-quoted terms / phrase fallback / lower-bound totals / **size-capped results** — fewer rows than `size`, with `pagination.hasMore: true` and `total` still true).
@@ -225,7 +225,8 @@ server **trims and flags it**; it never drops data silently:
 - ❌ Don't call the per-page RGP link the whole letter (it's the **first page**), or go past the record/skill for RGP editors/dates/editions — point to the RGP series record for those.
 - ❌ Don't read an **empty OBP result** as "not in GLOBALISE" — many transcribed inventories (9966 → 495 pages, 9800 → 274) have no OBP index; check `search_transcriptions`.
 - ❌ Don't build a scan ID from an **OBP folio** (for **GM**, use the result's `scanStart` / scan URLs), or expect **page-level dates** on transcriptions (`yearFrom`/`yearTo` there is approximate — resolved via the archival index, not per page).
+- ❌ Don't build a URN from a bare **lettered-volume** base number: a result with `volumeCandidates` (e.g. `["1179A","1179B"]`) has no scans of its own — pass the candidates as `inventoryNumber`.
 - ❌ Don't trust the unfiltered first page as "earliest documents" — use `yearFrom`/`yearTo`.
-- ❌ Don't read `year_earliest=1600` (or any wide range) as a precise date.
+- ❌ Don't read `yearEarliest=1600` (or any wide range) as a precise date.
 - ❌ Don't treat `language="unknown"` as unidentifiable, or `"art"` as a real language.
 - ❌ Don't present a `lookup_commodity` **definition** as fact when it's low-confidence/LLM-sourced — or pin its **source/confidence onto a label** (those grade the definition only, and `prefLabelEn` is itself ~70% LLM-translated); the reliable payload is the **Dutch label**.
