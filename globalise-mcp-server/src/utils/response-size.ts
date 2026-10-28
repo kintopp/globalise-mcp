@@ -2,8 +2,9 @@
  * Budget-aware trimming of a tool result before it is serialized into the text
  * and, when enabled, structuredContent channels. The caller decides how
  * conservatively to budget those copies; this module only trims to the supplied
- * per-copy byte budget. The result object is trimmed IN PLACE — it is freshly
- * built per request and never shared. See plan 005.
+ * per-copy byte budget. The result object is trimmed IN PLACE, so any array a
+ * strategy returns must be owned by that result: callers copy arrays that come
+ * from the shared documentCache.
  *
  * Two reductions, tried in order: (1) optional `compact` (shrink heavy
  * per-record fields, keeps more records), then (2) drop tail records.

@@ -278,6 +278,15 @@ async function main() {
       check(r.code === 0 && typeof shown === 'number' && shown < 400, `retrieve was trimmed (${shown} of 400 lines)`);
       check(new RegExp(`note: transcription truncated .* ${shown} of 400 lines shown`).test(r.stderr), 'retrieve: note states lines shown of total');
       check(/note: transcription truncated .* of 400 lines shown/.test(n.stderr), 'navigate: note read from targetDocument.text');
+
+      // Two calls on one server share its documentCache; trimming must not shorten the cached page.
+      const b = await runCli(['retrieve', '--stdin'], { env, input: `${DOC}\n${DOC}\n` });
+      const rows = b.stdout.trim().split('\n').map((l) => parseJson(l));
+      check(b.code === 0 && rows.length === 2, `batch retrieve prints two rows (got ${rows.length})`);
+      check(rows.every((d) => d?.text?.truncated === true && d?.text?.totalLines === 400),
+        'both calls on one server report truncated with totalLines 400 (the cached page was not shortened)');
+      check((b.stderr.match(/note: transcription truncated .* of 400 lines shown/g) ?? []).length === 2,
+        'both calls carry the truncation note');
     } finally {
       await stub.close();
     }
