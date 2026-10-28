@@ -15,7 +15,7 @@ import {
   projectToFullImage, computeDeliveryState,
   type DeliveryState,
 } from '../utils/iiif.js';
-import { viewerQueues, type ViewerCommand } from '../utils/viewer-session.js';
+import { viewerQueues, enqueueCommands, MAX_PENDING_COMMANDS, type ViewerCommand } from '../utils/viewer-session.js';
 
 export const navigateViewerInputSchema = z.object({
   viewUUID: z.string().describe('Viewer UUID from a prior globalise_view_document_ui call'),
@@ -35,7 +35,7 @@ export const navigateViewerInputSchema = z.object({
       'Actual pixel dimensions of the inspected crop, copied from ' +
       'globalise_inspect_page_image cropPixelWidth/cropPixelHeight. Required when ' +
       'relativeTo is set and region uses crop_pixels:.'),
-  })).min(1).describe('Commands to execute in the viewer, in order'),
+  })).min(1).max(MAX_PENDING_COMMANDS).describe('Commands to execute in the viewer, in order'),
 });
 
 export const navigateViewerOutputSchema = z.object({
@@ -208,8 +208,7 @@ export async function navigateViewer(
   }
 
   // 6. Queue the commands for the iframe to drain.
-  queue.commands.push(...commands);
-  queue.lastAccess = Date.now();
+  enqueueCommands(queue, ...commands);
 
   // 7. Response — delivery state + per-state narration.
   const now = Date.now();

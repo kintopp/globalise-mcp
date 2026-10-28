@@ -55,6 +55,68 @@ function sweepTtlMap<T extends { lastAccess: number }>(map: Map<string, T>, ttlM
 export const viewerQueues = new Map<string, ViewerQueue>();
 sweepTtlMap(viewerQueues);
 
+export const MAX_VIEWER_SESSIONS = 1000;
+export const MAX_PENDING_COMMANDS = 20;
+
+/** Implicit by-document discovery is safe only when one process serves one user (stdio). */
+export function implicitViewerDiscoveryAllowed(): boolean {
+  return (process.env.TRANSPORT || 'stdio') !== 'http';
+}
+
+/**
+ * The viewer an inspect call should steer: the requested UUID when it is live
+ * and shows this document; otherwise — only when `allowImplicit` — the most
+ * recently used queue for the document. Over shared HTTP the implicit branch
+ * would pick another user's viewer and hand back its UUID.
+ */
+export function resolveActiveViewer(
+  documentId: string,
+  requested: string | undefined,
+  allowImplicit: boolean,
+): string | undefined {
+  if (requested) {
+    const q = viewerQueues.get(requested);
+    if (!q || q.documentId !== documentId) return undefined;
+    q.lastAccess = Date.now();
+    return requested;
+  }
+  if (!allowImplicit) return undefined;
+  let best: string | undefined;
+  let bestLastAccess = -Infinity;
+  for (const [uuid, q] of viewerQueues) {
+    // `>=`: a later insertion in the same millisecond wins.
+    if (q.documentId === documentId && q.lastAccess >= bestLastAccess) {
+      best = uuid;
+      bestLastAccess = q.lastAccess;
+    }
+  }
+  if (best) viewerQueues.get(best)!.lastAccess = Date.now();
+  return best;
+}
+
+/** Queue commands (refreshing lastAccess), dropping the oldest beyond MAX_PENDING_COMMANDS: only the latest zooms matter to an unpolled viewer. */
+export function enqueueCommands(queue: ViewerQueue, ...commands: ViewerCommand[]): void {
+  queue.commands.push(...commands);
+  queue.lastAccess = Date.now();
+  if (queue.commands.length > MAX_PENDING_COMMANDS) {
+    queue.commands.splice(0, queue.commands.length - MAX_PENDING_COMMANDS);
+  }
+}
+
+/** Evict least-recently-used sessions to make room for one more. */
+function evictForNewSession(): void {
+  if (viewerQueues.size < MAX_VIEWER_SESSIONS) return;
+  let oldest: string | undefined;
+  let oldestAccess = Infinity;
+  for (const [uuid, q] of viewerQueues) {
+    if (q.lastAccess < oldestAccess) {
+      oldest = uuid;
+      oldestAccess = q.lastAccess;
+    }
+  }
+  if (oldest !== undefined) viewerQueues.delete(oldest);
+}
+
 /**
  * Mint a session, or — when `requested` is a live UUID (in-viewer page
  * navigation) — remount it: identity, createdAt and pending commands kept,
@@ -74,6 +136,7 @@ export function mintOrRemount(
     Object.assign(existing, content);
     return requested!;
   }
+  evictForNewSession();
   const viewUUID = randomUUID();
   viewerQueues.set(viewUUID, { commands: [], createdAt: now, ...content });
   return viewUUID;
