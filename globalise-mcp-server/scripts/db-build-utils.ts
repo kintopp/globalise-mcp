@@ -18,7 +18,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip, createGzip } from 'node:zlib';
 import type { DatabaseSync } from 'node:sqlite';
-import { formatMb } from '../src/utils/database.js';
+import { formatMb, readDataVersion } from '../src/utils/database.js';
 
 /** "111.6 MB" for a file on disk. Also used by the .mcpb build/test scripts. */
 export function sizeMb(path: string): string {
@@ -48,20 +48,15 @@ export function runInTransaction(db: DatabaseSync, fn: () => void): void {
  * This is the *data* version, deliberately independent of the server's semver:
  * the DBs are rebuilt from their own sources on their own cadence, so aligning
  * them to the code version would either bump the code for a typo fix in a
- * glossary or freeze the data version across a code release. Each build script
- * owns its own counter (`DATA_VERSION`) for the same reason — reference.sqlite
- * and archival-index.sqlite change independently of each other.
+ * glossary or freeze the data version across a code release. The counters
+ * (`ARCHIVAL_DATA_VERSION`, `REFERENCE_DATA_VERSION`) live in
+ * `src/utils/database.ts`; reference.sqlite and archival-index.sqlite change
+ * independently of each other.
  *
- * Bump the calling script's DATA_VERSION whenever a rebuild changes the shipped
- * bytes in a way a consumer should notice (new/renamed column, corrected rows,
- * refreshed source dataset). Readers can then compare `PRAGMA user_version`
- * against what they expect instead of guessing from file mtimes.
- *
- * Note the limit: this catches drift *across* a bump, not within one. A stale
- * decompressed .sqlite built from the same DATA_VERSION still reads as current,
- * so the `ensure:db` "only decompresses when absent" trap in CLAUDE.md is not
- * fixed by this — it is only made diagnosable once a bump has happened. Bump
- * conservatively (any shipped-byte change) to keep that window small.
+ * Bump the counter whenever a rebuild changes the shipped bytes in a way a
+ * consumer should notice (new/renamed column, corrected rows, refreshed source
+ * dataset). `ensure:db` compares `PRAGMA user_version` against the expected
+ * value and rematerialises a local DB that differs, or whose `.gz` is newer.
  */
 export function stampDataVersion(db: DatabaseSync, version: number): void {
   if (!Number.isInteger(version) || version < 0) {
@@ -90,8 +85,31 @@ export async function writeGzipArtifact(dbPath: string): Promise<void> {
   console.log(`  Artifact: ${gzPath} (${sizeMb(gzPath)})`);
 }
 
-/** Write a DB through a temp file so an interrupted run never leaves a half DB. */
-async function writeDb(dbPath: string, source: NodeJS.ReadableStream, gzipped: boolean): Promise<void> {
+/** What `writeDb` verifies before a new file replaces the old one. */
+interface DbCheck {
+  label: string;
+  /** Where the bytes came from (URL, .gz path or build command), for the error. */
+  from: string;
+  expectedVersion: number;
+  buildScript: string;
+}
+
+function assertDataVersion(path: string, c: DbCheck): void {
+  const v = readDataVersion(path);
+  if (v !== c.expectedVersion) {
+    throw new Error(
+      `${c.label} DB from ${c.from} has data version ${v ?? 'unreadable'}, expected ${c.expectedVersion}. ` +
+      `Rebuild with npm run ${c.buildScript} and commit the regenerated .gz`,
+    );
+  }
+}
+
+/**
+ * Write a DB through a temp file so an interrupted run never leaves a half DB,
+ * and verify its data version before the rename so a bad artifact never
+ * replaces a good file.
+ */
+async function writeDb(dbPath: string, source: NodeJS.ReadableStream, gzipped: boolean, c: DbCheck): Promise<void> {
   const tmp = `${dbPath}.tmp`;
   try {
     if (gzipped) {
@@ -99,6 +117,7 @@ async function writeDb(dbPath: string, source: NodeJS.ReadableStream, gzipped: b
     } else {
       await pipeline(source, createWriteStream(tmp));
     }
+    assertDataVersion(tmp, c);
     renameSync(tmp, dbPath);
   } catch (error) {
     if (existsSync(tmp)) unlinkSync(tmp);
@@ -106,18 +125,33 @@ async function writeDb(dbPath: string, source: NodeJS.ReadableStream, gzipped: b
   }
 }
 
-async function downloadDb(dbPath: string, url: string, token?: string): Promise<void> {
+/** Total budget for one download in a build step (the runtime uses an idle timeout instead). */
+const BUILD_DOWNLOAD_TIMEOUT_MS = 600_000;
+
+async function downloadDb(dbPath: string, url: string, check: DbCheck, token?: string): Promise<void> {
   const headers: Record<string, string> = { accept: 'application/octet-stream' };
   // Bearer token (optional) is what GitHub release assets on private repos need.
   if (token) headers.authorization = `Bearer ${token}`;
 
-  const response = await fetch(url, { headers, redirect: 'follow' });
+  const response = await fetch(url, {
+    headers,
+    redirect: 'follow',
+    signal: AbortSignal.timeout(BUILD_DOWNLOAD_TIMEOUT_MS),
+  });
   if (!response.ok || !response.body) {
     throw new Error(`HTTP ${response.status} fetching ${url}`);
   }
 
-  const gzipped = new URL(url).pathname.endsWith('.gz');
-  await writeDb(dbPath, Readable.fromWeb(response.body as import('node:stream/web').ReadableStream), gzipped);
+  // Sniff the magic bytes: GitHub API asset URLs serve gzip with no .gz suffix.
+  const reader = response.body.getReader();
+  const first = await reader.read();
+  const head = first.value;
+  const gzipped = !!head && head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+  async function* chunks(): AsyncGenerator<Uint8Array> {
+    if (head) yield head;
+    for (let r = await reader.read(); !r.done; r = await reader.read()) yield r.value;
+  }
+  await writeDb(dbPath, Readable.from(chunks()), gzipped, check);
 }
 
 export interface EnsureDbOptions {
@@ -136,6 +170,8 @@ export interface EnsureDbOptions {
   urlEnv?: string;
   /** Optional env var holding a Bearer token for the download. */
   tokenEnv?: string;
+  /** `PRAGMA user_version` the DB must carry (`*_DATA_VERSION` in src/utils/database.ts). */
+  expectedVersion: number;
   /** Tail of the "nothing available" warning (names the degraded tool). */
   unavailableHint: string;
 }
@@ -144,34 +180,44 @@ export interface EnsureDbOptions {
  * Materialize a SQLite DB without rebuilding from source on every deploy (R18).
  *
  * Resolution order:
- *   1. dbPath already present → done
- *   2. urlEnv set → download it (gunzipped when the URL ends in .gz; tokenEnv
- *      sent as a Bearer token), written through a temp file
+ *   1. dbPath present, at expectedVersion and not older than gzPath → done
+ *      (otherwise it is rematerialised through the steps below)
+ *   2. urlEnv set → download it (gzip detected by magic bytes; tokenEnv sent
+ *      as a Bearer token), written through a temp file
  *   3. committed gzPath present → gunzip
  *   4. sourcePath present → full rebuild via `npm run <buildScript>`
  *   5. none of the above → warn and return; the server degrades gracefully
  *      (databaseInfo.available: false)
+ *
+ * Steps 2–4 throw if the result's data version is not expectedVersion.
  */
 export async function ensureDb(opts: EnsureDbOptions): Promise<void> {
-  const { label, dbPath, gzPath, sourcePath, buildScript, packageRoot, urlEnv, tokenEnv, unavailableHint } = opts;
+  const { label, dbPath, gzPath, sourcePath, buildScript, packageRoot, urlEnv, tokenEnv, expectedVersion, unavailableHint } = opts;
   const lower = label.toLowerCase();
 
   if (existsSync(dbPath)) {
-    console.log(`${label} DB present: ${dbPath} (${sizeMb(dbPath)})`);
-    return;
+    const v = readDataVersion(dbPath);
+    if (v !== expectedVersion) {
+      console.log(`${label} DB at ${dbPath} has data version ${v ?? 'unreadable'}, expected ${expectedVersion} — rematerialising`);
+    } else if (existsSync(gzPath) && statSync(gzPath).mtimeMs > statSync(dbPath).mtimeMs) {
+      console.log(`${label} DB at ${dbPath} is older than ${gzPath} — rematerialising`);
+    } else {
+      console.log(`${label} DB present: ${dbPath} (${sizeMb(dbPath)})`);
+      return;
+    }
   }
 
   const url = urlEnv ? process.env[urlEnv] : undefined;
   if (url) {
     console.log(`Downloading ${lower} DB from ${url} ...`);
-    await downloadDb(dbPath, url, tokenEnv ? process.env[tokenEnv] : undefined);
+    await downloadDb(dbPath, url, { label, from: url, expectedVersion, buildScript }, tokenEnv ? process.env[tokenEnv] : undefined);
     console.log(`Downloaded: ${dbPath} (${sizeMb(dbPath)})`);
     return;
   }
 
   if (existsSync(gzPath)) {
     console.log(`Decompressing committed artifact ${gzPath} (${sizeMb(gzPath)}) ...`);
-    await writeDb(dbPath, createReadStream(gzPath), true);
+    await writeDb(dbPath, createReadStream(gzPath), true, { label, from: gzPath, expectedVersion, buildScript });
     console.log(`Decompressed: ${dbPath} (${sizeMb(dbPath)})`);
     return;
   }
@@ -182,6 +228,7 @@ export async function ensureDb(opts: EnsureDbOptions): Promise<void> {
     if (result.status !== 0) {
       throw new Error(`${buildScript} exited with status ${result.status}`);
     }
+    assertDataVersion(dbPath, { label, from: `npm run ${buildScript}`, expectedVersion, buildScript });
     return;
   }
 

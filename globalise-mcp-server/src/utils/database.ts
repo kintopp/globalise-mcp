@@ -75,6 +75,14 @@ const REFERENCE_DB_PATH = expandPathVars(process.env.REFERENCE_DB_PATH || DEFAUL
  */
 export const ARCHIVAL_DATA_VERSION = 3;
 
+/**
+ * Data version stamped into reference.sqlite (PRAGMA user_version). Independent
+ * of the server's semver and of the archival counter — bump it whenever a
+ * rebuild changes the shipped glossary bytes (corrected definitions, a new
+ * thesaurus release, schema change). 1 = the post-RFC-4180-parser-fix build.
+ */
+export const REFERENCE_DATA_VERSION = 1;
+
 function userVersion(conn: Db): number {
   return (conn.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 }

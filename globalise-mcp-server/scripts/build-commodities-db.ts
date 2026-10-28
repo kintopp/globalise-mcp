@@ -45,7 +45,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { getReferenceDatabasePath } from '../src/utils/database.js';
+import { getReferenceDatabasePath, REFERENCE_DATA_VERSION } from '../src/utils/database.js';
 import { runInTransaction, stampDataVersion, writeGzipArtifact } from './db-build-utils.js';
 import { COMMODITIES_TSV, parseCommoditiesTsv, type CommodityRow } from './commodities-tsv.js';
 
@@ -57,12 +57,6 @@ const SOURCES_DIR = join(DATA_DIR, 'sources');
 const DB_PATH = getReferenceDatabasePath();
 
 const MEASURES_JSON = join(SOURCES_DIR, 'weights-measures.json');
-
-// Data version stamped into the built DB (PRAGMA user_version). Independent of
-// the server's semver and of archival-index.sqlite's counter — bump it whenever
-// a rebuild changes the shipped glossary bytes (corrected definitions, a new
-// thesaurus release, schema change). 1 = the post-RFC-4180-parser-fix build.
-const DATA_VERSION = 1;
 
 const BATCH_SIZE = 1000;
 
@@ -361,7 +355,7 @@ async function main(): Promise<void> {
     console.log('Optimizing database...');
     db.exec('ANALYZE');
     db.exec('VACUUM');
-    stampDataVersion(db, DATA_VERSION);
+    stampDataVersion(db, REFERENCE_DATA_VERSION);
 
     const total = db.prepare('SELECT COUNT(*) as c FROM commodities').get() as { c: number };
     const measuresTotal = db.prepare('SELECT COUNT(*) as c FROM measures').get() as { c: number };
