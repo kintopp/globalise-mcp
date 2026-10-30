@@ -71,13 +71,13 @@
     "node": ">=24.22.1 <25.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/client": "^2.2.0",
-    "@modelcontextprotocol/ext-apps": "^2.0.3",
-    "@modelcontextprotocol/node": "^2.1.0",
-    "@modelcontextprotocol/server": "^2.2.0",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/ext-apps": "^2.0.4",
+    "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
     "cors": "^2.8.6",
     "express": "^5.1.0",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

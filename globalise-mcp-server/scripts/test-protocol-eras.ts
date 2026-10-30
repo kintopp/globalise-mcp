@@ -38,7 +38,8 @@ const EXPECTED_TOOLS = [
   'globalise_view_document_ui',
 ];
 
-const MODERN: ClientOptions = { versionNegotiation: { mode: { pin: '2026-07-28' } } };
+const MODERN_REVISION = '2026-07-28';
+const MODERN: ClientOptions = { versionNegotiation: { mode: { pin: MODERN_REVISION } } };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface Health { status?: string; version?: string; commit?: string }
@@ -143,6 +144,46 @@ async function main() {
     clients.push(d);
     await d.connect(new StreamableHTTPClientTransport(url));
     await exercise(d, 'D. http / pin 2026-07-28', 'modern');
+
+    // A listen stream the client abandons must be torn down, or it stays
+    // registered and its keep-alive queues chunks forever (heap leak). The
+    // observable symptom is the SDK's per-handler cap of 1024 open streams.
+    console.log('D2. abandoned subscriptions/listen streams are torn down');
+    const listenAndDrop = async (id: number): Promise<string> => {
+      const ac = new AbortController();
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+          'mcp-protocol-version': MODERN_REVISION,
+          'mcp-method': 'subscriptions/listen',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method: 'subscriptions/listen',
+          params: {
+            notifications: { toolsListChanged: true },
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': MODERN_REVISION,
+              'io.modelcontextprotocol/clientInfo': { name: 'globalise-era-test', version: '1.0.0' },
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+        signal: ac.signal,
+      });
+      const { value } = await r.body!.getReader().read();
+      ac.abort();
+      return new TextDecoder().decode(value);
+    };
+    const ACK = 'notifications/subscriptions/acknowledged';
+    check((await listenAndDrop(1)).includes(ACK), 'subscriptions/listen is acknowledged');
+    for (let i = 2; i <= 1024; i++) await listenAndDrop(i);
+    await sleep(200);
+    const next = await listenAndDrop(1025);
+    check(next.includes(ACK), `listen accepted after 1024 dropped streams (got: ${next.slice(0, 120)})`);
 
     console.log('E. SIGTERM with an open subscriptions/listen stream');
     const sub = await d.listen({ toolsListChanged: true });
