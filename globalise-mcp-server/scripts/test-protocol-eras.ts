@@ -150,8 +150,35 @@ async function main() {
     console.log('D1. request body limit');
     const postBody = (contentType: string, bytes: number) =>
       fetch(url, { method: 'POST', headers: { 'content-type': contentType }, body: 'x'.repeat(bytes) });
-    const overJson = await postBody('application/json', 2 * 1024 * 1024);
-    check(overJson.status === 413, `oversized JSON body refused with 413 (got: ${overJson.status})`);
+    const postRaw = (target: URL, headers: Record<string, string>, body: string) =>
+      fetch(target, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body });
+    const checkJsonRpcError = async (res: Response, status: number, code: number, label: string) => {
+      const body = (await res.clone().json().catch(() => undefined)) as
+        | { jsonrpc?: string; error?: { code?: number; message?: string }; id?: unknown }
+        | undefined;
+      check(
+        res.status === status && body?.jsonrpc === '2.0' && body.error?.code === code && Boolean(body.error.message) && body.id === null,
+        `${label}: ${status} JSON-RPC error ${code} (got: ${res.status} ${res.headers.get('content-type')})`,
+      );
+    };
+
+    // A rejected body is the client's mistake: it must stay a log line, not a stack trace.
+    const logStart = stderr.length;
+    await checkJsonRpcError(await postRaw(url, {}, '{nope'), 400, -32700, 'malformed JSON');
+    await checkJsonRpcError(await postBody('application/json', 2 * 1024 * 1024), 413, -32000, 'oversized JSON');
+    await checkJsonRpcError(await postRaw(url, { 'content-encoding': 'gzip' }, 'abc'), 415, -32000, 'compressed body');
+    await checkJsonRpcError(await postRaw(url, { 'content-type': 'application/json; charset=latin1' }, '{}'), 415, -32000, 'non-UTF charset');
+    await sleep(100);
+    const rejectionLog = stderr.slice(logStart);
+    check(rejectionLog.trim().length > 0, 'rejected bodies are logged');
+    check(!/^\s+at /m.test(rejectionLog), `rejected bodies log no stack trace (got: ${rejectionLog.slice(0, 200)})`);
+
+    // The origin check must not depend on the body being parseable.
+    await checkJsonRpcError(await postRaw(url, { origin: 'https://evil.example' }, '{nope'), 403, -32000, 'bad origin with malformed JSON');
+
+    const healthBadJson = await postRaw(new URL(`http://localhost:${PORT}/health`), {}, '{nope');
+    check(healthBadJson.status === 404, `routes other than /mcp do not parse bodies (got: ${healthBadJson.status})`);
+
     const overText = await postBody('text/plain', 2 * 1024 * 1024);
     check(overText.status === 413, `oversized non-JSON body refused with 413 (got: ${overText.status})`);
     const underText = await postBody('text/plain', 900 * 1024);

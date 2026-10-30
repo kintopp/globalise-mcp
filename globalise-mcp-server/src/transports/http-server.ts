@@ -12,12 +12,36 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
-import express, { Request, Response } from 'express';
+import express, { ErrorRequestHandler, Request, Response } from 'express';
 import cors from 'cors';
 import { createOriginGuard } from '../utils/origin.js';
 
-// express.json only reads JSON bodies; the MCP adapter and handler read the rest.
+// express.json only reads JSON bodies; the MCP adapter reads the rest.
 const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+
+// Keyed by body-parser's err.type: err.status alone would also match errors
+// that have nothing to do with the body.
+const BODY_REJECTIONS: Record<string, { status: number; code: number; message: string }> = {
+  'entity.parse.failed': { status: 400, code: -32700, message: 'Parse error: the request body is not valid JSON' },
+  'entity.too.large': { status: 413, code: -32000, message: `Payload Too Large: Request body must not exceed ${MAX_REQUEST_BODY_BYTES} bytes` },
+  'encoding.unsupported': { status: 415, code: -32000, message: 'Unsupported Media Type: Content-Encoding is not accepted' },
+  'charset.unsupported': { status: 415, code: -32000, message: 'Unsupported Media Type: unsupported request body charset' },
+};
+
+const handleBodyRejection: ErrorRequestHandler = (err, _req, res, next) => {
+  const rejection = BODY_REJECTIONS[err?.type];
+  if (!rejection) {
+    next(err);
+    return;
+  }
+  // err.message can quote the client's input, so only the type is logged.
+  console.warn(`[MCP] Rejected request body: ${err.type}`);
+  res.status(rejection.status).json({
+    jsonrpc: '2.0',
+    error: { code: rejection.code, message: rejection.message },
+    id: null,
+  });
+};
 
 export interface HttpServerOptions {
   port?: number;
@@ -60,7 +84,7 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
   app.use(cors({ origin: corsOrigin }));
   // inflate: false rejects Content-Encoding'd bodies (415): MCP clients never
   // compress requests, and it keeps zlib/Brotli decoding off attacker input.
-  app.use(express.json({ limit: MAX_REQUEST_BODY_BYTES, inflate: false }));
+  const parseMcpBody = express.json({ limit: MAX_REQUEST_BODY_BYTES, inflate: false });
 
   // Origin validation on MCP endpoints (spec MUST: 403 on invalid origins).
   // Separate from CORS, which only sets response headers and rejects nothing.
@@ -68,7 +92,6 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
 
   // Default legacy: 'stateless' keeps 2025-era clients working — don't set 'reject'.
   const mcpHandler = createMcpHandler(createServer, {
-    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
     onerror: (error) => console.error('[MCP] Error handling request:', error),
   });
   const handleMcp = toNodeHandler(mcpHandler, {
@@ -130,7 +153,7 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
    * down when the response ends. No session IDs; every request is
    * self-contained.
    */
-  app.post('/mcp', originGuard, async (req: Request, res: Response) => {
+  app.post('/mcp', originGuard, parseMcpBody, async (req: Request, res: Response) => {
     try {
       await handleMcp(req, res, req.body);
     } catch (error) {
@@ -143,7 +166,7 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
         });
       }
     }
-  });
+  }, handleBodyRejection);
 
   /**
    * GET /mcp (no server-initiated notification stream in stateless mode) and
