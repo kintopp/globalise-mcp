@@ -145,6 +145,18 @@ async function main() {
     await d.connect(new StreamableHTTPClientTransport(url));
     await exercise(d, 'D. http / pin 2026-07-28', 'modern');
 
+    // 2 MiB sits between the 1 MiB limit and the adapter's 4 MiB default, so a
+    // non-JSON body this size is only refused if the limit reaches the adapter.
+    console.log('D1. request body limit');
+    const postBody = (contentType: string, bytes: number) =>
+      fetch(url, { method: 'POST', headers: { 'content-type': contentType }, body: 'x'.repeat(bytes) });
+    const overJson = await postBody('application/json', 2 * 1024 * 1024);
+    check(overJson.status === 413, `oversized JSON body refused with 413 (got: ${overJson.status})`);
+    const overText = await postBody('text/plain', 2 * 1024 * 1024);
+    check(overText.status === 413, `oversized non-JSON body refused with 413 (got: ${overText.status})`);
+    const underText = await postBody('text/plain', 900 * 1024);
+    check(underText.status !== 413, `non-JSON body under the limit is not a 413 (got: ${underText.status})`);
+
     // A listen stream the client abandons must be torn down, or it stays
     // registered and its keep-alive queues chunks forever (heap leak). The
     // observable symptom is the SDK's per-handler cap of 1024 open streams.

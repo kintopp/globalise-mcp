@@ -16,6 +16,9 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { createOriginGuard } from '../utils/origin.js';
 
+// express.json only reads JSON bodies; the MCP adapter and handler read the rest.
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+
 export interface HttpServerOptions {
   port?: number;
   /** CORS allowlist for browser-facing routes (response headers only). */
@@ -57,7 +60,7 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
   app.use(cors({ origin: corsOrigin }));
   // inflate: false rejects Content-Encoding'd bodies (415): MCP clients never
   // compress requests, and it keeps zlib/Brotli decoding off attacker input.
-  app.use(express.json({ limit: '1mb', inflate: false }));
+  app.use(express.json({ limit: MAX_REQUEST_BODY_BYTES, inflate: false }));
 
   // Origin validation on MCP endpoints (spec MUST: 403 on invalid origins).
   // Separate from CORS, which only sets response headers and rejects nothing.
@@ -65,9 +68,11 @@ export function createHttpServer(options: HttpServerOptions): HttpServerHandle {
 
   // Default legacy: 'stateless' keeps 2025-era clients working — don't set 'reject'.
   const mcpHandler = createMcpHandler(createServer, {
+    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
     onerror: (error) => console.error('[MCP] Error handling request:', error),
   });
   const handleMcp = toNodeHandler(mcpHandler, {
+    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
     onerror: (error) => console.error('[MCP] adapter error:', error),
   });
 
