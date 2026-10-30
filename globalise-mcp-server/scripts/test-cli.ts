@@ -43,11 +43,15 @@ async function main() {
 
   console.log("3. matchAll → relation 'gte': ≥ total, and the --offset hint still follows hasMore");
   {
-    // matchAll post-filters a capped candidate window, so total.relation is 'gte' unconditionally.
-    const r = await runCli(['search', 'Radja', '--languages', 'nld,msa', '--matchAll', '--max', '1', '--fields', 'id']);
+    // total.relation is 'gte' only when the candidates overflow the scan cap, so this
+    // query needs more of them than the cap; "Radja" below stays under it and is exact.
+    const r = await runCli(['search', 'de', '--languages', 'nld,lat', '--matchAll', '--max', '1', '--fields', 'id']);
     check(r.code === 0, `exit 0 (got ${r.code})`);
     check(/≥/.test(r.stderr), 'stderr summary marks the total as a lower bound (≥)');
     check(/pass --offset 1 for more/.test(r.stderr), 'a lower-bound total still gets the --offset hint');
+
+    const exact = await runCli(['search', 'Radja', '--languages', 'nld,msa', '--matchAll', '--max', '1', '--fields', 'id']);
+    check(exact.code === 0 && !/≥/.test(exact.stderr), 'a fully scanned matchAll total is exact (no ≥)');
   }
 
   console.log('4. every help example runs and returns output (catches stale document IDs)');
