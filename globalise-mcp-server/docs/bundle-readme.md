@@ -2,7 +2,7 @@
 
 # Globalise MCP (MCP Bundle)
 
-Version 0.12.0
+Version 0.13.0
 
 This `.mcpb` runs the GLOBALISE MCP server locally inside Claude Desktop,
 serving tools over VOC (Dutch East India Company) transcriptions; see
