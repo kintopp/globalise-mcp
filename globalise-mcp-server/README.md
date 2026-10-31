@@ -104,7 +104,7 @@ npm ci
 npm run build:mcpb     # → mcpb-build/globalise-voc-research.mcpb
 ```
 
-The bundle is ~5 MB, runs on Claude Desktop's own Node 24 and needs no config-file editing. It ships the glossary database but not the ~112 MB archival index: the server downloads that once, on first use of `find_archival_documents` or the viewer, into the data directory chosen at install time (default `~/.globalise-mcp`). The install dialog also exposes debug logging and the structured-content switch. See [docs/mcpb.md](docs/mcpb.md) for the lazy download, staging and validation details. The companion research skill (`skills/globalise-voc-research/`) is published alongside the bundle on the release page.
+The bundle is ~5 MB, runs on Claude Desktop's own Node 24 and needs no config-file editing. It ships the glossary database but not the ~112 MB archival index: the server downloads that once, on first use of `find_archival_documents` or the viewer, into the data directory chosen at install time (default `~/.globalise-mcp`). The install dialog also exposes debug logging and the structured-content switch. See [docs/mcpb.md](docs/mcpb.md) for the lazy download, staging and validation details. The companion research skill (`skill/globalise-voc-research/`) is published alongside the bundle on the release page.
 
 **Hosted instance** (no setup required):
 ```
