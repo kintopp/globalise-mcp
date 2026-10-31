@@ -11,9 +11,8 @@
  * Behind: a tagged release would deploy still reporting the previous version.
  * Release order: bump package.json + skill, commit, tag, then run this.
  *
- * The skill frontmatter (skills/globalise-voc-research/SKILL.md `version:`) is
- * the one hand-maintained copy: claude.ai shows it as the installed skill's
- * version, and nothing stamps it, so it must equal package.json exactly.
+ * The skill's metadata.version (skill/globalise-voc-research/SKILL.md) is written
+ * from package.json by `npm run build:skill`, so it must equal package.json exactly.
  *
  * manifest.json is deliberately NOT checked: its
  * version is stamped from package.json at pack time (scripts/build-mcpb.ts),
@@ -77,18 +76,18 @@ if (newestTag === null) {
     check(
       compareSemver(pkgVersion, tagVersion) >= 0,
       `package.json (${pkgVersion}) >= newest release tag (${newestTag}) — else production reports the old version:` +
-        ` run \`npm version ${tagVersion} --no-git-tag-version\` and bump the skill frontmatter`,
+        ` run \`npm version ${tagVersion} --no-git-tag-version\` and \`npm run build:skill\``,
     );
   }
 }
 
-const skillPath = join(ROOT, 'skills', 'globalise-voc-research', 'SKILL.md');
-const skillMatch = fs.readFileSync(skillPath, 'utf-8').match(/^version:\s*(\S+)\s*$/m);
-check(!!skillMatch, 'skills/globalise-voc-research/SKILL.md declares `version:` in its frontmatter');
+const skillPath = join(ROOT, 'skill', 'globalise-voc-research', 'SKILL.md');
+const skillMatch = fs.readFileSync(skillPath, 'utf-8').match(/^ {2}version: "([^"]+)"$/m);
+check(!!skillMatch, 'skill/globalise-voc-research/SKILL.md declares `metadata.version` in its frontmatter');
 if (skillMatch) {
   check(
     skillMatch[1] === pkgVersion,
-    `skill frontmatter version (${skillMatch[1]}) matches package.json (${pkgVersion}) — bump both at release and repack the .skill`,
+    `skill metadata.version (${skillMatch[1]}) matches package.json (${pkgVersion}) — run \`npm run build:skill\``,
   );
 }
 

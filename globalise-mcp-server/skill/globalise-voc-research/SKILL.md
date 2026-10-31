@@ -1,7 +1,5 @@
 ---
 name: globalise-voc-research
-version: 0.13.0
-last_updated: 2026-10-30
 description: >-
   Search and read the 17th–18th-century Dutch East India Company (VOC /
   Verenigde Oostindische Compagnie) archives — ~4.8M HTR-transcribed pages
@@ -18,6 +16,11 @@ description: >-
   "GLOBALISE". Scope is this one Dutch archive: don't reach for it for
   another country's archives, another trading company, or art and iconography 
   collections.
+license: MIT
+compatibility: Requires the globalise-mcp-server MCP server and network access.
+metadata:
+  version: "0.13.0"
+  last_updated: "2026-10-31"
 ---
 
 # Researching VOC archives with the GLOBALISE MCP server

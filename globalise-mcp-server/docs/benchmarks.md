@@ -4,7 +4,7 @@
 
 Every question you put to Claude is paid for in *tokens*: the text the model reads (your question, its instructions, and everything its tools send back) and the text it writes. Connecting an MCP server adds a fixed entry cost, because Claude has to read the descriptions of all its tools before it can use any of them. It can also make research much cheaper, or possible at all: the GLOBALISE transcriptions sit behind a web application that ordinary web search does not index, so without the server Claude has no way into the 4.8 million transcribed pages.
 
-These benchmarks ask Claude the same research questions three ways: with the GLOBALISE MCP server connected, with the server plus its [research skill](../skills/globalise-voc-research/SKILL.md), and with no MCP server at all, only web search. Each answer is checked for known facts (a document ID, an inventory number, a value), so a run that is cheap but wrong doesn't count as a win.
+These benchmarks ask Claude the same research questions three ways: with the GLOBALISE MCP server connected, with the server plus its [research skill](../skill/globalise-voc-research/SKILL.md), and with no MCP server at all, only web search. Each answer is checked for known facts (a document ID, an inventory number, a value), so a run that is cheap but wrong doesn't count as a win.
 
 The scripts are adapted from the [rijksmuseum-mcp-plus benchmarks](https://github.com/kintopp/rijksmuseum-mcp-plus/blob/main/docs/benchmarks.md).
 

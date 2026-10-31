@@ -7,7 +7,7 @@ export const benchDir = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(benchDir, "../..");
 export const DEFAULT_SERVER = "https://globalise-mcp-production.up.railway.app/mcp";
 export const SKILL_NAME = "globalise-voc-research";
-export const SKILL_DIR = path.join(projectRoot, "skills", SKILL_NAME);
+export const SKILL_DIR = path.join(projectRoot, "skill", SKILL_NAME);
 
 export const LOCAL_SERVER = {
   command: process.execPath,
