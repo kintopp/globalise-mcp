@@ -1,0 +1,8 @@
+{
+  "name": "globalise-mcp-railway-config",
+  "private": true,
+  "description": "Holds the Railway SDK that `railway config plan` and `apply` resolve from the repo root. The server is in globalise-mcp-server/.",
+  "devDependencies": {
+    "railway": "^3.16.0"
+  }
+}
