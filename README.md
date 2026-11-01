@@ -22,6 +22,10 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 
 <p align="center"><img src="globalise-mcp-server/docs/malabar-coast.webp" alt="NL-HaNA_1.04.02_1107_0757 (inventory 1107) highlighting 'Malabar' and 'peper'." width="600"></p>
 
+### Research Scenarios
+
+The system is designed to let you search, explore and ask questions about the Globalise VOC archives in natural language. For examples of the kinds of queries it can answer, please see these sample [research scenarios](globalise-mcp-server/docs/research-scenarios.md). The links following each prompt demonstrate how that query was previously answered by an AI assistant (Claude Sonnet 5.5) drawing only on the Globalise MCP server and skill file (see below). 
+
 ### Installation
 
 The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector — additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
