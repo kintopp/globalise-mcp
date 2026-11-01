@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Repack skill/globalise-voc-research/ into the committed .skill bundle and an
-// identical .skill.zip copy (some clients and browsers only accept a .zip extension),
+// identical .zip copy (some clients and browsers only accept a .zip extension),
 // after syncing SKILL.md's metadata.version from package.json.
 //
 // A rebuild that changes nothing must be byte-identical on any machine, so the
@@ -21,7 +21,7 @@ const SKILL_NAME = "globalise-voc-research";
 const SKILL_DIR = join(ROOT, "skill", SKILL_NAME);
 const SKILL_MD = join(SKILL_DIR, "SKILL.md");
 const OUT_SKILL = join(ROOT, "skill", `${SKILL_NAME}.skill`);
-const OUT_ZIP = `${OUT_SKILL}.zip`;
+const OUT_ZIP = join(ROOT, "skill", `${SKILL_NAME}.zip`);
 
 function withPackageVersion(md) {
   const { version } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
@@ -105,7 +105,7 @@ if (process.argv.includes("--check")) {
   const stale = [];
   if (md !== source) stale.push("SKILL.md metadata.version differs from package.json");
   if (!skill.equals(readFileSync(OUT_SKILL))) stale.push(`${SKILL_NAME}.skill is not a rebuild of the folder`);
-  if (!skill.equals(readFileSync(OUT_ZIP))) stale.push(`${SKILL_NAME}.skill.zip is not a copy of the .skill`);
+  if (!skill.equals(readFileSync(OUT_ZIP))) stale.push(`${SKILL_NAME}.zip is not a copy of the .skill`);
   for (const line of stale) console.error(`stale: ${line}`);
   if (stale.length > 0) {
     console.error("run `npm run build:skill` and commit the result");
@@ -115,5 +115,5 @@ if (process.argv.includes("--check")) {
   writeFileSync(SKILL_MD, md);
   writeFileSync(OUT_SKILL, skill);
   writeFileSync(OUT_ZIP, skill);
-  console.error(`skill/${SKILL_NAME}.skill + .skill.zip built from skill/${SKILL_NAME}/ (${skill.length} bytes)`);
+  console.error(`skill/${SKILL_NAME}.skill + .zip built from skill/${SKILL_NAME}/ (${skill.length} bytes)`);
 }
