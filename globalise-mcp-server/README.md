@@ -75,6 +75,8 @@ stdio:
 npm install && npm run build && node dist/index.js
 ```
 
+Note that currently (October, 2026) Mistral Vibe can't use a locally hosted MCP server.
+
 HTTP:
 ```bash
 TRANSPORT=http PORT=3000 node dist/index.js
