@@ -182,23 +182,11 @@ Nothing in the corpus identifies a person across pages. Finding someone means fo
 
 Result: [Timeline](https://claude.ai/artifact/3TSSgQ6WML6Coe8CGPYmNH).
 
-### 11. Two Widows and a Chat Summary
-
-*A chat summary of inventory 9221 reports that Neeltje Koek and Helena Kackelaar, sisters-in-law and widows in Batavia, were tried over smuggled opium, that both were exempted from banishment, and that both were fined 8,000 rijksdaalders. Check this against the pages across the whole corpus. What was charged, what was the sentence at first instance and on revision, how are the women described, and who else is in the case? What happened to each afterwards? /globalise-voc-research*
-
-[Demo](https://claude.ai/share/364da2b6-cd8a-4c11-9f2e-02dade88ff3d). Source: Arlette Verdonk, ["Digging deeper in the VOC archives, without the right keywords"](https://globalise.huygens.knaw.nl/digging-deeper-in-the-voc-archives-without-the-right-keywords/), GLOBALISE blog, 4 February 2026.
-
-**How the tools enable it:**
-- `globalise_search_transcriptions` across the whole corpus with `"neeltje koek" OR "helena kackelaar" OR "neeltie koek" OR "helena kakelaar" OR "helena kackelaer"` returns 136 pages. Inventory 9221 has only 14 of them, and the fuller trial copies are in 1989, 2003 and 2006. Starting with an inventory filter would have hidden them.
-- `globalise_navigate` follows the sentences. `globalise_inspect_page_image` resolves margin notes that the HTR runs into the text.
-
-**Why it matters:** The revision exempts "Neeltje koekk alleen" from banishment and adds the fine for both women (`9221_0329`), so Helena is not spared by that text. She stays behind only because she is held to be leprous, placed "op het eijland purmerend" (`2006_0232`–`0233`). Half the fine goes to the prosecutor. The pages read give the name of her late husband as *de Radder*, and did not confirm the "English marks" on the chests or the sisters-in-law relationship. 
-
 ## Languages and Ciphers
 
 Every page carries language tags from an automatic classifier, with non-Latin scripts and cipher listed by hand and a running list of manual corrections. The classifier assigns tags from a page's paragraph regions only, so marginalia, signatures and catch-words do not count. 
 
-### 12. Who Wrote to the Company in Portuguese?
+### 11. Who Wrote to the Company in Portuguese?
 
 *Portuguese is tagged on only a few hundred of the VOC's 4.8 million pages. Which offices and periods do these pages come from, and who is writing to whom? Read a spread across the top inventories. Is this captured enemy paper, diplomacy, or something else, and does that change over time? Separate what the pages say from what the finding aid says. /globalise-voc-research*
 
@@ -215,7 +203,7 @@ Every page carries language tags from an automatic classifier, with non-Latin sc
 
 The threshold does what it should on short phrases: a quoted oath or address correctly stays Dutch (`3463_0801`, `1391_1107`). But a search for Malay function words, `(dengan OR dangan OR deng*an) AND (yang OR jang OR iang) AND (maka OR adapon OR adapun OR kapada OR kepada)`, also reaches long Malay texts tagged only as Dutch (`1301_1774`, `1515_1049`), including the page the languages post itself shows as a Dutch-Malay example (`1554_0601`), and tagging can change between neighbouring pages of a single document (`1515_1049`–`1050`). 
 
-### 13. What Was Worth Enciphering?
+### 12. What Was Worth Enciphering?
 
 *Only a handful of pages in the VOC archive are tagged as cipher. Find them, read around them, and tell me who wrote, to whom, when, and about what. Why would those passages be hidden when so much else in the same letters was not? How did the letters travel? Check the scans, since the HTR will not help. /globalise-voc-research*
 
@@ -236,7 +224,7 @@ Jörgen Dinnissen and Nils Kopal have decoded these pages ("Island Ramanacoil a 
 
 ## From the Shell
 
-### 14. When Did Java Coffee Overtake Mocha, on Paper?
+### 13. When Did Java Coffee Overtake Mocha, on Paper?
 
 The CLI (`glob-mcp`, or `node scripts/cli.mjs` from a checkout) is a command-line client for the same MCP server. It writes the structured results an assistant receives as JSON to stdout, and counts and notes to stderr, so its output can go straight into a `jq` pipeline.
 
