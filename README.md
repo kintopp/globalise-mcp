@@ -24,7 +24,7 @@ The [GLOBALISE project](https://globalise.huygens.knaw.nl/) is digitizing and [m
 
 ### Research Scenarios
 
-The system is designed to let you search, explore and ask questions about the Globalise VOC archives in natural language. For examples of the kinds of queries it can answer, please see these sample [research scenarios](globalise-mcp-server/docs/research-scenarios.md). The links following each prompt demonstrate how that query was previously answered by an AI assistant (Claude Sonnet 5.5) drawing only on the Globalise MCP server and skill file (see below). 
+The system is designed to let you search, explore and ask questions about the Globalise VOC archives in natural language. For examples of the kinds of queries it can answer, please see the sample [research scenarios](globalise-mcp-server/docs/research-scenarios.md). The links following each prompt demonstrate how that query was previously answered by an AI assistant (Claude Sonnet 5.5) drawing only on the Globalise MCP server and associated skill file (see below). 
 
 ### Installation
 
