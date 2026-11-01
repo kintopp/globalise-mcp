@@ -34,7 +34,7 @@ This is a colonial archive. Its descriptions of people are the Company's, some o
 
 **Optional follow-up:** *Put this into a Word document for a colleague: a one-page summary, then a table with date, place, page ID, the words used, what the writer says the bird did, and your confidence that it is the dodo. Add a crop of the scan for the 1647 invoice line and the 1674 passage, with a viewer link under each.*
 
-Result: [Word document](dodo_names_globalise.docx).
+Result: [Word document](https://raw.githubusercontent.com/kintopp/globalise-mcp/main/globalise-mcp-server/docs/dodo_names_globalise.docx).
 
 ### 2. [Shivaji](https://en.wikipedia.org/wiki/Shivaji), Sinasi and the Coronation at [Raigad](https://en.wikipedia.org/wiki/Raigad_Fort)
 
@@ -80,7 +80,7 @@ Result: [Word document](dodo_names_globalise.docx).
 
 **Optional follow-up:** *Build a table of everyone who testifies in this dossier: name as written, status, owner, who questioned them, what they say about the number bought, and the page. Mark every name you could not confirm on the scan.*
 
-Result: [Excel workbook](delfland_deponents.xlsx).
+Result: [Excel workbook](https://raw.githubusercontent.com/kintopp/globalise-mcp/main/globalise-mcp-server/docs/delfland_deponents.xlsx).
 
 ## The Catalogue and the Page
 
@@ -116,7 +116,7 @@ This scenario also needs the [Rijksmuseum MCP server](https://github.com/kintopp
 
 **Optional follow-up:** *Make a two-column Word table setting the museum's description beside the archival one, feature by feature, with the image of the cannon and a crop of the 1765 list.*
 
-Result: [Word document](NG-NM-1015_museum_vs_archive.docx).
+Result: [Word document](https://raw.githubusercontent.com/kintopp/globalise-mcp/main/globalise-mcp-server/docs/NG-NM-1015_museum_vs_archive.docx).
 
 ### 7. Ambon, February 1674
 
