@@ -1,9 +1,8 @@
 /**
  * Integration tests for the .mcpb archival index download
- * (src/utils/database.ts `ensureDatabaseFile` → `downloadArchivalDb`): the
- * fail-fast idle timeout and the URL-naming errors added so a wrong or
- * unreachable ARCHIVAL_DB_URL can no longer hang the tool call forever (the
- * localhost-default-with-no-server case). The happy-path 27 MB download is
+ * (src/utils/database.ts `ensureDatabaseFile` → `downloadArchivalDb`): a wrong,
+ * unreachable or hung ARCHIVAL_DB_URL fails fast with an error naming the URL
+ * instead of hanging the tool call. The happy-path 27 MB download is
  * covered end-to-end by `npm run test:mcpb`; here a local http
  * server stands in for the host — no network, no committed DB.
  *
