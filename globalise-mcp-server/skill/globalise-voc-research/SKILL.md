@@ -20,7 +20,7 @@ license: MIT
 compatibility: Requires the globalise-mcp-server MCP server and network access.
 metadata:
   version: "0.13.0"
-  last_updated: "2026-10-31"
+  last_updated: "2026-11-06"
 ---
 
 # Researching VOC archives with the GLOBALISE MCP server

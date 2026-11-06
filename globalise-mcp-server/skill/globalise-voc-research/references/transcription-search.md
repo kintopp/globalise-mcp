@@ -48,8 +48,8 @@ Four habits that keep a search honest on this corpus. Apply them in order.
 4. **State the query you ran.** Before presenting hits, give one line with the
    query as sent (operators, per-term fuzz, any expansions or exclusions you added)
    and the `total` — e.g. *"Searched `peper~1 AND malabar~1` (fuzz 1 on both): 1,060
-   pages."* The user cannot see the call, and a fuzzy expansion they did not ask
-   for is only acceptable if it is visible.
+   pages."* Your reply, not the tool call, is what the user reads, so a fuzzy
+   expansion they did not ask for belongs there.
 
 **Fuzzy matching earns its keep.** The text is machine-transcribed 17th–18th-c.
 handwriting, so a word appears in many spellings and with OCR slips (`n`/`u`,
