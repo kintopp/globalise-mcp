@@ -505,10 +505,9 @@ function computeGmAggregations(state: ConnectionState, { where, params }: WhereC
 
 
 /**
- * Thin-bundle first-run provisioning: download the index now if it isn't on
- * disk yet and a source URL is configured. No-op for the full bundle (the DB
- * is shipped) and for dev without a URL (falls through to available:false).
- * Shared by the finding-aid tool and the year-scoped transcription search.
+ * First-run provisioning (.mcpb): download or refresh the index if a source URL
+ * is configured. A no-op without one (dev, HTTP deployment). The one gate every
+ * index use passes through: callers must open the DB right after it.
  */
 async function provisionIndex(): Promise<void> {
   try {

@@ -1,10 +1,10 @@
 /**
- * Integration tests for the thin-bundle archival index download
+ * Integration tests for the .mcpb archival index download
  * (src/utils/database.ts `ensureDatabaseFile` → `downloadArchivalDb`): the
  * fail-fast idle timeout and the URL-naming errors added so a wrong or
  * unreachable ARCHIVAL_DB_URL can no longer hang the tool call forever (the
  * localhost-default-with-no-server case). The happy-path 27 MB download is
- * covered end-to-end by `npm run test:mcpb` (thin variant); here a local http
+ * covered end-to-end by `npm run test:mcpb`; here a local http
  * server stands in for the host — no network, no committed DB.
  *
  * Failure modes guarded for validation and refresh:
@@ -12,7 +12,7 @@
  *  - an old-version download is installed;
  *  - a stale file is never refreshed;
  *  - a failed refresh destroys or rejects a usable stale file;
- *  - a failed refresh retries on every call;
+ *  - a failed refresh retries on every call once a tool has opened the index;
  *  - a current file triggers a download.
  *
  * Run with: npm run test:archival-download
@@ -34,7 +34,7 @@ process.env.ARCHIVAL_DB_PATH = target;
 process.env.ARCHIVAL_DB_TIMEOUT_MS = '700'; // fast idle timeout for the hang test
 delete process.env.ARCHIVAL_DB_TOKEN;
 
-const { ensureDatabaseFile, takeProvisionReport, expandPathVars, ARCHIVAL_DATA_VERSION: N } = await import('../src/utils/database.js');
+const { ensureDatabaseFile, isDatabaseAvailable, closeDatabase, takeProvisionReport, expandPathVars, ARCHIVAL_DATA_VERSION: N } = await import('../src/utils/database.js');
 
 const listen = (s: Server): Promise<number> =>
   new Promise((res) => s.listen(0, '127.0.0.1', () => {
@@ -259,9 +259,12 @@ for (const [label, body, status] of [
   check(err === null, `${label}: resolves instead of rejecting (got: ${err?.message})`);
   check(versionOf(target) === N - 1, `${label}: stale file left untouched`);
   check(leftovers().length === 1, `${label}: no temp left behind (found: ${leftovers().join(', ')})`);
+  // A tool opens the index right after provisioning (provisionIndex → isDatabaseAvailable).
+  check(isDatabaseAvailable(), `${label}: the stale index opens`);
   const err2 = await reject(() => ensureDatabaseFile());
   check(err2 === null, `${label}: second call resolves`);
   check(count() === 1, `${label}: server hit once, not per call (got: ${count()})`);
+  closeDatabase();
   await close(srv);
 }
 

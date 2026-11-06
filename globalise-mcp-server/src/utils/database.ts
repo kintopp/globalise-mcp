@@ -11,7 +11,7 @@
 import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { createWriteStream, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { homedir } from 'os';
 import { randomUUID } from 'crypto';
 import { Readable, PassThrough } from 'stream';
@@ -33,7 +33,7 @@ const __dirname = dirname(__filename);
 /**
  * Expand shell-style variables a host may pass through verbatim. Claude
  * Desktop interpolates `${VAR}` inside manifest mcp_config *templates* but
- * not inside user_config *default values*, so the thin manifest's literal
+ * not inside user_config *default values*, so the manifest's literal
  * `${HOME}/.globalise-mcp` reached Node untouched and fs treated it as a
  * real directory name (observed in the wild: `ENOENT mkdir '${HOME}/…'`).
  * Node's fs does no substitution, so do it here: `${VAR}` from the
@@ -132,12 +132,10 @@ export function getDatabase(): Db {
     );
   }
 
-  // existsSync above already guards the missing-file case, so we don't need
-  // better-sqlite3's fileMustExist; node:sqlite opens (open defaults to true).
   // Configure on a local handle and publish to `db` only after the pragmas
   // succeed — otherwise a throwing pragma would leave `db` set to a
   // half-configured handle that every later call returns via the `if (db)`
-  // early-return, while the first call reported the DB unavailable (finding 14).
+  // early-return, while the first call reported the DB unavailable.
   const conn = new DatabaseSync(DB_PATH, { readOnly: true });
 
   // Optimize for read-only queries (only set pragmas that don't require write
@@ -189,7 +187,7 @@ export function getReferenceDatabase(): Db {
     );
   }
 
-  // Publish only after the pragmas succeed (see getDatabase, finding 14).
+  // Publish only after the pragmas succeed (see getDatabase).
   const conn = new DatabaseSync(REFERENCE_DB_PATH, { readOnly: true });
   conn.exec('PRAGMA cache_size = -16000'); // 16MB cache
   conn.exec('PRAGMA temp_store = MEMORY');
@@ -233,15 +231,13 @@ export function getDatabasePath(): string {
 }
 
 // ---------------------------------------------------------------------------
-// First-run provisioning (thin .mcpb bundle)
+// First-run provisioning (.mcpb bundle)
 //
-// The full bundle ships data/archival-index.sqlite, so DB_PATH already exists
-// and everything below is a no-op. The *thin* bundle ships without the DB: it
-// sets ARCHIVAL_DB_URL (the .gz to fetch) and points ARCHIVAL_DB_PATH at a
-// writable cache dir. ensureDatabaseFile() downloads the index once, lazily, on
-// first use of the index — so startup never waits on it. Two paths reach it:
-// globalise_find_archival_documents, and globalise_view_document_ui via its
-// archival-context enrichment.
+// The .mcpb ships without the index: it sets ARCHIVAL_DB_URL (the .gz to fetch)
+// and points ARCHIVAL_DB_PATH at a writable cache dir. ensureDatabaseFile()
+// downloads the index lazily on first use, so startup never waits on it; every
+// tool reaches it through provisionIndex() in tools/archival-index.ts. Without
+// ARCHIVAL_DB_URL (dev checkouts, the HTTP deployment) everything below is a no-op.
 // ---------------------------------------------------------------------------
 
 /** What a first-run download cost, so a tool can explain the wait it caused. */
@@ -270,50 +266,28 @@ export function takeProvisionReport(): ProvisionReport | null {
 /** Shared in-flight download so concurrent tool calls trigger only one fetch. */
 let provisionPromise: Promise<void> | null = null;
 
-/** Identity of the file last accepted, so a replaced file is re-checked. */
-let acceptedStamp: string | null = null;
-
-function fileStamp(path: string): string {
-  const s = statSync(path);
-  return `${s.ino}:${s.size}:${s.mtimeMs}`;
-}
-
 /**
  * Ensure a usable archival index at DB_PATH. With ARCHIVAL_DB_URL set, a missing
  * file, or one that is not a SQLite DB with obp_documents at data version
  * >= ARCHIVAL_DATA_VERSION, is (re)downloaded. A failed refresh keeps a readable
- * stale file for the session with a warning; only a missing or unreadable file
- * rejects. Without a URL it never downloads (dev checkouts), warning once if stale.
+ * stale file; only a missing or unreadable file rejects. Without a URL it never
+ * downloads (dev checkouts). Once the caller opens the DB, `db` ends the checks
+ * for the process, so a failed refresh is not retried per call.
  */
 export function ensureDatabaseFile(): Promise<void> {
   if (db) return Promise.resolve();
 
   const url = process.env.ARCHIVAL_DB_URL;
-  const exists = existsSync(DB_PATH);
-  let staleVersion: number | null = null;
+  if (!url) return Promise.resolve();
 
-  if (exists) {
-    const stamp = fileStamp(DB_PATH);
-    if (stamp === acceptedStamp) return Promise.resolve();
+  let staleVersion: number | null = null;
+  if (existsSync(DB_PATH)) {
     staleVersion = readDataVersion(DB_PATH, 'obp_documents');
-    if (staleVersion !== null && staleVersion >= ARCHIVAL_DATA_VERSION) {
-      acceptedStamp = stamp;
-      return Promise.resolve();
-    }
-    if (!url) {
-      console.error(
-        `[archival-db] index at ${DB_PATH} has data version ${staleVersion ?? 'unreadable'}, ` +
-        `need ${ARCHIVAL_DATA_VERSION}; run 'npm run build:db'`
-      );
-      acceptedStamp = stamp;
-      return Promise.resolve();
-    }
+    if (staleVersion !== null && staleVersion >= ARCHIVAL_DATA_VERSION) return Promise.resolve();
     console.error(
       `[archival-db] cached index is stale or invalid (data version ${staleVersion ?? 'unreadable'}, ` +
       `need ${ARCHIVAL_DATA_VERSION}); refreshing`
     );
-  } else if (!url) {
-    return Promise.resolve();
   }
 
   if (!provisionPromise) {
@@ -321,18 +295,11 @@ export function ensureDatabaseFile(): Promise<void> {
     // permanent cache. Released on BOTH outcomes, or a deleted index never
     // re-downloads. Not `.finally()` — its derived promise re-rejects with no
     // handler, which is fatal on Node 24.
-    const inFlight = downloadArchivalDb(url, DB_PATH).then(
-      () => { acceptedStamp = fileStamp(DB_PATH); },
-      (error: unknown) => {
-        if (staleVersion === null) throw error;
-        const message = error instanceof Error ? error.message : String(error);
-        console.error(
-          `[archival-db] refresh failed (${message}); using the existing index ` +
-          `(data version ${staleVersion}, need ${ARCHIVAL_DATA_VERSION}) for this session`
-        );
-        acceptedStamp = fileStamp(DB_PATH);
-      },
-    );
+    const inFlight = downloadArchivalDb(url, DB_PATH).catch((error: unknown) => {
+      if (staleVersion === null) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[archival-db] refresh failed (${message}); using the existing index`);
+    });
     const release = () => { if (provisionPromise === inFlight) provisionPromise = null; };
     provisionPromise = inFlight;
     inFlight.then(release, release);
@@ -340,21 +307,6 @@ export function ensureDatabaseFile(): Promise<void> {
   return provisionPromise;
 }
 
-/**
- * Download the index to a temp file (gunzipping when the URL ends in .gz) and
- * atomically rename into place, so an interrupted run never leaves a half file.
- * Mirrors scripts/ensure-archival-db.ts, the build-time equivalent.
- *
- * The temp name is per-process unique (pid + random). The in-process
- * `provisionPromise` guard only serializes downloads *within* one process; two
- * processes sharing one writable ARCHIVAL_DB_PATH (thin bundle + shared cache
- * dir) both see the file absent and both download. With a fixed `${target}.tmp`
- * they interleave writes into one file and the error-path unlinkSync can delete
- * the peer's in-progress temp → a truncated/corrupt index. A private temp per
- * process means each writes its own file, the rename-into-place (already atomic)
- * is the sole cross-process interaction — last-writer-wins on a *complete* file
- * is harmless — and the catch's unlinkSync only removes this process's own temp.
- */
 /** Log network progress at most every ~4 MB of compressed transfer. */
 const DOWNLOAD_PROGRESS_BYTES = 4 * 1024 * 1024;
 
@@ -376,6 +328,15 @@ export function formatMb(bytes: number): string {
   return (bytes / 1024 / 1024).toFixed(1);
 }
 
+/**
+ * Download the index to a temp file (gunzipping a gzip body), check it, and
+ * rename it into place, so an interrupted run never leaves a half file. The
+ * build-time equivalent is downloadDb in scripts/db-build-utils.ts.
+ *
+ * Keep the temp name per process: `provisionPromise` serializes downloads only
+ * within one process, and two processes sharing one ARCHIVAL_DB_PATH with a
+ * fixed `.tmp` name would interleave writes or unlink each other's file.
+ */
 async function downloadArchivalDb(url: string, target: string): Promise<void> {
   console.error(`[archival-db] index not present or outdated; downloading from ${url} ...`);
 
@@ -439,11 +400,9 @@ async function downloadArchivalDb(url: string, target: string): Promise<void> {
 
   const bodyStream = response.body as import('node:stream/web').ReadableStream;
   try {
-    // Detect gzip by the magic number (1f 8b) rather than the URL suffix: the
-    // public browser asset URL ends in .gz, but the api.github.com asset URL
-    // (used to test against the private repo with a token) serves the same
-    // gzip bytes with no .gz suffix. Peek the first chunk, then re-emit it
-    // ahead of the remaining body.
+    // Detect gzip by the magic number (1f 8b), not the URL suffix, so a URL
+    // without `.gz` still works. Peek the first chunk, then re-emit it ahead
+    // of the remaining body.
     armIdle();
     const reader = bodyStream.getReader();
     const first = await reader.read();
@@ -506,8 +465,7 @@ export interface ConnectionState {
 
 /**
  * Build a memoized accessor for state derived from a Db handle. This owns, in
- * one place, the two invariants both SQLite tools used to hand-copy
- * (CODE-REVIEW finding 15):
+ * one place, the two invariants both SQLite tools need:
  *
  *  - **Handle-keying:** a prepared statement belongs to the handle that created
  *    it, so the cache is keyed by the handle and rebuilt after closeDatabase()
