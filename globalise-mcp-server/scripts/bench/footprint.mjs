@@ -69,7 +69,7 @@ const isAppOnly = (t) => {
 
 async function connect(opts) {
   const transport = opts.local
-    ? new StdioClientTransport({ ...LOCAL_SERVER, env: { ...process.env, ...LOCAL_SERVER.env }, stderr: "ignore" })
+    ? new StdioClientTransport({ ...LOCAL_SERVER, env: process.env, stderr: "ignore" })
     : new StreamableHTTPClientTransport(new URL(opts.server));
   const client = new Client({ name: "globalise-footprint", version: "0.1" });
   await client.connect(transport);

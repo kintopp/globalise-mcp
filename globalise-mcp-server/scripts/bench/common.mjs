@@ -12,7 +12,6 @@ export const SKILL_DIR = path.join(projectRoot, "skill", SKILL_NAME);
 export const LOCAL_SERVER = {
   command: process.execPath,
   args: [path.join(projectRoot, "dist/index.js")],
-  env: {},
 };
 
 export const serverLabel = (opts) => (opts.local ? "local stdio (dist/index.js)" : opts.server);

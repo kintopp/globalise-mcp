@@ -99,13 +99,14 @@ function claudeArgs(job, opts) {
 function runClaude(args, cwd, timeoutSec) {
   return new Promise((resolve) => {
     const child = spawn("claude", args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "", stderr = "", timedOut = false;
+    let stdout = "", stderr = "";
     child.stdout.on("data", (d) => { stdout += d; });
     child.stderr.on("data", (d) => { stderr += d; });
-    const timer = setTimeout(() => { timedOut = true; child.kill("SIGTERM"); }, timeoutSec * 1000);
+    // The timer is the only caller of kill(), so child.killed means the session timed out.
+    const timer = setTimeout(() => child.kill("SIGTERM"), timeoutSec * 1000);
     child.on("close", (code, signal) => {
       clearTimeout(timer);
-      resolve({ code, signal, stdout, stderr, timedOut });
+      resolve({ code, signal, stdout, stderr, timedOut: child.killed });
     });
   });
 }
@@ -202,13 +203,14 @@ async function main() {
   // Every warm-up must finish before measuring starts; each warms a distinct prefix, so they
   // can run in parallel. Only the shared prefix (system prompt + tools) warms; the skill body
   // loads mid-conversation.
-  let warmupTotal = 0;
+  let warmupTotal = 0, warmupUnknown = 0;
   if (!opts.cold) {
     const warmJobs = opts.models.flatMap((model) => opts.arms.map((arm) =>
       ({ prompt: { id: "warmup", prompt: "Reply with just: ok" }, model, arm, run: 0 })));
     const warm = await Promise.all(warmJobs.map(async (job) => {
       const cost = (await runJob(job)).parsed?.result.total_cost_usd ?? null;
-      warmupTotal += cost ?? 0;
+      if (cost === null) warmupUnknown++;
+      else warmupTotal += cost;
       return `${job.arm}${opts.models.length > 1 ? ` (${job.model})` : ""} ${cost === null ? "failed" : fmtUsd(cost)}`;
     }));
     console.log(`Cache warm-up (entry cost): ${warm.join(" · ")}\n`);
@@ -249,26 +251,24 @@ async function main() {
   writeFileSync(path.join(outDir, "summary.csv"), csv.join("\n") + "\n");
 
   // Every launched session counts as a run; averages cover only the sessions that reported a result.
-  const failureNote = (failed) => failed.length
-    ? `; ${failed.length} without result (${failed.map((r) => r.verdict).join(", ")}), not in averages`
-    : "";
   console.log("\nMeans (passed = expectation met / runs):");
   for (const prompt of prompts) {
     for (const model of opts.models) {
       const byArm = {};
       for (const arm of opts.arms) {
         const all = rows.filter((r) => r.job.prompt.id === prompt.id && r.job.model === model && r.job.arm === arm);
+        if (!all.length) continue;
         const ok = all.filter((r) => r.s);
         const failed = all.filter((r) => !r.s);
-        const passed = `passed ${all.filter((r) => r.passed).length}/${all.length}${failureNote(failed)}`;
-        if (!ok.length) {
-          if (all.length) console.log(`  ${prompt.id} / ${arm} / ${model} ... ${passed}`);
-          continue;
+        let stats = "";
+        if (ok.length) {
+          const avg = (k) => mean(ok.map((r) => r.s[k]));
+          byArm[arm] = { tokens: avg("tokens"), cost: avg("cost") };
+          stats = `${fmtInt(Math.round(byArm[arm].tokens))} tokens, ${fmtUsd(byArm[arm].cost)}, ` +
+            `${avg("turns").toFixed(1)} turns, ${Math.round(avg("seconds"))}s, `;
         }
-        const avg = (k) => mean(ok.map((r) => r.s[k]));
-        byArm[arm] = { tokens: avg("tokens"), cost: avg("cost") };
-        console.log(`  ${prompt.id} / ${arm} / ${model} ... ${fmtInt(Math.round(byArm[arm].tokens))} tokens, ${fmtUsd(byArm[arm].cost)}, ` +
-          `${avg("turns").toFixed(1)} turns, ${Math.round(avg("seconds"))}s, ${passed}`);
+        const note = failed.length ? `; ${failed.length} without result (${failed.map((r) => r.verdict).join(", ")}), not in averages` : "";
+        console.log(`  ${prompt.id} / ${arm} / ${model} ... ${stats}passed ${all.filter((r) => r.passed).length}/${all.length}${note}`);
       }
       for (const a of opts.arms) {
         for (const b of ARMS[a].compareTo) {
@@ -283,7 +283,8 @@ async function main() {
   const unknown = rows.length - reported.length;
   console.log(`\nTotal at API list price: ${fmtUsd(sum(reported.map((r) => r.s.cost)))} across ${reported.length} sessions` +
     (unknown ? `, plus ${unknown} with unknown cost` : "") +
-    (opts.cold ? "" : `, plus ${fmtUsd(warmupTotal)} cache warm-up`));
+    (opts.cold ? "" : `, plus ${fmtUsd(warmupTotal)} cache warm-up` +
+      (warmupUnknown ? ` (${warmupUnknown} with unknown cost)` : "")));
 }
 
 main().catch((err) => { console.error(err); process.exit(1); });
