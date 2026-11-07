@@ -99,13 +99,13 @@ function claudeArgs(job, opts) {
 function runClaude(args, cwd, timeoutSec) {
   return new Promise((resolve) => {
     const child = spawn("claude", args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "", stderr = "";
+    let stdout = "", stderr = "", timedOut = false;
     child.stdout.on("data", (d) => { stdout += d; });
     child.stderr.on("data", (d) => { stderr += d; });
-    const timer = setTimeout(() => child.kill("SIGTERM"), timeoutSec * 1000);
+    const timer = setTimeout(() => { timedOut = true; child.kill("SIGTERM"); }, timeoutSec * 1000);
     child.on("close", (code, signal) => {
       clearTimeout(timer);
-      resolve({ code, signal, stdout, stderr });
+      resolve({ code, signal, stdout, stderr, timedOut });
     });
   });
 }
@@ -216,12 +216,14 @@ async function main() {
 
   const rows = [];
   await pool(jobs, opts.concurrency, async (job) => {
-    const { code, signal, stdout, stderr, parsed } = await runJob(job);
+    const { code, signal, stdout, stderr, timedOut, parsed } = await runJob(job);
     const base = `${job.prompt.id}__${job.arm}__${job.model}__run${job.run}`;
     if (!parsed) {
-      writeFileSync(path.join(outDir, `${base}.err.txt`), `exit ${code} ${signal ?? ""}\n${stderr}\n${stdout}`);
-      console.log(`  ${jobLabel(job)} ... ERROR (exit ${code}${signal ? `, ${signal}` : ""}; see ${base}.err.txt)`);
-      rows.push({ job, s: null, passed: false, verdict: "error" });
+      // No result event means Claude Code never reported this session's cost: it is unknown, not 0.
+      const verdict = timedOut ? "timeout" : "error";
+      writeFileSync(path.join(outDir, `${base}.err.txt`), `${verdict}: exit ${code} ${signal ?? ""}\n${stderr}\n${stdout}`);
+      console.log(`  ${jobLabel(job)} ... ${verdict.toUpperCase()} (exit ${code}${signal ? `, ${signal}` : ""}; cost unknown; see ${base}.err.txt)`);
+      rows.push({ job, s: null, passed: false, verdict });
       return;
     }
     const { result, toolCalls } = parsed;
@@ -246,17 +248,27 @@ async function main() {
   }
   writeFileSync(path.join(outDir, "summary.csv"), csv.join("\n") + "\n");
 
+  // Every launched session counts as a run; averages cover only the sessions that reported a result.
+  const failureNote = (failed) => failed.length
+    ? `; ${failed.length} without result (${failed.map((r) => r.verdict).join(", ")}), not in averages`
+    : "";
   console.log("\nMeans (passed = expectation met / runs):");
   for (const prompt of prompts) {
     for (const model of opts.models) {
       const byArm = {};
       for (const arm of opts.arms) {
-        const ok = rows.filter((r) => r.job.prompt.id === prompt.id && r.job.model === model && r.job.arm === arm && r.s);
-        if (!ok.length) continue;
+        const all = rows.filter((r) => r.job.prompt.id === prompt.id && r.job.model === model && r.job.arm === arm);
+        const ok = all.filter((r) => r.s);
+        const failed = all.filter((r) => !r.s);
+        const passed = `passed ${all.filter((r) => r.passed).length}/${all.length}${failureNote(failed)}`;
+        if (!ok.length) {
+          if (all.length) console.log(`  ${prompt.id} / ${arm} / ${model} ... ${passed}`);
+          continue;
+        }
         const avg = (k) => mean(ok.map((r) => r.s[k]));
         byArm[arm] = { tokens: avg("tokens"), cost: avg("cost") };
         console.log(`  ${prompt.id} / ${arm} / ${model} ... ${fmtInt(Math.round(byArm[arm].tokens))} tokens, ${fmtUsd(byArm[arm].cost)}, ` +
-          `${avg("turns").toFixed(1)} turns, ${Math.round(avg("seconds"))}s, passed ${ok.filter((r) => r.passed).length}/${ok.length}`);
+          `${avg("turns").toFixed(1)} turns, ${Math.round(avg("seconds"))}s, ${passed}`);
       }
       for (const a of opts.arms) {
         for (const b of ARMS[a].compareTo) {
@@ -267,7 +279,10 @@ async function main() {
       }
     }
   }
-  console.log(`\nTotal at API list price: ${fmtUsd(sum(rows.map((r) => r.s?.cost ?? 0)))} across ${rows.length} sessions` +
+  const reported = rows.filter((r) => r.s);
+  const unknown = rows.length - reported.length;
+  console.log(`\nTotal at API list price: ${fmtUsd(sum(reported.map((r) => r.s.cost)))} across ${reported.length} sessions` +
+    (unknown ? `, plus ${unknown} with unknown cost` : "") +
     (opts.cold ? "" : `, plus ${fmtUsd(warmupTotal)} cache warm-up`));
 }
 

@@ -12,7 +12,7 @@
     "id": "bahar-pepper",
     "tier": "simple",
     "prompt": "In VOC trade, roughly how many kilograms was a bahar of pepper?",
-    "expect": ["\\b1[78]\\d\\s*(kg|kilo)"],
+    "expect": ["^(?:(?!\\d+(?:[.,]\\d+)?\\s*(?:kg|kilo))[\\s\\S])*?\\b1[78]\\d(?:[.,]\\d+)?\\s*(?:kg|kilo)"],
     "probes": [
       { "tool": "globalise_lookup_measure", "args": { "query": "bahar", "size": 1 } }
     ]

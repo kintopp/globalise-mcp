@@ -56,7 +56,7 @@ node scripts/bench/mcp-bench.mjs --dry-run              # print the sessions wit
 
 **Cache warm-up.** Before the measured sessions, the benchmark sends one trivial question per arm ("Reply with just: ok"). This loads that arm's instructions and tool descriptions into Claude's cache, the way an earlier question would in normal use, so every measured session starts from the same state. The warm-up's cost is reported on its own line as the **entry cost**: what the first question of a session pays on top of the per-question figures.
 
-Each session runs in an empty scratch directory with the user's own settings, hooks, plugins and MCP servers switched off, so the arms differ only in the tools they're given. No arm has sub-agents. Output goes to `scripts/bench/results/<timestamp>/` (gitignored): one JSON file per session (the full result, including the answer text and which tools were called) and a `summary.csv`.
+Each session runs in an empty scratch directory with the user's own settings, hooks, plugins and MCP servers switched off, so the arms differ only in the tools they're given. No arm has sub-agents, and none has Claude Code's tool search, so every arm reads its full tool descriptions at the start; in normal use Claude Code can hold MCP tool descriptions back until a tool is needed. Output goes to `scripts/bench/results/<timestamp>/` (gitignored): one JSON file per session (the full result, including the answer text and which tools were called) and a `summary.csv`.
 
 ### The questions
 
@@ -65,7 +65,7 @@ The questions live in [`scripts/bench/prompts.json`](../scripts/bench/prompts.js
 | Id | Tier | Question (abridged) | Answer check |
 |---|---|---|---|
 | `voc-archive-code` | simple | Nationaal Archief access number of the VOC archive | `1.04.02` |
-| `bahar-pepper` | simple | Kilograms in a bahar of pepper | 170–189 kg |
+| `bahar-pepper` | simple | Kilograms in a bahar of pepper | 170–189 kg as the first weight given |
 | `foelie-kruidnagel` | simple | What *foelie* and *kruidnagel* denote | mace, clove |
 | `gm-1700` | medium | Inventory and RGP volume of the Generale Missive of 1 December 1700 | inv. `1628`, volume 6 |
 | `cipher-pages` | medium | How many pages are in cipher, and in which inventories | 8; `1232`, `1292` |
@@ -85,7 +85,7 @@ Average cost per question at API list price, with the average number of steps (t
 | Question | Tier | mcp | mcp+skill | baseline | mcp vs baseline |
 |---|---|---|---|---|---|
 | `voc-archive-code` | simple | $0.006 (1) · 3/3 | $0.010 (1) · 3/3 | $0.004 (1) · 3/3 | 1.4× more |
-| `bahar-pepper` | simple | $0.032 (2) · 3/3 | $0.038 (2) · 3/3 | $0.009 (1) · 3/3 | 3.8× more |
+| `bahar-pepper` | simple | $0.032 (2) · 3/3 | $0.038 (2) · 3/3 | $0.009 (1) · 2/3² | 3.8× more |
 | `foelie-kruidnagel` | simple | $0.022 (2) · 3/3 | $0.027 (2) · 3/3 | $0.006 (1) · 3/3 | 3.4× more |
 | `gm-1700` | medium | $0.030 (2) · 3/3 | $0.034 (2) · 3/3 | $1.520 (66) · 3/3 | 0.02× |
 | `cipher-pages` | medium | $0.014 (2) · 3/3 | $0.020 (2) · 3/3 | $0.351 (13) · 2/3 | 0.04× |
@@ -94,7 +94,9 @@ Average cost per question at API list price, with the average number of steps (t
 
 ¹ One baseline run was stopped at the 900 s session limit and counts as a failure; the cost and step averages cover the other two.
 
-The whole set (63 sessions) came to $18.39 at the API list price. What the numbers show:
+² Re-scored on 2026-11-07 with the stricter check. One run opened with "roughly 200 kg" and had passed the original check only because it mentioned 185 kg further down.
+
+The 62 sessions that finished came to $18.39 at the API list price; the run stopped at the time limit reported no cost. What the numbers show:
 
 - **On what Claude already knows, the server costs a few cents more.** The archive code, the bahar and the commodity terms are answered from memory, so the baseline costs well under a cent; reading the server's tool descriptions costs more than that. The archive-code question needs no tool call at all with the server, because the answer is in the server's own instructions.
 - **On archival questions, it is 25–50 times cheaper.** The baseline did answer the Generale Missive question, by working through the Nationaal Archief's online inventory and the published edition, but it took 66 steps and five minutes on average against two steps and five seconds. For the cipher pages it found GLOBALISE's own language-identification dataset on GitHub, which worked twice out of three.
@@ -124,13 +126,15 @@ node scripts/bench/footprint.mjs --json     # machine-readable output
 
 | Part | Tokens | When a model reads it |
 |---|---|---|
-| Full tool descriptions (9 model-visible tools) | 10,851 | Up front, in apps that load all tools at once (such as Claude Code) |
+| Full tool descriptions (9 model-visible tools)³ | 10,851 | Up front, in apps that load all tools at once (such as Claude Code in this benchmark) |
 | Tool names and one-line summaries | 325 | Up front, in apps that load tools on demand (such as claude.ai) |
-| Largest single tool (`globalise_search_transcriptions`) | 2,341 | When the tool is first needed, in on-demand apps |
+| Largest single tool (`globalise_search_transcriptions`)³ | 2,341 | When the tool is first needed, in on-demand apps |
 | Typical tool response | 416–2,761 | After each call (a 20-hit search ≈ 2,800; one page transcription ≈ 1,500–2,200) |
 | Skill description | 428 | Always, once the skill is installed |
 | Skill body | 6,308 | When Claude decides the skill is relevant |
 | Skill reference files | 2,152–5,229 each | Only when a reference is opened |
+
+³ Includes the fixed tool-use instructions the API adds to any request that carries tools, so the descriptions themselves take somewhat less.
 
 ### Caveats
 
