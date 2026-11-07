@@ -122,17 +122,17 @@ node scripts/bench/footprint.mjs --local    # local build over stdio
 node scripts/bench/footprint.mjs --json     # machine-readable output
 ```
 
-**2026-10-04 · server v0.10.0 · Claude Sonnet 5.5 token counter**
+**2026-11-07 · server v0.13.0 · Claude Sonnet 5.5 token counter**
 
 | Part | Tokens | When a model reads it |
 |---|---|---|
-| Full tool descriptions (9 model-visible tools)³ | 10,851 | Up front, in apps that load all tools at once (such as Claude Code in this benchmark) |
+| Full tool descriptions (9 model-visible tools)³ | 11,110 | Up front, in apps that load all tools at once (such as Claude Code in this benchmark) |
 | Tool names and one-line summaries | 325 | Up front, in apps that load tools on demand (such as claude.ai) |
-| Largest single tool (`globalise_search_transcriptions`)³ | 2,341 | When the tool is first needed, in on-demand apps |
-| Typical tool response | 416–2,761 | After each call (a 20-hit search ≈ 2,800; one page transcription ≈ 1,500–2,200) |
-| Skill description | 428 | Always, once the skill is installed |
-| Skill body | 6,308 | When Claude decides the skill is relevant |
-| Skill reference files | 2,152–5,229 each | Only when a reference is opened |
+| Largest single tool (`globalise_search_transcriptions`)³ | 2,352 | When the tool is first needed, in on-demand apps |
+| Typical tool response | 435–2,761 | After each call (a 20-hit search ≈ 2,800; one page transcription ≈ 1,500–2,200) |
+| Skill description | 470 | Always, once the skill is installed |
+| Skill body | 6,484 | When Claude decides the skill is relevant |
+| Skill reference files | 2,273–5,551 each | Only when a reference is opened |
 
 ³ Includes the fixed tool-use instructions the API adds to any request that carries tools, so the descriptions themselves take somewhat less.
 
