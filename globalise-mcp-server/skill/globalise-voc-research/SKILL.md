@@ -20,14 +20,14 @@ license: MIT
 compatibility: Requires the globalise-mcp-server MCP server and network access.
 metadata:
   version: "0.13.0"
-  last_updated: "2026-11-06"
+  last_updated: "2026-11-12"
 ---
 
 # Researching VOC archives with the GLOBALISE MCP server
 
 GLOBALISE serves machine transcriptions (HTR) of ~4.8M pages of Dutch East India
 Company (Verenigde Oostindische Compagnie, VOC) records from the Dutch National
-Archives (1618-1793). 
+Archives, 17th–18th century.
 
 Document IDs look like `NL-HaNA_1.04.02_9966_0106` = `{archive}_{inventory}_{scan}`.
 Any page opens in the web viewer at

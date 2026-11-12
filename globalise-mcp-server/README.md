@@ -61,7 +61,7 @@ flowchart TD
 
 ## Requirements
 
-- **Node 24.x** — the server uses the built-in `node:sqlite` module, which needs no flag on Node 24. The `engines` field pins `>=24.15.0 <25` to match the runtime bundled with Claude Desktop.
+- **Node 24.x** — the server uses the built-in `node:sqlite` module, which needs no flag on Node 24. The `engines` field pins `>=24.22.1 <25` to match the runtime bundled with Claude Desktop.
 - **~150 MB of disk** for the local databases: the committed `data/*.sqlite.gz` archives (~29 MB) are decompressed to ~120 MB on first build and kept alongside.
 - **Network access** to the upstream GLOBALISE services for the transcription tools (locally-run servers may receive upstream `403` responses — see the transports table under [CLI](#cli)); the finding-aid and glossary tools work fully offline.
 - **No native binaries** — all dependencies are pure JavaScript, so there is no compilation step and the same install works across platforms.
