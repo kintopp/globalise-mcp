@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * test-skill-bundle.mjs — the committed skill bundles match their source folder,
- * and SKILL.md's frontmatter conforms to the Agent Skills spec.
+ * test-skill-bundle.mjs — the committed skill bundles and plugin/ match their source
+ * folder, and SKILL.md's frontmatter conforms to the Agent Skills spec.
  *
  * Failure modes:
  *  - SKILL.md or a reference edited without `npm run build:skill`: stale bundle.
@@ -13,9 +13,18 @@
  *  - Skill folder renamed away from `name`, or a description over the 1024-char cap.
  *  - license or compatibility dropped. Their values are per-server choices, so only
  *    presence and the spec's length cap are checked.
+ *  - plugin/<name>/skills/ missing, stale or carrying an extra file: a git-subdir
+ *    install sees only the plugin folder, so it would ship an old or partial skill.
+ *  - A manifest's name, version, display name or $schema changed by hand, or an MCP
+ *    config gaining a key the Agent Plugins schema rejects, or a different URL/key
+ *    (a new key makes every user reconnect).
+ *  - A top-level bin/ in the plugin folder, which claude.ai refuses.
+ *  - An upload zip that is stale, nests its files in a folder, or carries the other
+ *    platform's files: Claude refuses an archive with more than one plugin.json.
+ *  - A hard-wrapped paragraph, which ChatGPT's skill page shows as broken lines.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { inflateRawSync } from "node:zlib";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -101,6 +110,87 @@ const metadata = lines.slice(metaStart + 1, metaEnd === -1 ? undefined : metaEnd
 check("metadata values are quoted strings", metadata.length > 0 && metadata.every((l) => /^ {2}[a-z_]+: ".*"$/.test(l)), metadata.join(" | "));
 check("metadata.version equals package.json", metadata.includes(`  version: "${pkg.version}"`), metadata.join(" | "));
 check("metadata.last_updated is a date", metadata.some((l) => /^ {2}last_updated: "\d{4}-\d{2}-\d{2}"$/.test(l)));
+
+// --- plugin/: what a marketplace installs on Claude and ChatGPT ---
+const PLUGIN_DIR = join(ROOT, "plugin", SKILL_NAME);
+const readJson = (...p) => JSON.parse(readFileSync(join(PLUGIN_DIR, ...p), "utf8"));
+const REBUILD = "run `npm run build:skill` and commit the result";
+
+const pluginSkill = join(PLUGIN_DIR, "skills", SKILL_NAME);
+const copied = existsSync(pluginSkill)
+  ? readdirSync(pluginSkill, { recursive: true })
+      .map((rel) => String(rel).split(sep).join("/"))
+      .filter((rel) => statSync(join(pluginSkill, rel)).isFile())
+  : [];
+check(
+  "plugin skill copy holds exactly the source files",
+  copied.length === sourceFiles.length && sourceFiles.every((rel) => copied.includes(rel)),
+  `${copied.length} vs ${sourceFiles.length}; ${REBUILD}`,
+);
+for (const rel of sourceFiles) {
+  const dest = join(pluginSkill, rel);
+  check(`plugin copy matches ${rel}`, existsSync(dest) && readFileSync(dest).equals(readFileSync(join(SKILL_DIR, rel))), REBUILD);
+}
+
+const claudeManifest = readJson(".claude-plugin", "plugin.json");
+const portableManifest = readJson("plugin.json");
+for (const [label, m] of [["Claude", claudeManifest], ["Agent Plugins", portableManifest]]) {
+  check(`${label} manifest names the plugin`, m.name === "globalise-voc-research", m.name);
+  check(`${label} manifest version equals package.json`, m.version === pkg.version, `${m.version}; ${REBUILD}`);
+}
+check("Claude manifest display name", claudeManifest.displayName === "Globalise VOC Research", claudeManifest.displayName);
+check(
+  "Agent Plugins manifest display name",
+  portableManifest.extensions?.["com.openai"]?.interface?.displayName === "Globalise VOC Research",
+);
+check("Agent Plugins manifest $schema", portableManifest.$schema === "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json");
+
+// Claude calls the transport "http", the Agent Plugins schema "streamable-http" and
+// allows no other server keys. The key is the connector's label on both platforms.
+const url = "https://globalise-mcp-production.up.railway.app/mcp";
+const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+check(".mcp.json points at production", sameJson(readJson(".mcp.json"), { mcpServers: { Globalise: { type: "http", url } } }));
+check(
+  "mcp.json points at production",
+  sameJson(readJson("mcp.json"), {
+    $schema: "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+    mcpServers: { Globalise: { type: "streamable-http", url } },
+  }),
+);
+check("plugin has no top-level bin/", !existsSync(join(PLUGIN_DIR, "bin")));
+
+// The upload zips: each must hold exactly its platform's plugin files, at the root.
+const pluginRel = (rel) => readFileSync(join(PLUGIN_DIR, rel));
+const skillPaths = sourceFiles.map((rel) => `skills/${SKILL_NAME}/${rel}`);
+const uploads = {
+  claude: [".claude-plugin/plugin.json", ".mcp.json", ...skillPaths.filter((p) => !p.includes("/agents/"))],
+  chatgpt: ["plugin.json", "mcp.json", ...skillPaths],
+};
+for (const [platform, expected] of Object.entries(uploads)) {
+  const zipPath = join(ROOT, "plugin", `${SKILL_NAME}-${platform}.zip`);
+  const zip = existsSync(zipPath) ? readZip(readFileSync(zipPath)) : new Map();
+  const zipNames = [...zip.keys()].sort();
+  check(`${platform} zip holds exactly its platform's files`, JSON.stringify(zipNames) === JSON.stringify([...expected].sort()), `${zipNames.join(", ")}; ${REBUILD}`);
+  check(`${platform} zip has one plugin.json`, zipNames.filter((n) => n.endsWith("plugin.json")).length === 1);
+  check(`${platform} zip matches the plugin folder`, expected.every((n) => zip.get(n)?.equals(pluginRel(n))), REBUILD);
+}
+
+// ChatGPT otherwise title-cases the skill's name.
+const openaiYaml = readFileSync(join(SKILL_DIR, "agents", "openai.yaml"), "utf8");
+check("openai.yaml sets the skill's display name", /^interface:\n {2}display_name: "Globalise VOC Research"$/m.test(openaiYaml));
+
+// ChatGPT's skill page keeps line breaks inside a paragraph; Claude joins them.
+for (const rel of sourceFiles.filter((r) => r.endsWith(".md"))) {
+  const text = readFileSync(join(SKILL_DIR, rel), "utf8");
+  const body = rel === "SKILL.md" ? text.slice(text.indexOf("\n---\n", 4) + 5) : text;
+  const lines = body.split("\n");
+  const wrapped = lines.findIndex((line, i) => {
+    if (i === 0 || !line.trim() || !lines[i - 1].trim()) return false;
+    if (line.trim() === ">" || lines[i - 1].trim() === ">") return false;
+    return !/^(#{1,6} |\|.*\|\s*$|\s*([-*+]|\d+\.) )/.test(line);
+  });
+  check(`${rel} has one line per paragraph`, wrapped === -1, wrapped === -1 ? "" : `unwrap: ${lines[wrapped].slice(0, 60)}`);
+}
 
 if (failures > 0) {
   console.error(`skill-bundle: ${failures} check(s) failed`);

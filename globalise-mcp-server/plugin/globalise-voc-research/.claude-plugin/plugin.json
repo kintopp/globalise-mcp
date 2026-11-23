@@ -1,0 +1,20 @@
+{
+  "name": "globalise-voc-research",
+  "displayName": "Globalise VOC Research",
+  "version": "0.13.0",
+  "description": "Search and read machine transcriptions of about 4.8 million pages of Dutch East India Company (VOC) records, 17th–18th century, with page images, a document viewer and a research guidance skill.",
+  "author": {
+    "name": "RISE (University of Basel)",
+    "url": "https://rise.unibas.ch"
+  },
+  "homepage": "https://github.com/kintopp/globalise-mcp",
+  "repository": "https://github.com/kintopp/globalise-mcp",
+  "license": "MIT",
+  "keywords": [
+    "voc",
+    "dutch-east-india-company",
+    "transcriptions",
+    "archives",
+    "early-modern"
+  ]
+}
