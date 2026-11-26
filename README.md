@@ -62,11 +62,11 @@ Alternatively, you can install the Globalise MCP server *locally* on your own co
 
 ### SKILL file
 
-A `skill` gives an AI assistant detailed guidance on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Skills were [originally developed by Anthropic](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home). Making use of the Globalise MCP skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
+A skill gives an AI assistant detailed guidance in natural language on how to use a resource such as an MCP server effectively: which tool (see [MCP Server Tools](#mcp-server-tools)) to choose for a given question type, how to combine searches, important metadata distinctions (e.g. the language code `art` marks ciphered Dutch, not an artificial language), and known limitations. Skills were [originally developed by Anthropic](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home).
 
-The plugin (see [Installation](#installation) above) already includes the skill. Don't edit the installed copy. To add your own instructions, put them in a separate skill or in your project's instructions.
+The plugin (see [Installation](#installation) above) already includes the skill. You only need the Globalise VOC Research skill file if you add the server as a custom connector, install it locally, or use a client without plugin support. To access the skill file, download and unzip: [`globalise-voc-research.zip`](https://github.com/kintopp/globalise-mcp/releases/latest/download/globalise-voc-research.zip). If you use [Mistral Vibe](https://mistral.ai/products/vibe/), install the skill via the 'folder' option.
 
-You only need the separate skill file below if you add the server as a custom connector, install it locally, or use a client without plugin support. To access it, download and unzip: [`globalise-voc-research.zip`](https://github.com/kintopp/globalise-mcp/releases/latest/download/globalise-voc-research.zip). If you use [Mistral Vibe](https://mistral.ai/products/vibe/), install the skill via the 'folder' option.
+To add your own instructions, such as how to cite results, don't edit the installed copy. Instead, put them in a separate skill or in your project's instructions, so that an update of the plugin doesn't overwrite them.
 
 #### MCP Server Tools
 
