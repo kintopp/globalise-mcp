@@ -39,14 +39,16 @@ The easiest way to start is to install the Globalise VOC Research plugin. It add
 3. Open the plugin, go to its _Connectors_ tab, and add the "Globalise" connector.
 4. If you like, set the permissions for its tools in _Customize_ → _Connectors_, for example to "Always allow".
 
-**N.B.** A free Claude account allows only one custom connector. To make room for it, you will need to remove (not just disable) any existing custom connector in _Customize_ → _Connectors_ first. Anthropic's [plugin instructions](https://claude.com/docs/plugins/overview#install-a-plugin) provide more details.
+**N.B.** A free Claude account allows only one custom connector. To make room for it, you will need to remove (not just disable) any existing custom connector in _Customize_ → _Connectors_ first. In addition, the use of any MCP server will consume your free usage quickly.
+
+See Anthropic's [plugin instructions](https://claude.com/docs/plugins/overview#install-a-plugin) for more details.
 
 **ChatGPT** ([desktop app](https://chatgpt.com/download/) – not chatgpt.com):
 
 1. Download [`globalise-voc-research-chatgpt.zip`](https://github.com/kintopp/globalise-mcp/raw/refs/heads/main/globalise-mcp-server/plugin/globalise-voc-research-chatgpt.zip).
 2. In the ChatGPT desktop app, go to _Settings_ → _Plugins_ → _Add_ and _Upload plugin archive_. Select and _Add_ the plugin.
 3. Next select _Install plugin_. After this the plugin is available.
-4. To use it, create a new chat, switch to 'Work' mode, and select the plugin via the + symbol. Else, type "@Globalise VOC Research" at the start of the prompt. **N.B.** You can only use a custom plugin from the 'Work' mode in ChatGPT or in Codex.
+4. To use it, create a new chat, switch to 'Work' mode in ChatGPT or to Codex, and select the plugin via the + symbol. Else, type "@Globalise VOC Research" at the start of the prompt. Note: The use of any MCP server will consume your free usage quickly.
 
 **Other AI clients:** add the hosted server as a remote MCP server (often called a "custom connector") with this URL, and leave the authentication settings empty:
 
@@ -54,7 +56,7 @@ The easiest way to start is to install the Globalise VOC Research plugin. It add
 https://globalise-mcp-production.up.railway.app/mcp
 ```
 
-For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers, including components like interactive image viewers. **N.B.** A connector added this way has no skill; install the skill file separately (see below).
+For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers, including components like interactive image viewers. The use of an MCP server will consume your free usage quickly. But it's certainly also possible to set-up an open source AI client with an open source model, such as [Kimi 3.1 Pro](https://huggingface.co/moonshotai/Kimi-K3.1-Pro) which may be available to you at no cost or on a per-token basis. **N.B.** A connector added this way has no skill; install the skill file separately (see below).
 
 #### Local
 
