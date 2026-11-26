@@ -28,22 +28,45 @@ The system is designed to let you search, explore and ask questions about the Gl
 
 ### Installation
 
-The best way to get started is with [Claude Desktop](https://claude.com/download) or [claude.ai](https://claude.ai) by adding the Globalise MCP as a *hosted service* or [custom 'Connector'](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) with the URL below. This is currently free for one connector — additional connectors in Claude require a paid ('Pro') or higher [subscription](https://claude.com/pricing) from Anthropic.
+#### Hosted
+
+The easiest way to start is to install the Globalise VOC Research plugin. It adds the hosted version of the server as a connector, together with the research skill (see below) that tells the AI assistant how to use it. The server needs no account or sign-in information.
+
+**Claude** ([claude.ai](https://claude.ai), or the Claude [desktop app](https://claude.com/download)): *// recommended*
+
+1. Download [`globalise-voc-research-claude.zip`](https://github.com/kintopp/globalise-mcp/raw/refs/heads/main/globalise-mcp-server/plugin/globalise-voc-research-claude.zip).
+2. In Claude, go to _Settings_ → _Plugins_ → _Browse plugins_ (scroll down to the bottom) → _Add_ → _Upload plugin_ and choose the file.
+3. Open the plugin, go to its _Connectors_ tab, and add the "Globalise" connector.
+4. If you like, set the permissions for its tools in _Customize_ → _Connectors_, for example to "Always allow".
+
+**N.B.** A free Claude account allows only one custom connector. To make room for it, you will need to remove (not just disable) any existing custom connector in _Customize_ → _Connectors_ first. Anthropic's [plugin instructions](https://claude.com/docs/plugins/overview#install-a-plugin) provide more details.
+
+**ChatGPT** ([desktop app](https://chatgpt.com/download/) – not chatgpt.com):
+
+1. Download [`globalise-voc-research-chatgpt.zip`](https://github.com/kintopp/globalise-mcp/raw/refs/heads/main/globalise-mcp-server/plugin/globalise-voc-research-chatgpt.zip).
+2. In the ChatGPT desktop app, go to _Settings_ → _Plugins_ → _Add_ and _Upload plugin archive_. Select and _Add_ the plugin.
+3. Next select _Install plugin_. After this the plugin is available.
+4. To use it, create a new chat, switch to 'Work' mode, and select the plugin via the + symbol. Else, type "@Globalise VOC Research" at the start of the prompt. **N.B.** You can only use a custom plugin from the 'Work' mode in ChatGPT or in Codex.
+
+**Other AI clients:** add the hosted server as a remote MCP server (often called a "custom connector") with this URL, and leave the authentication settings empty:
 
 ```
 https://globalise-mcp-production.up.railway.app/mcp
 ```
-Go to _Customize_ → _Connectors_ → _Add custom connector_ → Name it as you like and paste the URL into the _Remote MCP Server URL_ field. You can ignore the Authentication section. Once the connector is configured, optionally set the permissions for its tools (e.g. 'Always allow'). See Anthropic's [documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for more detailed instructions. 
 
-Many other desktop and web-based clients such as OpenAI's ChatGPT or Mistral's Vibe and open-source applications support custom MCP servers. Please consult their documentation for more information. In particular, the free version of [Mistral's Vibe](https://chat.mistral.ai) already has excellent support for MCP servers and skills (see below). In contrast, ChatGPT can currently (October, 2026) only support the full functionality of this server (in particular, viewing and interacting with images in the chat timeline) in conjunction with a paid Business or Enterprise subscription. So at the moment the best way to use the hosted MCP server for free is either with Claude or with Mistral.
+For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers and skills. **N.B.** A connector added this way has no skill; install the skill file separately (see below).
 
-Alternatively, you can install the Globalise MCP server *locally* on your own computer. The simplest way to do this is with a Claude Desktop [extension](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop). Download [this project's ~5MB `.mcpb` extension](https://github.com/kintopp/globalise-mcp/releases/latest) and then double-click it to install it with Claude Desktop. This will download a small ~110MB database with the project's finding aids and historical glossaries. To install the Globalise MCP server manually, please consult the [technical notes](./globalise-mcp-server/README.md). For measurements of what the server costs and saves in tokens compared with plain web search, see the (still early and experimental) [benchmarks](./globalise-mcp-server/docs/benchmarks.md).
+#### Local
+
+Alternatively, you can install the Globalise MCP server *locally* on your own computer. To install the local Globalise MCP server manually, please consult the [technical notes](./globalise-mcp-server/README.md).
 
 ### SKILL file
 
 A `skill` gives an AI assistant detailed guidance on how to use a resource such as an MCP server effectively: which tool to choose for a given question type, how to combine searches, important metadata distinctions, and known limitations. Skills were [originally developed by Anthropic](https://claude.com/resources/tutorials/teach-claude-your-way-of-working-using-skills) for their Claude products but have since become a widely-supported [open standard](https://agentskills.io/home). Making use of the Globalise MCP skill file is optional but will usually improve the quality and efficiency of the AI assistant’s responses.
 
-Download: [`globalise-voc-research.skill`](https://github.com/kintopp/globalise-mcp/releases/latest/download/globalise-voc-research.skill). The downloaded skill file can be installed in Claude Desktop by double-clicking on the .skill file or else by going to Settings -> Skills -> Add. The latter method also works with claude.ai.  Else, please consult the documentation of your MCP client to learn how to install or make use of it there. Currently (October, 2026) ChatGPT's free tier makes uploading skill files cumbersome. Instead, use [Mistral Vibe](https://mistral.ai/products/vibe/) and install the skill via the 'folder' option, first downloading and unpacking  [`globalise-voc-research.zip`](https://github.com/kintopp/globalise-mcp/releases/latest/download/globalise-voc-research.zip).
+The plugin (see [Installation](#installation) above) already includes the skill. Don't edit the installed copy. To add your own instructions, put them in a separate skill or in your project's instructions.
+
+You only need the separate skill file below if you add the server as a custom connector, install it locally, or use a client without plugin support. To access it, download and unzip: [`globalise-voc-research.zip`](https://github.com/kintopp/globalise-mcp/releases/latest/download/globalise-voc-research.zip). If you use [Mistral Vibe](https://mistral.ai/products/vibe/), install the skill via the 'folder' option.
 
 #### MCP Server Tools
 
