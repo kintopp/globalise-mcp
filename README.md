@@ -54,7 +54,7 @@ The easiest way to start is to install the Globalise VOC Research plugin. It add
 https://globalise-mcp-production.up.railway.app/mcp
 ```
 
-For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers and skills. **N.B.** A connector added this way has no skill; install the skill file separately (see below).
+For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers, including components like interactive image viewers. **N.B.** A connector added this way has no skill; install the skill file separately (see below).
 
 #### Local
 
