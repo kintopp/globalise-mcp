@@ -30,7 +30,7 @@ The system is designed to let you search, explore and ask questions about the Gl
 
 #### Hosted
 
-The easiest way to start is to install the Globalise VOC Research plugin. It adds the hosted version of the server as a connector, together with the research skill (see below) that tells the AI assistant how to use it. The server needs no account or sign-in information.
+The easiest way to start is to install the Globalise VOC Research plugin. It adds the hosted version of the server as a connector, together with the research skill (see below) that tells the AI assistant how to use it. The server needs no account or sign-in information. Note: If you are on a free subscription plan, the use of an MCP server will consume your free usage quickly.
 
 **Claude** ([claude.ai](https://claude.ai), or the Claude [desktop app](https://claude.com/download)): *// recommended*
 
@@ -39,7 +39,7 @@ The easiest way to start is to install the Globalise VOC Research plugin. It add
 3. Open the plugin, go to its _Connectors_ tab, and add the "Globalise" connector.
 4. If you like, set the permissions for its tools in _Customize_ → _Connectors_, for example to "Always allow".
 
-**N.B.** A free Claude account allows only one custom connector. To make room for it, you will need to remove (not just disable) any existing custom connector in _Customize_ → _Connectors_ first. In addition, the use of any MCP server will consume your free usage quickly.
+**N.B.** A free Claude account allows only one custom connector. To make room for it, you will need to remove (not just disable) any existing custom connector in _Customize_ → _Connectors_ first. 
 
 See Anthropic's [plugin instructions](https://claude.com/docs/plugins/overview#install-a-plugin) for more details.
 
@@ -48,7 +48,7 @@ See Anthropic's [plugin instructions](https://claude.com/docs/plugins/overview#i
 1. Download [`globalise-voc-research-chatgpt.zip`](https://github.com/kintopp/globalise-mcp/raw/refs/heads/main/globalise-mcp-server/plugin/globalise-voc-research-chatgpt.zip).
 2. In the ChatGPT desktop app, go to _Settings_ → _Plugins_ → _Add_ and _Upload plugin archive_. Select and _Add_ the plugin.
 3. Next select _Install plugin_. After this the plugin is available.
-4. To use it, create a new chat, switch to 'Work' mode in ChatGPT or to Codex, and select the plugin via the + symbol. Else, type "@Globalise VOC Research" at the start of the prompt. Note: The use of any MCP server will consume your free usage quickly.
+4. To use it, create a new chat, switch to 'Work' mode in ChatGPT or to Codex, and select the plugin via the + symbol. Else, type "@Globalise VOC Research" at the start of the prompt.
 
 **Other AI clients:** add the hosted server as a remote MCP server (often called a "custom connector") with this URL, and leave the authentication settings empty:
 
@@ -56,11 +56,11 @@ See Anthropic's [plugin instructions](https://claude.com/docs/plugins/overview#i
 https://globalise-mcp-production.up.railway.app/mcp
 ```
 
-For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers, including components like interactive image viewers. The use of an MCP server will consume your free usage quickly. But it's certainly also possible to set-up an open source AI client with an open source model, such as [Kimi 3.1 Pro](https://huggingface.co/moonshotai/Kimi-K3.1-Pro) which may be available to you at no cost or on a per-token basis. **N.B.** A connector added this way has no skill; install the skill file separately (see below).
+For example, the free version of [Mistral's Vibe](https://chat.mistral.ai) has excellent support for MCP servers, including components like interactive image viewers. A connector added this way has no skill; install the skill file separately (see below).
 
 #### Local
 
-Alternatively, you can install the Globalise MCP server *locally* on your own computer. To install the local Globalise MCP server manually, please consult the [technical notes](./globalise-mcp-server/README.md).
+Alternatively, you can install the Globalise MCP server *locally* on your own computer. To install the local Globalise MCP server manually, please consult the [technical notes](./globalise-mcp-server/README.md). 
 
 ### SKILL file
 
